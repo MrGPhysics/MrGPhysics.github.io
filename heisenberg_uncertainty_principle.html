@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heisenberg Uncertainty Principle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        
+        /* Glassmorphism card effects */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
+
+    <div class="max-w-4xl w-full space-y-8">
+        
+        <!-- Header Section -->
+        <header class="text-center space-y-4">
+            <h1 class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-blue-600">
+                Heisenberg Uncertainty Principle
+            </h1>
+            <p class="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                In quantum mechanics, you cannot simultaneously know the exact position (<strong class="text-blue-600">x</strong>) and exact momentum (<strong class="text-purple-600">p</strong>) of a particle. 
+                The more precisely one is determined, the less precisely the other is known: 
+                <br>
+                <span class="inline-block mt-2 font-semibold text-xl bg-slate-100 px-4 py-2 rounded-lg border border-slate-200">
+                    Δx · Δp ≥ ℏ/2
+                </span>
+            </p>
+        </header>
+
+        <!-- Visualization Section -->
+        <main class="space-y-6">
+            
+            <!-- Position Graph -->
+            <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-slate-800 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span> Position Uncertainty
+                        </h2>
+                        <p class="text-sm text-slate-500">Probability distribution of the particle's position</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-slate-500 font-semibold">Δx</div>
+                        <div id="val-dx" class="text-2xl font-bold text-blue-600">--</div>
+                    </div>
+                </div>
+                <div class="w-full h-48 bg-slate-50 rounded-xl border border-slate-100 relative" id="canvas-container-x">
+                    <canvas id="canvas-x" class="absolute top-0 left-0 w-full h-full rounded-xl"></canvas>
+                </div>
+            </div>
+
+            <!-- Momentum Graph -->
+            <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-slate-800 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-purple-500 inline-block"></span> Momentum Uncertainty
+                        </h2>
+                        <p class="text-sm text-slate-500">Probability distribution of the particle's momentum</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-slate-500 font-semibold">Δp</div>
+                        <div id="val-dp" class="text-2xl font-bold text-purple-600">--</div>
+                    </div>
+                </div>
+                <div class="w-full h-48 bg-slate-50 rounded-xl border border-slate-100 relative" id="canvas-container-p">
+                    <canvas id="canvas-p" class="absolute top-0 left-0 w-full h-full rounded-xl"></canvas>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="glass-card rounded-2xl p-8 mt-8">
+                <div class="text-center mb-6">
+                    <h3 class="text-lg font-semibold text-slate-800">Adjust Measurement Precision</h3>
+                    <p class="text-sm text-slate-500 mt-1">Move the slider to see how localizing position affects momentum, and vice versa.</p>
+                </div>
+                
+                <div class="flex items-center gap-4 max-w-2xl mx-auto">
+                    <span class="text-sm font-semibold text-purple-600 w-24 text-right">Precise Momentum</span>
+                    <input type="range" id="uncertainty-slider" min="0" max="100" value="50">
+                    <span class="text-sm font-semibold text-blue-600 w-24">Precise Position</span>
+                </div>
+                
+                <div class="text-center mt-8 pt-6 border-t border-slate-200">
+                    <p class="text-slate-500 text-sm font-medium">Constant Product (Δx · Δp)</p>
+                    <div id="val-product" class="text-3xl font-bold text-slate-800 mt-1">--</div>
+                </div>
+            </div>
+
+        </main>
+        
+        <footer class="text-center text-slate-400 text-sm pb-8">
+            Interactive physics visualization built with HTML Canvas & JavaScript.
+        </footer>
+    </div>
+
+    <script>
+        // DOM Elements
+        const canvasX = document.getElementById('canvas-x');
+        const canvasP = document.getElementById('canvas-p');
+        const ctxX = canvasX.getContext('2d');
+        const ctxP = canvasP.getContext('2d');
+        
+        const containerX = document.getElementById('canvas-container-x');
+        const containerP = document.getElementById('canvas-container-p');
+        
+        const slider = document.getElementById('uncertainty-slider');
+        const dxLabel = document.getElementById('val-dx');
+        const dpLabel = document.getElementById('val-dp');
+        const prodLabel = document.getElementById('val-product');
+
+        // Physics/Math Constants for the Visualization
+        // We use an arbitrary logarithmic mapping to ensure symmetry and a constant product
+        const BASE_SIGMA = 50; // The standard deviation when the slider is in the middle
+        const MULTIPLIER = 4;  // How much the sigma grows/shrinks at the extremes
+        
+        // Visual Constants
+        const COLOR_X = { border: '#2563eb', fill: 'rgba(59, 130, 246, 0.2)' }; // Blue
+        const COLOR_P = { border: '#7c3aed', fill: 'rgba(124, 58, 237, 0.2)' }; // Purple
+        const AREA_CONSTANT = 2500; // Determines amplitude visually so Area = Constant
+
+        // State variables
+        let width, height;
+        let sigmaX = BASE_SIGMA;
+        let sigmaP = BASE_SIGMA;
+
+        // Resize canvas to fit containers cleanly for responsive design
+        function resizeCanvases() {
+            // Get dimensions from the CSS-styled containers
+            width = containerX.clientWidth;
+            height = containerX.clientHeight;
+            
+            // Set actual canvas pixel dimensions to match display dimensions
+            // Multiplied by devicePixelRatio for crisp rendering on retina displays if desired, 
+            // but keeping it 1:1 here for simplicity and cross-browser consistency without scaling complexity
+            canvasX.width = width;
+            canvasX.height = height;
+            canvasP.width = width;
+            canvasP.height = height;
+            
+            draw(); // Redraw whenever resized
+        }
+
+        /**
+         * Draws a Gaussian curve on the provided context.
+         * @param {CanvasRenderingContext2D} ctx 
+         * @param {number} sigma - The standard deviation (width) of the curve
+         * @param {Object} colors - Hex/RGBA strings for stroke and fill
+         * @param {string} label - Label for the x-axis (x or p)
+         */
+        function drawGaussian(ctx, sigma, colors, label) {
+            ctx.clearRect(0, 0, width, height);
+
+            const centerX = width / 2;
+            const baselineY = height - 30; // Leave room at the bottom for axis
+            
+            // Calculate amplitude based on constant area constraint
+            // Area proportional to Amplitude * Sigma. So Amplitude = AreaConstant / Sigma.
+            let amplitude = AREA_CONSTANT / sigma;
+            
+            // Draw baseline (x-axis)
+            ctx.beginPath();
+            ctx.moveTo(10, baselineY);
+            ctx.lineTo(width - 10, baselineY);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw center tick
+            ctx.beginPath();
+            ctx.moveTo(centerX, baselineY - 5);
+            ctx.lineTo(centerX, baselineY + 15);
+            ctx.strokeStyle = '#94a3b8';
+            ctx.stroke();
+            
+            // Label axis
+            ctx.fillStyle = '#64748b';
+            ctx.font = '14px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(label + ' = 0', centerX, baselineY + 28);
+
+            // Draw the Gaussian Curve
+            ctx.beginPath();
+            
+            // Plot points across the width of the canvas
+            for (let px = 0; px <= width; px++) {
+                // Distance from center
+                const x = px - centerX; 
+                
+                // Gaussian function: f(x) = A * e^(-x^2 / (2 * sigma^2))
+                const y = amplitude * Math.exp(-(x * x) / (2 * sigma * sigma));
+                
+                // Map to canvas Y coordinates (inverted, since 0 is at top)
+                const canvasY = baselineY - y;
+                
+                if (px === 0) {
+                    ctx.moveTo(px, canvasY);
+                } else {
+                    ctx.lineTo(px, canvasY);
+                }
+            }
+            
+            // Style and fill the curve
+            ctx.strokeStyle = colors.border;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Close path to fill down to baseline
+            ctx.lineTo(width, baselineY);
+            ctx.lineTo(0, baselineY);
+            ctx.closePath();
+            
+            ctx.fillStyle = colors.fill;
+            ctx.fill();
+
+            // Optional: Draw a line indicating the standard deviation (Delta) width
+            // Drawn at e^(-1/2) ≈ 0.606 of the max amplitude
+            const stdDevHeight = baselineY - (amplitude * 0.606);
+            
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(centerX - sigma, stdDevHeight);
+            ctx.lineTo(centerX + sigma, stdDevHeight);
+            ctx.strokeStyle = colors.border;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.setLineDash([]); // reset dash
+
+            // Draw vertical bounds of the standard deviation
+            ctx.beginPath();
+            ctx.moveTo(centerX - sigma, baselineY);
+            ctx.lineTo(centerX - sigma, stdDevHeight);
+            ctx.moveTo(centerX + sigma, baselineY);
+            ctx.lineTo(centerX + sigma, stdDevHeight);
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.stroke();
+        }
+
+        // Calculate physics values and trigger re-draws
+        function updatePhysics() {
+            // Slider value from 0 to 100
+            const rawVal = parseFloat(slider.value);
+            
+            // Map to a range of -1 to 1 for symmetric logarithmic scaling
+            const t = (rawVal - 50) / 50; 
+            
+            // Calculate standard deviations (width of the curves)
+            // They have an inversely proportional relationship to demonstrate the principle
+            sigmaX = BASE_SIGMA * Math.pow(MULTIPLIER, -t);
+            sigmaP = BASE_SIGMA * Math.pow(MULTIPLIER, t);
+            
+            // For UI display purposes, we scale the internal pixel sigma down to a reasonable "unit"
+            const displayDx = (sigmaX / 10).toFixed(2);
+            const displayDp = (sigmaP / 10).toFixed(2);
+            const product = ((sigmaX / 10) * (sigmaP / 10)).toFixed(2);
+
+            // Update DOM text
+            dxLabel.innerText = displayDx + " units";
+            dpLabel.innerText = displayDp + " units";
+            prodLabel.innerText = product;
+
+            draw();
+        }
+
+        // Main draw function
+        function draw() {
+            if (!width || !height) return; // Prevent drawing before dimensions exist
+            drawGaussian(ctxX, sigmaX, COLOR_X, 'x');
+            drawGaussian(ctxP, sigmaP, COLOR_P, 'p');
+        }
+
+        // Event Listeners
+        window.addEventListener('resize', resizeCanvases);
+        slider.addEventListener('input', updatePhysics);
+
+        // Initial setup on load
+        window.onload = () => {
+            resizeCanvases();
+            updatePhysics();
+        };
+
+    </script>
+</body>
+</html>
