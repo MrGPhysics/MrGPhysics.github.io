@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Infinite Square Well</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* slate-900 */
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            margin-top: -7px;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 2px;
+        }
+        input[type=range]:focus { outline: none; }
+
+        /* Custom Checkbox styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #10b981;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #10b981;
+        }
+        
+        .toggle-checkbox-p:checked {
+            right: 0;
+            border-color: #f59e0b;
+        }
+        .toggle-checkbox-p:checked + .toggle-label-p {
+            background-color: #f59e0b;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 lg:p-8">
+
+    <div class="max-w-6xl w-full bg-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-slate-700 flex flex-col lg:flex-row">
+        
+        <!-- Left Side: Canvas Display -->
+        <div class="flex-1 p-4 sm:p-6 flex flex-col">
+            <div class="mb-4">
+                <h1 class="text-2xl font-bold text-white">Infinite Square Well Dynamics</h1>
+                <p class="text-sm text-slate-400 mt-1">Superposition of stationary states: Ψ(x,t) with Expectation Values</p>
+            </div>
+            
+            <!-- Canvas Container -->
+            <div class="relative w-full aspect-video bg-slate-900 rounded-xl border border-slate-700 overflow-hidden shadow-inner flex-1 min-h-[350px]" id="canvas-container">
+                <canvas id="quantum-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                
+                <!-- Legend -->
+                <div class="absolute top-4 right-4 bg-slate-800/85 backdrop-blur-sm border border-slate-600 rounded-lg p-3 text-xs space-y-2 shadow-lg">
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-1 bg-sky-400 rounded-full shadow-[0_0_5px_#38bdf8]"></span>
+                        <span class="text-slate-200">Re[Ψ(x,t)]</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-3 bg-purple-500/50 rounded shadow-[0_0_5px_rgba(168,85,247,0.5)] border-t border-purple-400"></span>
+                        <span class="text-slate-200">|Ψ(x,t)|²</span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-600">
+                        <span class="w-4 border-t-2 border-dashed border-emerald-500"></span>
+                        <span class="text-emerald-400 font-medium">⟨x⟩ Position</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 border-t-2 border-dashed border-amber-500"></span>
+                        <span class="text-amber-400 font-medium">⟨p⟩ Momentum</span>
+                    </div>
+                </div>
+                
+                <!-- Live Display Data -->
+                <div class="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none">
+                    <div class="bg-slate-800/80 backdrop-blur border border-slate-600 px-3 py-2 rounded-lg font-mono text-sm text-slate-300 shadow-md">
+                        t = <span id="time-display" class="text-white">0.00</span>
+                    </div>
+                    
+                    <div class="bg-slate-800/80 backdrop-blur border border-slate-600 px-3 py-2 rounded-lg font-mono text-xs text-slate-300 shadow-md flex flex-col gap-1 text-right">
+                        <div>⟨x⟩ = <span id="val-exp-x" class="text-emerald-400 w-12 inline-block">0.000</span></div>
+                        <div>⟨p⟩ = <span id="val-exp-p" class="text-amber-400 w-12 inline-block">0.000</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Playback Controls -->
+            <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
+                <button id="btn-play" class="bg-sky-500 hover:bg-sky-400 text-slate-900 font-semibold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-sky-500/20">
+                    <svg id="icon-play" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="icon-pause" class="hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    <span id="text-play">Play</span>
+                </button>
+                <button id="btn-reset" class="bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 px-6 rounded-lg transition-colors border border-slate-600">
+                    Reset t=0
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Side: Controls Panel -->
+        <div class="w-full lg:w-80 bg-slate-900/50 border-t lg:border-t-0 lg:border-l border-slate-700 p-6 flex flex-col">
+            
+            <!-- Toggle Expectation Values -->
+            <div class="mb-8 p-4 bg-slate-800 rounded-xl border border-slate-700">
+                <h3 class="text-sm font-semibold text-slate-200 mb-4 uppercase tracking-wider">Observables Overlay</h3>
+                
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-emerald-400 font-medium flex items-center gap-2">
+                        Show Position ⟨x⟩
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-x" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-amber-400 font-medium flex items-center gap-2">
+                        Show Momentum ⟨p⟩
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-p" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                </div>
+                <div class="mt-3 text-[10px] text-slate-400 leading-tight">
+                    * ⟨p⟩ is plotted relative to the well's center to visualize oscillation direction.
+                </div>
+            </div>
+
+            <h2 class="text-lg font-semibold text-white mb-2">Initial State (t=0)</h2>
+            <p class="text-xs text-slate-400 mb-6">Adjust stationary state amplitudes. The total wave function normalizes automatically.</p>
+            
+            <div class="space-y-6 flex-1" id="sliders-container">
+                <!-- Sliders injected via JS -->
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('quantum-canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const slidersContainer = document.getElementById('sliders-container');
+        
+        const btnPlay = document.getElementById('btn-play');
+        const iconPlay = document.getElementById('icon-play');
+        const iconPause = document.getElementById('icon-pause');
+        const textPlay = document.getElementById('text-play');
+        const btnReset = document.getElementById('btn-reset');
+        const timeDisplay = document.getElementById('time-display');
+        
+        const dispExpX = document.getElementById('val-exp-x');
+        const dispExpP = document.getElementById('val-exp-p');
+        const toggleX = document.getElementById('toggle-x');
+        const toggleP = document.getElementById('toggle-p');
+
+        // Core Physics State
+        const numStates = 5;
+        // Start with a mix of n=1 and n=2 to immediately show motion of expectation values
+        let c = [1, 1, 0, 0, 0]; 
+        let t = 0;
+        const dt = 0.005; // Time delta per frame. Kept small for smooth oscillations.
+        
+        // Quantum constants & scales for this normalized simulation
+        // L = 1 (width of the well). x goes from 0 to 1.
+        // E_n = n^2. omega_n = E_n (assuming hbar = 1, 2m = 1)
+        // psi_n(x) = sqrt(2) * sin(n * pi * x)
+        
+        let isPlaying = false;
+        let animationId;
+        let width, height;
+
+        function initSliders() {
+            for (let i = 1; i <= numStates; i++) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'space-y-2';
+                
+                const header = document.createElement('div');
+                header.className = 'flex justify-between items-center';
+                
+                const label = document.createElement('label');
+                label.className = 'text-sm font-medium text-slate-300';
+                label.innerHTML = `Ψ<sub>${i}</sub> (c<sub>${i}</sub>)`;
+                
+                const valDisplay = document.createElement('span');
+                valDisplay.className = 'text-xs font-mono text-sky-400 bg-sky-400/10 px-2 py-0.5 rounded';
+                valDisplay.id = `val-${i}`;
+                valDisplay.innerText = c[i-1].toFixed(1);
+                
+                header.appendChild(label);
+                header.appendChild(valDisplay);
+                
+                const input = document.createElement('input');
+                input.type = 'range';
+                input.min = '0';
+                input.max = '5';
+                input.step = '0.1';
+                input.value = c[i-1];
+                input.id = `slider-${i}`;
+                
+                input.addEventListener('input', (e) => {
+                    c[i-1] = parseFloat(e.target.value);
+                    document.getElementById(`val-${i}`).innerText = c[i-1].toFixed(1);
+                    if (!isPlaying) draw(); 
+                });
+                
+                wrapper.appendChild(header);
+                wrapper.appendChild(input);
+                slidersContainer.appendChild(wrapper);
+            }
+        }
+
+        function resizeCanvas() {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            draw();
+        }
+
+        function draw() {
+            if (!width || !height) return;
+            ctx.clearRect(0, 0, width, height);
+            
+            const paddingX = 50;
+            const wellWidth = width - 2 * paddingX;
+            
+            // Define well boundaries explicitly
+            const wellTopY = 40;
+            const wellBottomY = height - 40;
+            const wellHeight = wellBottomY - wellTopY;
+            const baselineY = wellTopY + wellHeight / 2; // Vertical center for Re(Psi)
+            
+            // Normalize coefficients N = sqrt(sum(c_i^2))
+            let sumSq = 0;
+            for(let i=0; i<numStates; i++) {
+                sumSq += c[i] * c[i];
+            }
+            const norm = sumSq > 0 ? Math.sqrt(sumSq) : 1;
+            
+            const numPoints = 400;
+            const dx = 1.0 / numPoints; // Integration step (L=1)
+            
+            let rePts = [];
+            let probPts = [];
+            
+            // For numeric Expectation Values
+            let expX = 0;
+            let expP = 0;
+            
+            // Calculate state at each point
+            for (let p = 0; p <= numPoints; p++) {
+                const x = p / numPoints; 
+                
+                let U = 0; // Real part of Psi
+                let V = 0; // Imag part of Psi
+                let Ux = 0; // d/dx Real part
+                let Vx = 0; // d/dx Imag part
+                
+                if (sumSq > 0) {
+                    for (let n = 1; n <= numStates; n++) {
+                        const cn = c[n-1] / norm;
+                        
+                        // Wavefunction components
+                        const sqrt2 = 1.41421356;
+                        const spatial = sqrt2 * Math.sin(n * Math.PI * x);
+                        const spatialDeriv = sqrt2 * n * Math.PI * Math.cos(n * Math.PI * x);
+                        
+                        // Energy Phase E_n = n^2
+                        const phase = n * n * t;
+                        const cosP = Math.cos(phase);
+                        const sinP = Math.sin(phase);
+                        
+                        U += cn * spatial * cosP;
+                        V -= cn * spatial * sinP;
+                        
+                        Ux += cn * spatialDeriv * cosP;
+                        Vx -= cn * spatialDeriv * sinP;
+                    }
+                }
+                
+                const prob = U * U + V * V; 
+                
+                rePts.push({ px: paddingX + p * (wellWidth / numPoints), val: U });
+                probPts.push({ px: paddingX + p * (wellWidth / numPoints), val: prob });
+                
+                expX += x * prob * dx;
+                expP += (U * Vx - V * Ux) * dx;
+            }
+            
+            // --- Theoretical Maximums for Perfect Scaling ---
+            // Max density for 5 normalized states is <= 10. Max amplitude is <= sqrt(10) ~ 3.16.
+            // Scale so that density 10 reaches wellHeight, and amplitude 3.16 reaches wellHeight/2.
+            const maxProbVal = 10.0;
+            const maxReVal = 3.2;
+
+            // --- Draw Probability Density Fill ---
+            ctx.beginPath();
+            ctx.moveTo(paddingX, wellBottomY); 
+            
+            for (let i = 0; i < probPts.length; i++) {
+                const plotY = wellBottomY - (probPts[i].val / maxProbVal) * wellHeight;
+                ctx.lineTo(probPts[i].px, plotY);
+            }
+            
+            ctx.lineTo(paddingX + wellWidth, wellBottomY);
+            ctx.lineTo(paddingX, wellBottomY);
+            
+            const probGradient = ctx.createLinearGradient(0, wellTopY, 0, wellBottomY);
+            probGradient.addColorStop(0, 'rgba(168, 85, 247, 0.6)'); 
+            probGradient.addColorStop(1, 'rgba(168, 85, 247, 0.05)');
+            ctx.fillStyle = probGradient;
+            ctx.fill();
+            
+            // --- Stroke Probability Density Top ---
+            ctx.beginPath();
+            for (let i = 0; i < probPts.length; i++) {
+                const plotY = wellBottomY - (probPts[i].val / maxProbVal) * wellHeight;
+                if (i === 0) ctx.moveTo(probPts[i].px, plotY);
+                else ctx.lineTo(probPts[i].px, plotY);
+            }
+            ctx.strokeStyle = 'rgba(192, 132, 252, 0.9)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // --- Draw Real Wavefunction ---
+            ctx.beginPath();
+            for (let i = 0; i < rePts.length; i++) {
+                const plotY = baselineY - (rePts[i].val / maxReVal) * (wellHeight / 2);
+                if (i === 0) ctx.moveTo(rePts[i].px, plotY);
+                else ctx.lineTo(rePts[i].px, plotY);
+            }
+            ctx.strokeStyle = '#38bdf8'; // Sky blue
+            ctx.lineWidth = 2.5;
+            ctx.lineJoin = 'round';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 6;
+            ctx.stroke();
+            ctx.shadowBlur = 0; 
+            
+            // --- Draw Background Baseline & U-Shaped Well ---
+            // Baseline for Wavefunction Re(Psi)
+            ctx.beginPath();
+            ctx.moveTo(paddingX, baselineY);
+            ctx.lineTo(paddingX + wellWidth, baselineY);
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Infinite Square Well (Sides + Bottom)
+            ctx.beginPath();
+            ctx.moveTo(paddingX, wellTopY); // Top Left
+            ctx.lineTo(paddingX, wellBottomY); // Bottom Left
+            ctx.lineTo(paddingX + wellWidth, wellBottomY); // Bottom Right
+            ctx.lineTo(paddingX + wellWidth, wellTopY); // Top Right
+            
+            ctx.strokeStyle = '#94a3b8'; 
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            // Update Text Displays
+            timeDisplay.innerText = t.toFixed(2);
+            dispExpX.innerText = sumSq > 0 ? expX.toFixed(3) : "0.500";
+            dispExpP.innerText = sumSq > 0 ? expP.toFixed(3) : "0.000";
+
+            if (sumSq > 0) {
+                // Draw <x> Line
+                if (toggleX.checked) {
+                    const canvasExpX = paddingX + (expX * wellWidth);
+                    ctx.beginPath();
+                    ctx.moveTo(canvasExpX, wellTopY);
+                    ctx.lineTo(canvasExpX, wellBottomY);
+                    ctx.strokeStyle = '#10b981'; // Emerald 500
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 6]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // Draw <p> Line
+                if (toggleP.checked) {
+                    const pScale = 0.025; 
+                    const mappedP = 0.5 + (expP * pScale);
+                    const clampedMappedP = Math.max(0, Math.min(1, mappedP));
+                    const canvasExpP = paddingX + (clampedMappedP * wellWidth);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(canvasExpP, wellTopY);
+                    ctx.lineTo(canvasExpP, wellBottomY);
+                    ctx.strokeStyle = '#f59e0b'; // Amber 500
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([4, 4]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+
+        function animate() {
+            if (!isPlaying) return;
+            t += dt;
+            draw();
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                textPlay.innerText = "Pause";
+                iconPlay.classList.add('hidden');
+                iconPause.classList.remove('hidden');
+                btnPlay.classList.replace('bg-sky-500', 'bg-amber-500');
+                btnPlay.classList.replace('hover:bg-sky-400', 'hover:bg-amber-400');
+                btnPlay.classList.replace('shadow-sky-500/20', 'shadow-amber-500/20');
+                animate();
+            } else {
+                textPlay.innerText = "Play";
+                iconPause.classList.add('hidden');
+                iconPlay.classList.remove('hidden');
+                btnPlay.classList.replace('bg-amber-500', 'bg-sky-500');
+                btnPlay.classList.replace('hover:bg-amber-400', 'hover:bg-sky-400');
+                btnPlay.classList.replace('shadow-amber-500/20', 'shadow-sky-500/20');
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        function resetTime() {
+            t = 0;
+            if (!isPlaying) draw();
+        }
+
+        btnPlay.addEventListener('click', togglePlay);
+        btnReset.addEventListener('click', resetTime);
+        window.addEventListener('resize', resizeCanvas);
+        
+        toggleX.addEventListener('change', () => { if(!isPlaying) draw(); });
+        toggleP.addEventListener('change', () => { if(!isPlaying) draw(); });
+
+        window.onload = () => {
+            initSliders();
+            resizeCanvas();
+        };
+    </script>
+</body>
+</html>

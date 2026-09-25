@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Performance 1D Schrödinger Solver</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --accent-color: #38bdf8;
+            --text-color: #f8fafc;
+            --text-dim: #94a3b8;
+            --border-color: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            color: var(--accent-color);
+            margin-bottom: 6px;
+        }
+
+        header p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 310px;
+            gap: 20px;
+            max-width: 1450px;
+            margin: 0 auto;
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        @media (max-width: 950px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .canvas-container {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        canvas {
+            width: 100%;
+            height: 540px;
+            background-color: #090d16;
+            border-radius: 8px;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .canvas-hint {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--accent-color);
+            pointer-events: none;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .panel h2 {
+            font-size: 1.05rem;
+            margin-bottom: 12px;
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .solver-badge {
+            font-size: 0.7rem;
+            background-color: rgba(56, 189, 248, 0.15);
+            color: var(--accent-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: normal;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+            background-color: #131c2e;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        input[type="range"] {
+            padding: 0;
+            accent-color: var(--accent-color);
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        button {
+            background-color: #2a374a;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #3b4c66;
+            border-color: var(--accent-color);
+        }
+
+        button.active {
+            background-color: var(--accent-color);
+            color: #0f172a;
+            font-weight: bold;
+        }
+
+        .energy-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .energy-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background-color: #131c2e;
+            font-size: 0.85rem;
+            border-left: 4px solid transparent;
+        }
+
+        .energy-item .state-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .energy-val {
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        .perf-metrics {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 8px;
+            text-align: right;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>1D Quantum Mechanics Solver (O(k·N) Engine)</h1>
+        <p>Draw any potential $V(x)$ to solve the Schrödinger equation using Sturm Bisection & Thomas Inverse Iteration.</p>
+    </header>
+
+    <div class="main-container">
+        <div class="canvas-container">
+            <span class="canvas-hint">✏️ Click & Drag to draw potential V(x)</span>
+            <canvas id="quantumCanvas"></canvas>
+        </div>
+
+        <div class="sidebar">
+            <div class="panel">
+                <h2>Grid & Performance <span class="solver-badge">O(k·N) Fast</span></h2>
+                <div class="control-group">
+                    <label for="gridSelect">Spatial Resolution (N):</label>
+                    <select id="gridSelect" onchange="changeGridSize(this.value)">
+                        <option value="128">N = 128 (Standard)</option>
+                        <option value="256" selected>N = 256 (High Precision)</option>
+                        <option value="512">N = 512 (Ultra Fine)</option>
+                        <option value="1024">N = 1024 (Extreme Detail)</option>
+                    </select>
+                </div>
+                <div class="perf-metrics" id="perfMetrics">Solve Time: 0.00 ms</div>
+            </div>
+
+            <div class="panel">
+                <h2>Presets</h2>
+                <div class="btn-grid">
+                    <button onclick="setPreset('harmonic')">Harmonic</button>
+                    <button onclick="setPreset('square')">Square Well</button>
+                    <button onclick="setPreset('double')">Double Well</button>
+                    <button onclick="setPreset('barrier')">Barrier</button>
+                    <button onclick="setPreset('steps')">Steps</button>
+                    <button onclick="setPreset('flat')">Clear / Flat</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Display Mode</h2>
+                <div class="btn-grid">
+                    <button id="btnPsi" class="active" onclick="setDisplayMode('psi')">Wavefunction ψ(x)</button>
+                    <button id="btnProb" onclick="setDisplayMode('prob')">Probability |ψ(x)|²</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Parameters</h2>
+                <div class="control-group">
+                    <label for="massSlider">Particle Mass / Scale: <span id="massVal">1.0</span></label>
+                    <input type="range" id="massSlider" min="0.2" max="3.0" step="0.1" value="1.0">
+                </div>
+                <div class="control-group">
+                    <label for="scaleSlider">Wave Amplification: <span id="scaleVal">1.0</span></label>
+                    <input type="range" id="scaleSlider" min="0.2" max="3.0" step="0.1" value="1.0">
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Lowest 5 Energy States</h2>
+                <ul class="energy-list" id="energyList">
+                    <!-- Populated dynamically -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // System State
+        let N = 256;
+        let V = new Float64Array(N);
+        let mass = 1.0;
+        let waveScale = 1.0;
+        let displayMode = 'psi';
+        let enabledStates = [true, true, true, true, true];
+
+        const K_STATES = 5; // We only compute the lowest 5 states
+        const stateColors = ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#e056fd'];
+
+        const canvas = document.getElementById('quantumCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            render();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        const Vmax = 100.0;
+        function iToX(i) { return (i / (N - 1)) * canvas.getBoundingClientRect().width; }
+        function xToI(x) { return Math.max(0, Math.min(N - 1, Math.round((x / canvas.getBoundingClientRect().width) * (N - 1)))); }
+        function vToY(v) {
+            const h = canvas.getBoundingClientRect().height;
+            const pad = 30;
+            return h - pad - (v / Vmax) * (h - 2 * pad);
+        }
+        function yToV(y) {
+            const h = canvas.getBoundingClientRect().height;
+            const pad = 30;
+            return Math.max(0, Math.min(Vmax, ((h - pad - y) / (h - 2 * pad)) * Vmax));
+        }
+
+        // Pointer Handling
+        function handlePointer(x, y) {
+            const i = xToI(x);
+            const v = yToV(y);
+            V[i] = v;
+
+            if (window.lastI !== undefined && Math.abs(window.lastI - i) > 1) {
+                const step = window.lastI < i ? 1 : -1;
+                for (let idx = window.lastI; idx !== i; idx += step) {
+                    const t = (idx - window.lastI) / (i - window.lastI);
+                    V[idx] = window.lastV + t * (v - window.lastV);
+                }
+            }
+            window.lastI = i; window.lastV = v;
+            render();
+        }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let x = e.clientX, y = e.clientY;
+            if (e.touches && e.touches.length > 0) {
+                x = e.touches[0].clientX; y = e.touches[0].clientY;
+            }
+            return { x: x - rect.left, y: y - rect.top };
+        }
+
+        canvas.addEventListener('mousedown', (e) => { isDrawing = true; const p = getPos(e); handlePointer(p.x, p.y); });
+        canvas.addEventListener('mousemove', (e) => { if (isDrawing) { const p = getPos(e); handlePointer(p.x, p.y); } });
+        window.addEventListener('mouseup', () => { isDrawing = false; window.lastI = undefined; });
+        canvas.addEventListener('touchstart', (e) => { isDrawing = true; const p = getPos(e); handlePointer(p.x, p.y); e.preventDefault(); });
+        canvas.addEventListener('touchmove', (e) => { if (isDrawing) { const p = getPos(e); handlePointer(p.x, p.y); } e.preventDefault(); });
+        window.addEventListener('touchend', () => { isDrawing = false; window.lastI = undefined; });
+
+        function changeGridSize(newN) {
+            const oldV = V;
+            const oldN = N;
+            N = parseInt(newN);
+            V = new Float64Array(N);
+
+            // Resample potential array
+            for (let i = 0; i < N; i++) {
+                const origI = (i / (N - 1)) * (oldN - 1);
+                const idx = Math.floor(origI);
+                const frac = origI - idx;
+                V[i] = idx < oldN - 1 ? oldV[idx] * (1 - frac) + oldV[idx + 1] * frac : oldV[oldN - 1];
+            }
+            render();
+        }
+
+        function setPreset(type) {
+            for (let i = 0; i < N; i++) {
+                const x = (i - N / 2) / (N / 2);
+                if (type === 'harmonic') V[i] = Math.min(Vmax, 80 * x * x);
+                else if (type === 'square') V[i] = (Math.abs(x) > 0.5) ? 70 : 5;
+                else if (type === 'double') V[i] = Math.min(Vmax, 60 * Math.pow(x * x - 0.35, 2) * 5 + 5);
+                else if (type === 'barrier') V[i] = (Math.abs(x) < 0.15) ? 45 : 5;
+                else if (type === 'steps') V[i] = i < N / 3 ? 10 : (i < (2 * N) / 3 ? 35 : 65);
+                else if (type === 'flat') V[i] = 5;
+            }
+            render();
+        }
+
+        // =========================================================================
+        // O(k·N) Sturm Sequence Bisection + Inverse Iteration Eigensolver
+        // =========================================================================
+
+        // Counts eigenvalues of tridiagonal T strictly less than value E
+        function countEigenvaluesLessThan(E, d, eSq) {
+            let count = 0;
+            let p = d[0] - E;
+            if (p < 0) count++;
+
+            for (let i = 1; i < N; i++) {
+                p = (d[i] - E) - (Math.abs(p) < 1e-15 ? eSq[i - 1] / 1e-15 : eSq[i - 1] / p);
+                if (p < 0) count++;
+            }
+            return count;
+        }
+
+        // Fast Bisection to isolate the k-th eigenvalue
+        function findEigenvalueK(k, d, eSq, minE, maxE) {
+            let low = minE, high = maxE;
+            for (let iter = 0; iter < 50; iter++) { // 50 bisections -> float64 precision
+                const mid = (low + high) * 0.5;
+                if (countEigenvaluesLessThan(mid, d, eSq) <= k) {
+                    low = mid;
+                } else {
+                    high = mid;
+                }
+            }
+            return (low + high) * 0.5;
+        }
+
+        // Thomas Algorithm (O(N) Tridiagonal Matrix Solver) for Inverse Iteration
+        function solveTridiagonalThomas(dShifted, e, b, x) {
+            const cPrime = new Float64Array(N);
+            const dPrime = new Float64Array(N);
+
+            cPrime[0] = e[0] / dShifted[0];
+            dPrime[0] = b[0] / dShifted[0];
+
+            for (let i = 1; i < N; i++) {
+                const temp = dShifted[i] - e[i - 1] * cPrime[i - 1];
+                const denom = Math.abs(temp) < 1e-12 ? 1e-12 : temp;
+                if (i < N - 1) cPrime[i] = e[i] / denom;
+                dPrime[i] = (b[i] - e[i - 1] * dPrime[i - 1]) / denom;
+            }
+
+            x[N - 1] = dPrime[N - 1];
+            for (let i = N - 2; i >= 0; i--) {
+                x[i] = dPrime[i] - cPrime[i] * x[i + 1];
+            }
+        }
+
+        // Inverse Iteration to compute Eigenvector for given Eigenvalue
+        function findEigenvector(E, d, e) {
+            const vec = new Float64Array(N);
+            for (let i = 0; i < N; i++) vec[i] = Math.sin(i + 1); // Seed vector
+
+            const dShifted = new Float64Array(N);
+            const shift = E + 1e-9; // Small shift prevents singularity
+            for (let i = 0; i < N; i++) dShifted[i] = d[i] - shift;
+
+            // 2 iterations of inverse power method are sufficient for convergence
+            for (let iter = 0; iter < 2; iter++) {
+                solveTridiagonalThomas(dShifted, e, vec, vec);
+
+                let norm = 0;
+                for (let i = 0; i < N; i++) norm += vec[i] * vec[i];
+                norm = Math.sqrt(norm);
+                if (norm > 0) {
+                    for (let i = 0; i < N; i++) vec[i] /= norm;
+                }
+            }
+            return vec;
+        }
+
+        function solveSchrodingerFast() {
+            const dx = 1.0 / N;
+            const t0 = 1.0 / (2.0 * mass * dx * dx * 100);
+
+            const d = new Float64Array(N);
+            const e = new Float64Array(N - 1);
+            const eSq = new Float64Array(N - 1);
+
+            let minE = Infinity, maxE = -Infinity;
+            for (let i = 0; i < N; i++) {
+                d[i] = 2.0 * t0 + V[i];
+                if (d[i] < minE) minE = d[i];
+                if (d[i] > maxE) maxE = d[i];
+            }
+            for (let i = 0; i < N - 1; i++) {
+                e[i] = -t0;
+                eSq[i] = t0 * t0;
+            }
+            minE -= 2 * t0; maxE += 2 * t0;
+
+            const eigenvalues = new Float64Array(K_STATES);
+            const eigenvectors = [];
+
+            // Compute only the lowest K states in O(k·N) time
+            for (let k = 0; k < K_STATES; k++) {
+                const Ek = findEigenvalueK(k, d, eSq, minE, maxE);
+                eigenvalues[k] = Ek;
+                let psi = findEigenvector(Ek, d, e);
+
+                // Gram-Schmidt Orthogonalization against lower states to maintain purity
+                for (let prev = 0; prev < k; prev++) {
+                    let dot = 0;
+                    for (let i = 0; i < N; i++) dot += psi[i] * eigenvectors[prev][i];
+                    for (let i = 0; i < N; i++) psi[i] -= dot * eigenvectors[prev][i];
+                }
+
+                // Final Normalization
+                let norm = 0;
+                for (let i = 0; i < N; i++) norm += psi[i] * psi[i];
+                norm = Math.sqrt(norm);
+                if (norm > 0) {
+                    for (let i = 0; i < N; i++) psi[i] /= norm;
+                }
+
+                eigenvectors.push(psi);
+            }
+
+            return { d: eigenvalues, z: eigenvectors };
+        }
+
+        // Render Canvas and UI
+        function render() {
+            const w = canvas.getBoundingClientRect().width;
+            const h = canvas.getBoundingClientRect().height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Draw Background Grid Lines
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let v = 0; v <= Vmax; v += 20) {
+                const y = vToY(v);
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+
+            // Draw Potential Energy V(x)
+            ctx.beginPath();
+            ctx.moveTo(iToX(0), vToY(V[0]));
+            for (let i = 1; i < N; i++) ctx.lineTo(iToX(i), vToY(V[i]));
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.lineTo(w, h); ctx.lineTo(0, h);
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.05)';
+            ctx.fill();
+
+            // Benchmark Solve Time
+            const tStart = performance.now();
+            const solution = solveSchrodingerFast();
+            const tEnd = performance.now();
+            document.getElementById('perfMetrics').textContent = `Solve Time: ${(tEnd - tStart).toFixed(2)} ms`;
+
+            // Update Sidebar Energy List
+            const energyList = document.getElementById('energyList');
+            energyList.innerHTML = '';
+
+            for (let n = 0; n < K_STATES; n++) {
+                const E = solution.d[n];
+                const psiN = solution.z[n];
+
+                const li = document.createElement('li');
+                li.className = 'energy-item';
+                li.style.borderLeftColor = stateColors[n];
+                li.innerHTML = `
+                    <div class="state-title">
+                        <input type="checkbox" ${enabledStates[n] ? 'checked' : ''} onchange="toggleState(${n})">
+                        <span>State n=${n}</span>
+                    </div>
+                    <span class="energy-val" style="color:${stateColors[n]}">E = ${E.toFixed(2)}</span>
+                `;
+                energyList.appendChild(li);
+
+                if (!enabledStates[n]) continue;
+
+                // Draw Energy Level Line
+                const yE = vToY(E);
+                ctx.beginPath();
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = stateColors[n];
+                ctx.globalAlpha = 0.4;
+                ctx.lineWidth = 1;
+                ctx.moveTo(0, yE); ctx.lineTo(w, yE); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.globalAlpha = 1.0;
+
+                // Draw Wavefunction / Probability
+                ctx.beginPath();
+                const visualScale = waveScale * 12.0;
+
+                for (let i = 0; i < N; i++) {
+                    const x = iToX(i);
+                    let val = psiN[i];
+                    if (displayMode === 'prob') val = val * val * 3.0;
+
+                    const y = vToY(E + val * visualScale);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+
+                ctx.strokeStyle = stateColors[n];
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                if (displayMode === 'prob') {
+                    ctx.lineTo(iToX(N - 1), yE);
+                    ctx.lineTo(iToX(0), yE);
+                    ctx.fillStyle = stateColors[n];
+                    ctx.globalAlpha = 0.15;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+            }
+        }
+
+        function setDisplayMode(mode) {
+            displayMode = mode;
+            document.getElementById('btnPsi').classList.toggle('active', mode === 'psi');
+            document.getElementById('btnProb').classList.toggle('active', mode === 'prob');
+            render();
+        }
+
+        function toggleState(n) {
+            enabledStates[n] = !enabledStates[n];
+            render();
+        }
+
+        document.getElementById('massSlider').addEventListener('input', (e) => {
+            mass = parseFloat(e.target.value);
+            document.getElementById('massVal').textContent = mass.toFixed(1);
+            render();
+        });
+
+        document.getElementById('scaleSlider').addEventListener('input', (e) => {
+            waveScale = parseFloat(e.target.value);
+            document.getElementById('scaleVal').textContent = waveScale.toFixed(1);
+            render();
+        });
+
+        window.onload = () => {
+            setPreset('harmonic');
+            resizeCanvas();
+        };
+    </script>
+</body>
+</html>

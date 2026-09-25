@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fourier Series Acoustic & Visualizer Lab</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            synth: {
+              bg: '#080c14',
+              panel: '#0f172a',
+              card: '#1e293b',
+              border: '#334155',
+              cyan: '#06b6d4',
+              blue: '#3b82f6',
+              purple: '#8b5cf6',
+              pink: '#ec4899',
+              green: '#10b981',
+              amber: '#f59e0b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- KaTeX Math CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+  <style>
+    /* Custom Scrollbars & Glow Effects */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #080c14; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+
+    .glow-cyan { box-shadow: 0 0 15px rgba(6, 182, 212, 0.35); }
+    .glow-blue { box-shadow: 0 0 15px rgba(59, 130, 246, 0.35); }
+    .glow-purple { box-shadow: 0 0 15px rgba(139, 92, 246, 0.35); }
+
+    input[type=range] { accent-color: #06b6d4; }
+
+    /* KaTeX Dark Mode Tweak */
+    .katex { color: #38bdf8 !important; font-size: 1.1em; }
+    .katex-display { margin: 0.25em 0 !important; }
+  </style>
+</head>
+<body class="bg-synth-bg text-gray-100 font-sans min-h-screen flex flex-col antialiased selection:bg-synth-cyan selection:text-black">
+
+  <!-- Header Navbar -->
+  <header class="bg-synth-panel border-b border-synth-border px-4 py-3 sticky top-0 z-40 shadow-xl">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-gradient-to-tr from-synth-cyan to-synth-blue rounded-xl text-slate-950 font-bold shadow-md">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12 0c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 via-sky-300 to-purple-400 bg-clip-text text-transparent">
+            Fourier Series Sound Lab
+          </h1>
+          <p class="text-xs text-gray-400">8-Harmonic Waveform Synthesis & KaTeX Math Explorer</p>
+        </div>
+      </div>
+
+      <!-- Master Audio Toolbar -->
+      <div class="flex items-center space-x-4 bg-synth-card px-4 py-2 rounded-xl border border-synth-border shadow-inner">
+        
+        <!-- Play / Pause Button -->
+        <button id="masterPlayBtn" class="flex items-center space-x-2 px-5 py-2 bg-gradient-to-r from-synth-cyan to-synth-blue text-slate-950 font-bold rounded-lg hover:brightness-110 active:scale-95 transition glow-cyan">
+          <svg id="playIcon" class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          <svg id="pauseIcon" class="w-5 h-5 fill-current hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          <span id="playBtnText">Start Audio</span>
+        </button>
+
+        <!-- Master Volume -->
+        <div class="flex items-center space-x-2">
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.707 12 4.414 12 5.414v13.172c0 1.000-1.077 1.707-1.707 1.077L5.586 15z"/>
+          </svg>
+          <input type="range" id="masterVolume" min="0" max="1" step="0.01" value="0.3" class="w-24 h-1.5 bg-gray-700 rounded-lg cursor-pointer">
+          <span id="masterVolText" class="text-xs font-mono text-cyan-400 w-8">30%</span>
+        </div>
+
+        <!-- Mute All Toggle -->
+        <button id="muteAllBtn" class="p-2 text-gray-400 hover:text-red-400 bg-gray-800 hover:bg-gray-700 rounded-lg transition" title="Mute All Harmonics">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.707 12 4.414 12 5.414v13.172c0 1.000-1.077 1.707-1.707 1.077L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+          </svg>
+        </button>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Grid Layout -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT SIDEBAR / CONTROLS (4 Cols) -->
+    <section class="lg:col-span-4 flex flex-col space-y-6">
+      
+      <!-- Waveform Selection Box -->
+      <div class="bg-synth-panel border border-synth-border rounded-2xl p-5 shadow-lg">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-3 flex items-center justify-between">
+          <span>1. Select Fourier Waveform</span>
+          <span id="customBadge" class="hidden text-[10px] bg-synth-amber/20 text-synth-amber px-2 py-0.5 rounded-full border border-synth-amber/40">Custom Modified</span>
+        </h2>
+        
+        <div class="grid grid-cols-3 gap-2">
+          <button data-preset="square" class="preset-btn px-3 py-2.5 rounded-xl border border-synth-border bg-synth-card hover:border-synth-cyan text-xs font-semibold flex flex-col items-center space-y-1 transition text-cyan-300">
+            <svg class="w-6 h-6 stroke-current fill-none" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h4v-7h6v14h6v-7h2"/>
+            </svg>
+            <span>Square</span>
+          </button>
+
+          <button data-preset="sawtooth" class="preset-btn px-3 py-2.5 rounded-xl border border-synth-border bg-synth-card hover:border-synth-cyan text-xs font-semibold flex flex-col items-center space-y-1 transition text-gray-300">
+            <svg class="w-6 h-6 stroke-current fill-none" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 17l9-10v10l9-10v10"/>
+            </svg>
+            <span>Sawtooth</span>
+          </button>
+
+          <button data-preset="triangle" class="preset-btn px-3 py-2.5 rounded-xl border border-synth-border bg-synth-card hover:border-synth-cyan text-xs font-semibold flex flex-col items-center space-y-1 transition text-gray-300">
+            <svg class="w-6 h-6 stroke-current fill-none" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16l6-8 6 8 6-8"/>
+            </svg>
+            <span>Triangle</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Fundamental Frequency Box -->
+      <div class="bg-synth-panel border border-synth-border rounded-2xl p-5 shadow-lg">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-400">2. Fundamental Frequency (<span id="f0MathLabel"></span>)</h2>
+          <span class="text-xs text-gray-400">50 - 1000 Hz</span>
+        </div>
+
+        <div class="flex items-center space-x-3 mb-3">
+          <div class="relative flex-1">
+            <input type="number" id="f0Input" min="50" max="1000" step="1" value="220"
+              class="w-full bg-synth-card border border-synth-border rounded-xl px-3 py-2 text-lg font-mono font-bold text-cyan-300 focus:outline-none focus:border-synth-cyan transition">
+            <span class="absolute right-3 top-2.5 text-xs text-gray-400 font-mono">Hz</span>
+          </div>
+
+          <!-- Quick Pitch Preset Buttons -->
+          <div class="grid grid-cols-2 gap-1">
+            <button data-pitch="110" class="pitch-btn px-2 py-1 bg-gray-800 hover:bg-gray-700 text-[11px] font-mono rounded-lg border border-gray-700 text-gray-300">A2 (110)</button>
+            <button data-pitch="220" class="pitch-btn px-2 py-1 bg-gray-800 hover:bg-gray-700 text-[11px] font-mono rounded-lg border border-gray-700 text-cyan-400">A3 (220)</button>
+            <button data-pitch="440" class="pitch-btn px-2 py-1 bg-gray-800 hover:bg-gray-700 text-[11px] font-mono rounded-lg border border-gray-700 text-gray-300">A4 (440)</button>
+            <button data-pitch="880" class="pitch-btn px-2 py-1 bg-gray-800 hover:bg-gray-700 text-[11px] font-mono rounded-lg border border-gray-700 text-gray-300">A5 (880)</button>
+          </div>
+        </div>
+
+        <input type="range" id="f0Slider" min="50" max="1000" step="1" value="220" class="w-full h-2 bg-gray-800 rounded-lg cursor-pointer">
+      </div>
+
+      <!-- KaTeX Mathematical Formula Card -->
+      <div class="bg-synth-panel border border-synth-border rounded-2xl p-5 shadow-lg">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-purple-400 mb-2 flex items-center justify-between">
+          <span>Fourier Expansion Formula</span>
+          <span class="text-[10px] text-gray-400 font-normal">Rendered via KaTeX</span>
+        </h3>
+        <div id="formulaDisplay" class="bg-synth-bg p-3 rounded-xl border border-synth-border text-center overflow-x-auto min-h-[70px] flex items-center justify-center">
+          <!-- Dynamic KaTeX formula rendered here -->
+        </div>
+      </div>
+
+      <!-- Acoustic Non-Linearity Info Card -->
+      <div class="bg-synth-panel border border-synth-border rounded-2xl p-5 shadow-lg space-y-2">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span>Speaker & Mic Frequency Response Note</span>
+        </h3>
+        <p class="text-xs text-gray-300 leading-relaxed">
+          Ideal mathematical Fourier series assumes perfect linear response across all frequencies. Real-world <strong>loudspeakers, microphones, and human ears</strong> exhibit non-linear frequency curves.
+        </p>
+        <p class="text-xs text-gray-400 leading-relaxed">
+          Use the 8 amplitude boxes below to manually compensate for speaker bass attenuation, high-frequency roll-off, or to explore timbre modification.
+        </p>
+      </div>
+
+    </section>
+
+    <!-- RIGHT MAIN CONTENT (8 Cols) -->
+    <section class="lg:col-span-8 flex flex-col space-y-6">
+
+      <!-- Visualization Canvas Panel -->
+      <div class="bg-synth-panel border border-synth-border rounded-2xl p-5 shadow-lg flex flex-col space-y-4">
+        
+        <!-- Canvas Mode Header Tabs -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-synth-border pb-3">
+          
+          <div class="flex space-x-2">
+            <button data-mode="epicycles" class="viz-tab px-3 py-1.5 rounded-lg text-xs font-semibold bg-synth-cyan text-slate-950 shadow transition">
+              Epicycles (Rotating Vectors)
+            </button>
+            <button data-mode="composite" class="viz-tab px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-white bg-synth-card transition">
+              Time-Domain Oscilloscope
+            </button>
+            <button data-mode="spectrum" class="viz-tab px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-white bg-synth-card transition">
+              Frequency Spectrum Bars
+            </button>
+          </div>
+
+          <!-- Controls -->
+          <div class="flex items-center space-x-3 text-xs text-gray-400">
+            <label class="flex items-center space-x-1 cursor-pointer">
+              <input type="checkbox" id="showIdealCheck" checked class="rounded bg-gray-800 border-gray-700 text-synth-cyan focus:ring-0">
+              <span>Show Target Ideal Wave</span>
+            </label>
+            <label class="flex items-center space-x-1 cursor-pointer">
+              <input type="checkbox" id="freezeAnimCheck" class="rounded bg-gray-800 border-gray-700 text-synth-cyan focus:ring-0">
+              <span>Freeze Trace</span>
+            </label>
+          </div>
+
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative w-full aspect-[2/1] min-h-[280px] bg-synth-bg rounded-xl border border-synth-border overflow-hidden">
+          <canvas id="fourierCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+          
+          <!-- Live Oscilloscope Stats Overlay -->
+          <div class="absolute top-3 right-3 bg-synth-panel/85 backdrop-blur-md px-3 py-1.5 rounded-lg border border-synth-border text-[11px] font-mono text-gray-300 flex items-center space-x-3">
+            <div>Peak Amplitude: <span id="statPeak" class="text-cyan-400 font-bold">1.00</span></div>
+            <div>Active Terms: <span id="statHarmonics" class="text-purple-400 font-bold">8 / 8</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 8 Harmonics Individual Controls Container -->
+      <div class="bg-synth-panel border border-synth-border rounded-2xl p-5 shadow-lg space-y-4">
+        
+        <div class="flex flex-wrap items-center justify-between border-b border-synth-border pb-3 gap-2">
+          <div>
+            <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-400">3. Harmonic Terms ($k = 1 \dots 8$) Controls</h2>
+            <p class="text-xs text-gray-400">Adjust individual harmonic amplitude $a_n \in [-1.0, 1.0]$</p>
+          </div>
+          
+          <button id="resetAllBtn" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs text-cyan-300 rounded-lg transition flex items-center space-x-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <span>Reset All Harmonics</span>
+          </button>
+        </div>
+
+        <!-- 8 Harmonics Responsive Grid -->
+        <div id="harmonicsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <!-- 8 Harmonics populated dynamically via JS -->
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer class="bg-synth-panel border-t border-synth-border py-4 px-6 mt-auto text-center text-xs text-gray-500">
+    <p>Fourier Series Sound Synthesis & Interactive Waveform Engine &bull; KaTeX LaTeX Math & Web Audio API Visualizer</p>
+  </footer>
+
+  <script>
+    // --- APP STATE & AUDIO CONTEXT DECLARATIONS ---
+    const HARMONIC_COUNT = 8;
+    let audioCtx = null;
+    let masterGainNode = null;
+    let compressorNode = null;
+    let analyserNode = null;
+    let isAudioPlaying = false;
+
+    let currentPreset = 'square'; // 'square', 'sawtooth', 'triangle', 'custom'
+    let fundamentalFreq = 220;
+
+    // Structure for 8 active harmonic slots
+    let harmonics = Array.from({ length: HARMONIC_COUNT }, (_, i) => ({
+      id: i,
+      multiplier: 1,
+      freq: 220,
+      amplitude: 1.0,
+      theoretical: 1.0,
+      muted: false,
+      soloed: false
+    }));
+
+    // Web Audio Node map
+    let synthNodes = harmonics.map(() => ({ osc: null, gain: null }));
+
+    // Animation & Canvas state
+    let activeVizMode = 'epicycles'; // 'epicycles', 'composite', 'spectrum'
+    let animPhase = 0;
+    let waveHistory = [];
+    const MAX_HISTORY = 350;
+
+    // Calculate theoretical amplitudes & harmonic multipliers for 8 slots
+    function getPresetHarmonics(type, f0) {
+      let result = [];
+
+      if (type === 'square') {
+        // Odd harmonics: n = 1, 3, 5, 7, 9, 11, 13, 15
+        // Fourier formula coefficient a_n = 4 / (pi * n), normalized so a_1 = 1.0
+        const multipliers = [1, 3, 5, 7, 9, 11, 13, 15];
+        result = multipliers.map(n => {
+          const amp = parseFloat((1 / n).toFixed(4));
+          return { multiplier: n, freq: n * f0, amplitude: amp, theoretical: amp };
+        });
+      } else if (type === 'sawtooth') {
+        // All harmonics: n = 1, 2, 3, 4, 5, 6, 7, 8
+        // Fourier formula coefficient a_n = (2 / (pi * n)) * (-1)^(n+1), normalized
+        const multipliers = [1, 2, 3, 4, 5, 6, 7, 8];
+        result = multipliers.map(n => {
+          const sign = (n % 2 === 1) ? 1 : -1;
+          const amp = parseFloat((sign / n).toFixed(4));
+          return { multiplier: n, freq: n * f0, amplitude: amp, theoretical: amp };
+        });
+      } else if (type === 'triangle') {
+        // Odd harmonics: n = 1, 3, 5, 7, 9, 11, 13, 15
+        // Fourier formula coefficient a_n = (8 / (pi^2 * n^2)) * (-1)^((n-1)/2), normalized
+        const multipliers = [1, 3, 5, 7, 9, 11, 13, 15];
+        result = multipliers.map((n, idx) => {
+          const sign = (idx % 2 === 0) ? 1 : -1;
+          const amp = parseFloat((sign / (n * n)).toFixed(4));
+          return { multiplier: n, freq: n * f0, amplitude: amp, theoretical: amp };
+        });
+      }
+
+      return result;
+    }
+
+    // Helper for safe KaTeX rendering
+    function renderLatex(latexStr, containerEl, displayMode = true) {
+      if (!containerEl) return;
+      if (window.katex) {
+        try {
+          katex.render(latexStr, containerEl, { displayMode: displayMode, throwOnError: false });
+        } catch (err) {
+          containerEl.textContent = latexStr;
+        }
+      } else {
+        containerEl.textContent = latexStr;
+      }
+    }
+
+    function updateFormulaText() {
+      const formulaEl = document.getElementById('formulaDisplay');
+      let latexStr = "";
+
+      if (currentPreset === 'square') {
+        latexStr = "f(t) = \\frac{4}{\\pi} \\sum_{k=1,3,5,...}^{15} \\frac{1}{k} \\sin(k \\omega_0 t) = \\sin(\\omega_0 t) + \\frac{1}{3}\\sin(3\\omega_0 t) + \\frac{1}{5}\\sin(5\\omega_0 t) + \\dots";
+      } else if (currentPreset === 'sawtooth') {
+        latexStr = "f(t) = \\frac{2}{\\pi} \\sum_{k=1}^{8} \\frac{(-1)^{k+1}}{k} \\sin(k \\omega_0 t) = \\sin(\\omega_0 t) - \\frac{1}{2}\\sin(2\\omega_0 t) + \\frac{1}{3}\\sin(3\\omega_0 t) - \\dots";
+      } else if (currentPreset === 'triangle') {
+        latexStr = "f(t) = \\frac{8}{\\pi^2} \\sum_{k=1,3,5,...}^{15} \\frac{(-1)^{\\frac{k-1}{2}}}{k^2} \\sin(k \\omega_0 t) = \\sin(\\omega_0 t) - \\frac{1}{9}\\sin(3\\omega_0 t) + \\frac{1}{25}\\sin(5\\omega_0 t) - \\dots";
+      } else {
+        latexStr = "f(t) = \\sum_{k=1}^{8} a_k \\sin(n_k \\omega_0 t) \\quad \\text{[Custom User Amplitudes]}";
+      }
+
+      renderLatex(latexStr, formulaEl, true);
+      renderLatex("f_0", document.getElementById('f0MathLabel'), false);
+    }
+
+    function initAudioContext() {
+      if (audioCtx) return;
+
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContextClass();
+
+      // Master Dynamics Compressor (Soft limiter)
+      compressorNode = audioCtx.createDynamicsCompressor();
+      compressorNode.threshold.setValueAtTime(-4, audioCtx.currentTime);
+      compressorNode.knee.setValueAtTime(8, audioCtx.currentTime);
+      compressorNode.ratio.setValueAtTime(10, audioCtx.currentTime);
+      compressorNode.attack.setValueAtTime(0.003, audioCtx.currentTime);
+      compressorNode.release.setValueAtTime(0.2, audioCtx.currentTime);
+
+      // Master Gain Node
+      masterGainNode = audioCtx.createGain();
+      const initialVol = parseFloat(document.getElementById('masterVolume').value);
+      masterGainNode.gain.setValueAtTime(initialVol, audioCtx.currentTime);
+
+      // Analyser Node for future expansion
+      analyserNode = audioCtx.createAnalyser();
+      analyserNode.fftSize = 512;
+
+      masterGainNode.connect(compressorNode);
+      compressorNode.connect(analyserNode);
+      analyserNode.connect(audioCtx.destination);
+
+      // Create 8 Harmonic Oscillators
+      harmonics.forEach((h, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(h.freq, audioCtx.currentTime);
+
+        const effectiveGain = calculateEffectiveGain(idx);
+        gain.gain.setValueAtTime(effectiveGain, audioCtx.currentTime);
+
+        osc.connect(gain);
+        gain.connect(masterGainNode);
+        osc.start();
+
+        synthNodes[idx] = { osc, gain };
+      });
+    }
+
+    function calculateEffectiveGain(index) {
+      const h = harmonics[index];
+      const anySoloed = harmonics.some(item => item.soloed);
+      
+      if (anySoloed) {
+        if (!h.soloed) return 0;
+      } else if (h.muted) {
+        return 0;
+      }
+
+      // Normalization scaling factor for acoustics
+      const globalNorm = 0.35;
+      return h.amplitude * globalNorm;
+    }
+
+    function updateAudioParameters() {
+      if (!audioCtx) return;
+
+      harmonics.forEach((h, idx) => {
+        if (synthNodes[idx] && synthNodes[idx].osc && synthNodes[idx].gain) {
+          const targetFreq = Math.max(20, h.freq);
+          const targetGain = calculateEffectiveGain(idx);
+
+          synthNodes[idx].osc.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.015);
+          synthNodes[idx].gain.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.015);
+        }
+      });
+    }
+
+    function toggleAudioPlay() {
+      if (!audioCtx) {
+        initAudioContext();
+      }
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      isAudioPlaying = !isAudioPlaying;
+
+      const playBtn = document.getElementById('masterPlayBtn');
+      const playIcon = document.getElementById('playIcon');
+      const pauseIcon = document.getElementById('pauseIcon');
+      const playText = document.getElementById('playBtnText');
+
+      if (isAudioPlaying) {
+        masterGainNode.gain.setTargetAtTime(parseFloat(document.getElementById('masterVolume').value), audioCtx.currentTime, 0.02);
+        playIcon.classList.add('hidden');
+        pauseIcon.classList.remove('hidden');
+        playText.textContent = "Pause Audio";
+        playBtn.classList.add('glow-blue');
+      } else {
+        masterGainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.02);
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+        playText.textContent = "Start Audio";
+        playBtn.classList.remove('glow-blue');
+      }
+    }
+
+    function renderHarmonicsGrid() {
+      const container = document.getElementById('harmonicsGrid');
+      container.innerHTML = '';
+
+      harmonics.forEach((h, idx) => {
+        const isMuted = h.muted;
+        const isSoloed = h.soloed;
+
+        const card = document.createElement('div');
+        card.className = `bg-synth-card border ${isSoloed ? 'border-synth-cyan glow-cyan' : isMuted ? 'border-gray-800 opacity-60' : 'border-synth-border'} rounded-xl p-3 flex flex-col justify-between space-y-2.5 transition relative`;
+
+        const magPercent = Math.min(Math.abs(h.amplitude) * 100, 100);
+        const isPositive = h.amplitude >= 0;
+
+        card.innerHTML = `
+          <!-- Card Header -->
+          <div class="flex items-center justify-between border-b border-gray-700/50 pb-1.5">
+            <div class="text-[11px] font-bold text-gray-200 flex items-center space-x-1">
+              <span>#${idx + 1}</span>
+              <span class="katex-multiplier-badge text-cyan-400 font-mono"></span>
+            </div>
+            <div class="text-[11px] font-mono text-purple-300 font-semibold">
+              ${Math.round(h.freq)} <span class="text-[9px] text-gray-400">Hz</span>
+            </div>
+          </div>
+
+          <!-- Amplitude Controls -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-[10px] text-gray-400">
+              <span>Amplitude ($a_${idx+1}$)</span>
+              <span class="font-mono text-gray-400">Theo: ${h.theoretical.toFixed(4)}</span>
+            </div>
+
+            <!-- Number Input Box -->
+            <input type="number" data-idx="${idx}" step="0.0001" min="-1.000" max="1.000" value="${h.amplitude.toFixed(4)}"
+              class="amp-number-input w-full bg-synth-bg border border-synth-border rounded-lg px-2 py-1 text-xs font-mono text-cyan-300 focus:outline-none focus:border-synth-cyan">
+
+            <!-- Range Slider -->
+            <input type="range" data-idx="${idx}" min="-1.000" max="1.000" step="0.001" value="${h.amplitude}"
+              class="amp-range-slider w-full h-1.5 bg-gray-800 rounded-lg cursor-pointer">
+          </div>
+
+          <!-- Polarized Level Indicator Bar -->
+          <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden flex items-center">
+            <div class="h-full ${isPositive ? 'bg-synth-cyan' : 'bg-synth-pink'} transition-all duration-150" style="width: ${magPercent}%"></div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center justify-between pt-1 gap-1">
+            <button data-idx="${idx}" class="btn-mute px-2 py-1 text-[10px] rounded-md font-semibold border ${isMuted ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-white'} transition flex-1">
+              ${isMuted ? 'Muted' : 'Mute'}
+            </button>
+
+            <button data-idx="${idx}" class="btn-solo px-2 py-1 text-[10px] rounded-md font-semibold border ${isSoloed ? 'bg-synth-cyan/20 text-synth-cyan border-synth-cyan/50' : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-white'} transition flex-1">
+              ${isSoloed ? 'Soloed' : 'Solo'}
+            </button>
+
+            <button data-idx="${idx}" class="btn-reset-single px-1.5 py-1 text-[10px] text-gray-400 hover:text-cyan-300 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-md transition" title="Reset to Theoretical">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9"/></svg>
+            </button>
+          </div>
+        `;
+
+        container.appendChild(card);
+
+        // Render KaTeX badge inside card
+        const badgeEl = card.querySelector('.katex-multiplier-badge');
+        renderLatex(`${h.multiplier}f_0`, badgeEl, false);
+      });
+
+      attachHarmonicEventListeners();
+      updateFormulaText();
+      updatePeakStat();
+    }
+
+    function updatePeakStat() {
+      const activeSum = harmonics.reduce((acc, h) => {
+        if (h.muted) return acc;
+        return acc + Math.abs(h.amplitude);
+      }, 0);
+      document.getElementById('statPeak').textContent = activeSum.toFixed(2);
+      document.getElementById('statHarmonics').textContent = `${harmonics.filter(h => !h.muted).length} / ${HARMONIC_COUNT}`;
+    }
+
+    function attachHarmonicEventListeners() {
+      // Number Input change
+      document.querySelectorAll('.amp-number-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const idx = parseInt(e.target.getAttribute('data-idx'));
+          let val = parseFloat(e.target.value);
+          if (isNaN(val)) val = 0;
+          val = Math.max(-1, Math.min(1, val));
+          harmonics[idx].amplitude = val;
+          markCustomPreset();
+          renderHarmonicsGrid();
+          updateAudioParameters();
+        });
+      });
+
+      // Range Slider drag
+      document.querySelectorAll('.amp-range-slider').forEach(slider => {
+        slider.addEventListener('input', (e) => {
+          const idx = parseInt(e.target.getAttribute('data-idx'));
+          const val = parseFloat(e.target.value);
+          harmonics[idx].amplitude = val;
+          markCustomPreset();
+          
+          const card = e.target.closest('.bg-synth-card');
+          if (card) {
+            const numInput = card.querySelector('.amp-number-input');
+            if (numInput) numInput.value = val.toFixed(4);
+          }
+          
+          updateAudioParameters();
+          updatePeakStat();
+        });
+
+        slider.addEventListener('change', () => {
+          renderHarmonicsGrid();
+        });
+      });
+
+      // Mute Toggle
+      document.querySelectorAll('.btn-mute').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(e.currentTarget.getAttribute('data-idx'));
+          harmonics[idx].muted = !harmonics[idx].muted;
+          renderHarmonicsGrid();
+          updateAudioParameters();
+        });
+      });
+
+      // Solo Toggle
+      document.querySelectorAll('.btn-solo').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(e.currentTarget.getAttribute('data-idx'));
+          harmonics[idx].soloed = !harmonics[idx].soloed;
+          
+          harmonics.forEach((h, i) => {
+            if (i !== idx) h.soloed = false;
+          });
+
+          renderHarmonicsGrid();
+          updateAudioParameters();
+        });
+      });
+
+      // Reset Single Harmonic
+      document.querySelectorAll('.btn-reset-single').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(e.currentTarget.getAttribute('data-idx'));
+          harmonics[idx].amplitude = harmonics[idx].theoretical;
+          harmonics[idx].muted = false;
+          harmonics[idx].soloed = false;
+          renderHarmonicsGrid();
+          updateAudioParameters();
+        });
+      });
+    }
+
+    function markCustomPreset() {
+      currentPreset = 'custom';
+      document.getElementById('customBadge').classList.remove('hidden');
+      document.querySelectorAll('.preset-btn').forEach(b => {
+        b.classList.remove('border-synth-cyan', 'text-cyan-300');
+        b.classList.add('text-gray-300');
+      });
+    }
+
+    function applyPreset(presetName) {
+      currentPreset = presetName;
+      document.getElementById('customBadge').classList.add('hidden');
+
+      const presetData = getPresetHarmonics(presetName, fundamentalFreq);
+      harmonics.forEach((h, idx) => {
+        h.multiplier = presetData[idx].multiplier;
+        h.freq = presetData[idx].freq;
+        h.amplitude = presetData[idx].amplitude;
+        h.theoretical = presetData[idx].theoretical;
+        h.muted = false;
+        h.soloed = false;
+      });
+
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        if (btn.getAttribute('data-preset') === presetName) {
+          btn.classList.add('border-synth-cyan', 'text-cyan-300');
+          btn.classList.remove('text-gray-300');
+        } else {
+          btn.classList.remove('border-synth-cyan', 'text-cyan-300');
+          btn.classList.add('text-gray-300');
+        }
+      });
+
+      renderHarmonicsGrid();
+      updateAudioParameters();
+    }
+
+    function updateFundamentalFrequency(newF0) {
+      fundamentalFreq = Math.max(50, Math.min(1000, newF0));
+      
+      document.getElementById('f0Input').value = fundamentalFreq;
+      document.getElementById('f0Slider').value = fundamentalFreq;
+
+      harmonics.forEach(h => {
+        h.freq = h.multiplier * fundamentalFreq;
+      });
+
+      renderHarmonicsGrid();
+      updateAudioParameters();
+    }
+
+    document.getElementById('masterPlayBtn').addEventListener('click', toggleAudioPlay);
+
+    document.getElementById('masterVolume').addEventListener('input', (e) => {
+      const vol = parseFloat(e.target.value);
+      document.getElementById('masterVolText').textContent = Math.round(vol * 100) + '%';
+      if (audioCtx && masterGainNode && isAudioPlaying) {
+        masterGainNode.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.01);
+      }
+    });
+
+    document.getElementById('muteAllBtn').addEventListener('click', () => {
+      const allMuted = harmonics.every(h => h.muted);
+      harmonics.forEach(h => h.muted = !allMuted);
+      renderHarmonicsGrid();
+      updateAudioParameters();
+    });
+
+    document.getElementById('resetAllBtn').addEventListener('click', () => {
+      if (currentPreset === 'custom') {
+        applyPreset('square');
+      } else {
+        applyPreset(currentPreset);
+      }
+    });
+
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        applyPreset(btn.getAttribute('data-preset'));
+      });
+    });
+
+    document.getElementById('f0Input').addEventListener('change', (e) => {
+      updateFundamentalFrequency(parseFloat(e.target.value));
+    });
+
+    document.getElementById('f0Slider').addEventListener('input', (e) => {
+      updateFundamentalFrequency(parseFloat(e.target.value));
+    });
+
+    document.querySelectorAll('.pitch-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        updateFundamentalFrequency(parseFloat(btn.getAttribute('data-pitch')));
+      });
+    });
+
+    document.querySelectorAll('.viz-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        activeVizMode = tab.getAttribute('data-mode');
+        document.querySelectorAll('.viz-tab').forEach(t => {
+          t.classList.remove('bg-synth-cyan', 'text-slate-950', 'shadow');
+          t.classList.add('text-gray-400', 'bg-synth-card');
+        });
+        tab.classList.add('bg-synth-cyan', 'text-slate-950', 'shadow');
+        tab.classList.remove('text-gray-400', 'bg-synth-card');
+      });
+    });
+
+    const canvas = document.getElementById('fourierCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function drawIdealReferenceWave(width, height, centerY, scaleY) {
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+
+      const cycles = 2;
+      for (let x = 0; x < width; x++) {
+        const t = (x / width) * cycles;
+        let y = 0;
+
+        if (currentPreset === 'square') {
+          y = Math.sin(2 * Math.PI * t) >= 0 ? 1 : -1;
+        } else if (currentPreset === 'sawtooth') {
+          y = 2 * (t - Math.floor(t + 0.5));
+        } else if (currentPreset === 'triangle') {
+          y = 2 * Math.abs(2 * (t - Math.floor(t + 0.5))) - 1;
+        } else {
+          ctx.restore();
+          return;
+        }
+
+        const canvasY = centerY - y * scaleY * 0.8;
+        if (x === 0) ctx.moveTo(x, canvasY);
+        else ctx.lineTo(x, canvasY);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function animate() {
+      const showIdeal = document.getElementById('showIdealCheck').checked;
+      const isFrozen = document.getElementById('freezeAnimCheck').checked;
+
+      const width = canvas.width;
+      const height = canvas.height;
+
+      ctx.clearRect(0, 0, width, height);
+
+      if (!isFrozen) {
+        animPhase += 0.015;
+      }
+
+      const centerY = height / 2;
+
+      if (activeVizMode === 'epicycles') {
+        // --- 1. EPICYCLES MODE ---
+        const epicycleCenterX = width * 0.28;
+        const waveStartX = width * 0.52;
+        const scaleY = height * 0.28;
+
+        let x = epicycleCenterX;
+        let y = centerY;
+
+        const anySolo = harmonics.some(h => h.soloed);
+
+        harmonics.forEach((h, idx) => {
+          if (h.muted) return;
+          if (anySolo && !h.soloed) return;
+
+          const prevX = x;
+          const prevY = y;
+
+          const radius = Math.abs(h.amplitude) * scaleY * 0.6;
+          const sign = h.amplitude >= 0 ? 1 : -1;
+          const angle = h.multiplier * animPhase * sign;
+
+          x += radius * Math.cos(angle);
+          y -= radius * Math.sin(angle);
+
+          // Draw Rotating Circle
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(prevX, prevY, Math.max(1, radius), 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(6, 182, 212, ${0.12 + (idx === 0 ? 0.25 : 0.08)})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          // Draw Vector
+          ctx.beginPath();
+          ctx.moveTo(prevX, prevY);
+          ctx.lineTo(x, y);
+          ctx.strokeStyle = idx === 0 ? '#06b6d4' : '#8b5cf6';
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+          ctx.restore();
+        });
+
+        if (!isFrozen) {
+          waveHistory.unshift(y);
+          if (waveHistory.length > MAX_HISTORY) {
+            waveHistory.pop();
+          }
+        }
+
+        // Draw Connecting Dashed Trace
+        if (waveHistory.length > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(waveStartX, waveHistory[0]);
+          ctx.strokeStyle = 'rgba(59, 130, 246, 0.6)';
+          ctx.setLineDash([3, 3]);
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, Math.PI * 2);
+          ctx.fillStyle = '#ec4899';
+          ctx.fill();
+        }
+
+        if (showIdeal) {
+          drawIdealReferenceWave(width, height, centerY, scaleY * 0.7);
+        }
+
+        // Draw Scrolling Trace
+        ctx.save();
+        ctx.beginPath();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#06b6d4';
+        ctx.shadowColor = '#06b6d4';
+        ctx.shadowBlur = 8;
+
+        const traceStep = (width - waveStartX) / MAX_HISTORY;
+        for (let i = 0; i < waveHistory.length; i++) {
+          const waveX = waveStartX + i * traceStep;
+          const waveY = waveHistory[i];
+
+          if (i === 0) ctx.moveTo(waveX, waveY);
+          else ctx.lineTo(waveX, waveY);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Axis Line
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.beginPath();
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(width, centerY);
+        ctx.stroke();
+        ctx.restore();
+
+      } else if (activeVizMode === 'composite') {
+        // --- 2. TIME-DOMAIN OSCILLOSCOPE ---
+        const scaleY = height * 0.32;
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.beginPath();
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(width, centerY);
+        ctx.stroke();
+        ctx.restore();
+
+        if (showIdeal) {
+          drawIdealReferenceWave(width, height, centerY, scaleY);
+        }
+
+        const anySolo = harmonics.some(h => h.soloed);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#3b82f6';
+        ctx.shadowColor = '#3b82f6';
+        ctx.shadowBlur = 10;
+
+        const points = 400;
+        const cycles = 2;
+
+        for (let i = 0; i < points; i++) {
+          const px = (i / points) * width;
+          const t = (i / points) * cycles * 2 * Math.PI + animPhase;
+
+          let val = 0;
+          harmonics.forEach(h => {
+            if (h.muted) return;
+            if (anySolo && !h.soloed) return;
+
+            val += h.amplitude * Math.sin(h.multiplier * t);
+          });
+
+          const py = centerY - val * scaleY * 0.5;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+      } else if (activeVizMode === 'spectrum') {
+        // --- 3. FREQUENCY SPECTRUM BARS ---
+        const padding = 60;
+        const graphWidth = width - padding * 2;
+        const barWidth = graphWidth / (HARMONIC_COUNT * 2);
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.beginPath();
+        ctx.moveTo(padding, centerY);
+        ctx.lineTo(width - padding, centerY);
+        ctx.stroke();
+        ctx.restore();
+
+        const anySolo = harmonics.some(h => h.soloed);
+
+        harmonics.forEach((h, idx) => {
+          const x = padding + idx * (barWidth * 2) + barWidth * 0.5;
+          const barH = (h.amplitude * (height * 0.38));
+          const isMuted = h.muted || (anySolo && !h.soloed);
+
+          ctx.save();
+          ctx.fillStyle = isMuted ? 'rgba(75, 85, 99, 0.4)' : (h.amplitude >= 0 ? '#06b6d4' : '#ec4899');
+          if (!isMuted) {
+            ctx.shadowColor = h.amplitude >= 0 ? '#06b6d4' : '#ec4899';
+            ctx.shadowBlur = 8;
+          }
+
+          ctx.fillRect(x, centerY, barWidth, -barH);
+          ctx.restore();
+
+          // Labels
+          ctx.save();
+          ctx.fillStyle = '#9ca3af';
+          ctx.font = `${Math.round(11 * window.devicePixelRatio)}px monospace`;
+          ctx.textAlign = 'center';
+          ctx.fillText(`${h.multiplier}f₀`, x + barWidth / 2, centerY + 20);
+          ctx.fillText(`${Math.round(h.freq)}Hz`, x + barWidth / 2, centerY + 35);
+          ctx.restore();
+        });
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('load', () => {
+      applyPreset('square');
+      requestAnimationFrame(animate);
+    });
+  </script>
+</body>
+</html>
