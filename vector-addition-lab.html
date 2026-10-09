@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="color-scheme" content="light"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vector Addition Lab</title>
+<style>
+:root{color-scheme:light;--bg:#eef2f6;--pn:#ffffff;--ink:#14213d;--mut:#4b5a72;--ln:#cfd8e3;--ax:#14213d;--A:#1d4ed8;--B:#dc2626;--C:#d97706;--D:#15803d;--R:#000000;--ok:#12794a;--bad:#b3261e;--gh:#6b7a90}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header,.app{max-width:1120px;margin:0 auto;padding-left:18px;padding-right:18px}
+header{padding-top:16px}
+h1{font:700 28px/1.1 "Iowan Old Style",Palatino,Georgia,serif;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 10px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+button,select,input{font:inherit;color:var(--ink)}
+button{border:1px solid var(--ln);background:var(--pn);padding:7px 12px;border-radius:7px;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,canvas:focus-visible{outline:2px solid var(--A);outline-offset:2px}
+nav button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.go{background:var(--R);border-color:var(--R);color:#fff;font-weight:600}
+.app{display:grid;grid-template-columns:360px 1fr;gap:18px;padding-bottom:36px}
+@media(max-width:840px){.app{grid-template-columns:1fr}}
+.panel{background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:16px}
+#prob{font-size:16px;margin:0 0 6px}
+#prob .v{display:block;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;margin:2px 0}
+.st{margin:10px 0;padding:8px 10px;border-left:4px solid var(--R);background:var(--bg);border-radius:0 6px 6px 0;font-size:14px}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0}
+.row label{width:96px;color:var(--mut)}
+.row input{width:120px;padding:6px 8px;border:1px solid var(--ln);border-radius:6px;background:var(--bg);font-family:ui-monospace,Menlo,Consolas,monospace}
+.row input.ok{border-color:var(--ok)}.row input.bad{border-color:var(--bad)}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+#fb{margin:8px 0}
+#fb p{margin:4px 0;padding-left:20px;position:relative}
+#fb p:before{position:absolute;left:0;content:"✗";color:var(--bad);font-weight:700}
+#fb p.g:before{content:"✓";color:var(--ok)}
+#fb .top{padding:0;font-weight:700;font-size:16px}#fb .top:before{content:""}
+#fb .top.g{color:var(--ok)}#fb .top.b{color:var(--bad)}
+#hb{color:var(--mut);margin:6px 0}
+details{margin-top:10px;border-top:1px solid var(--ln);padding-top:8px}
+summary{cursor:pointer;font-weight:600}
+#solb p{margin:4px 0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px}
+.cw{display:flex;flex-direction:column;gap:8px}
+canvas{width:100%;max-width:760px;aspect-ratio:1;background:#fff;border:1px solid var(--ln);border-radius:10px;touch-action:none;cursor:grab}
+.tools{display:flex;gap:16px;flex-wrap:wrap;color:var(--mut)}
+.tools label,.set label{display:flex;gap:6px;align-items:center}
+.set{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:10px}
+.set select{width:100%;padding:4px;background:var(--bg);border:1px solid var(--ln);border-radius:6px}
+.set div{display:flex;flex-direction:column;font-size:13px;color:var(--mut)}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style></head><body>
+<header>
+<h1>Vector Addition Lab</h1>
+<p class="sub">Predict, construct, calculate. Drag vectors on the grid, then check your numbers.</p>
+<nav id="tabs"></nav>
+</header>
+<main class="app">
+<section class="panel" aria-label="Problem">
+<p id="prob"></p>
+<div class="st" id="st" aria-live="polite"></div>
+<div id="fields">
+<div class="row" data-f="c"><label for="rx">R<sub>x</sub></label><input id="rx" type="number" step="any"><span class="u"></span></div>
+<div class="row" data-f="c"><label for="ry">R<sub>y</sub></label><input id="ry" type="number" step="any"><span class="u"></span></div>
+<div class="row" data-f="p"><label for="rm">|R| magnitude</label><input id="rm" type="number" step="any"><span class="u"></span></div>
+<div class="row" data-f="p"><label for="ra">θ (degrees)</label><input id="ra" type="number" step="any"><span>° from +x</span></div>
+</div>
+<div class="btns"><button class="go" id="chk">Check answer</button><button id="hintb">Hint</button><button id="newb">New problem</button><button id="rst">Reset vectors</button></div>
+<div id="fb" aria-live="polite"></div><div id="hb"></div>
+<details id="sol" hidden><summary>Show solution</summary><div id="solb"></div></details>
+<details class="setd"><summary>Teacher settings</summary>
+<div class="set">
+<div>Vectors<select id="nv"><option>2</option><option>3</option><option>4</option></select></div>
+<div>Max magnitude<select id="mx"><option>8</option><option selected>12</option><option>20</option></select></div>
+<div>Answer asks for<select id="am"><option value="all">Components, |R|, θ</option><option value="comp">Components only</option><option value="polar">|R| and θ only</option></select></div>
+<div>Angle steps (Level 3)<select id="as"><option value="15">15°</option><option value="5">5°</option><option value="1">any degree</option></select></div>
+<div>Tolerance (angle ×5)<select id="pr"><option value="0.01">±0.01</option><option value="0.1" selected>±0.1</option><option value="0.5">±0.5</option><option value="1">±1</option></select></div>
+<label><input type="checkbox" id="rc" checked> Require construction</label>
+<label><input type="checkbox" id="rp" checked> Require prediction</label>
+<label><input type="checkbox" id="hn" checked> Show hints</label>
+</div></details>
+</section>
+<section class="cw">
+<canvas id="cv" tabindex="0" aria-label="Coordinate grid with draggable vectors"></canvas>
+<div class="tools">
+<label><input type="checkbox" id="par"> Parallelogram method</label>
+<label><input type="checkbox" id="cmp"> Show components</label>
+</div>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s),rad=Math.PI/180,rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a,
+css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim(),
+f=x=>String(+x.toFixed(2)),par=x=>x<0?`(${f(x)})`:f(x),cv=$('#cv'),
+CTX={Velocity:'m/s',Force:'N',Displacement:'m',Acceleration:'m/s²',Momentum:'kg·m/s'},
+MODES={l1:'Level 1 · Components',l2:'Level 2 · Graphical',l3:'Level 3 · Magnitude & angle',phys:'Physics mode',build:'Build the Resultant'};
+let mode='l2',V=[],R,VR=8,pred=null,hint=0,att=0,checked=false,drawR=null,drag=null,snapC=null,gro=1,wasCh=false,unit='',intro='';
+const tail=v=>({x:v.tx,y:v.ty}),head=v=>({x:v.tx+v.x,y:v.ty+v.y}),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),near=(a,b)=>dist(a,b)<.05,
+needPred=()=>$('#rp').checked&&mode!='l1',polar=()=>mode=='l3'||mode=='phys',
+ansMode=()=>mode=='l1'?'comp':$('#am').value;
+
+/* ---------- problem generation ---------- */
+function gen(){
+ const n=+$('#nv').value,mx=+$('#mx').value,st=+$('#as').value;let k=0;
+ do{
+  V=[];intro='';unit=mode=='phys'?'N':'';
+  for(let i=0;i<n;i++){
+   const v={n:'ABCD'[i]};
+   if(polar()){v.m=Math.round((2+Math.random()*(mx-2))*10)/10;v.a=rnd(0,Math.floor(359/st))*st}
+   else{const r=Math.max(3,Math.floor(mx*.6));v.x=rnd(-r,r);v.y=rnd(-r,r);if(!v.x&&!v.y)v.x=2}
+   V.push(v)}
+  V.forEach(v=>{if(v.m!=null){v.x=+(v.m*Math.cos(v.a*rad)).toFixed(9);v.y=+(v.m*Math.sin(v.a*rad)).toFixed(9)}else{v.m=Math.hypot(v.x,v.y);v.a=(Math.atan2(v.y,v.x)/rad+360)%360}});
+  const x=V.reduce((s,v)=>s+v.x,0),y=V.reduce((s,v)=>s+v.y,0);
+  R={x,y,m:Math.hypot(x,y),a:(Math.atan2(y,x)/rad+360)%360,sum:V.reduce((s,v)=>s+v.m,0)};
+ }while(R.m<1&&k++<60);
+ VR=Math.max(8,Math.ceil(R.sum)+2);
+ hint=0;att=0;pred=null;checked=false;
+ renderProblem();setPos();
+}
+function setPos(){
+ V.forEach((v,i)=>{
+  if(!i){v.tx=0;v.ty=0}
+  else if(mode=='l1'){const p=V[i-1];v.tx=p.tx+p.x;v.ty=p.ty+p.y}
+  else{const lx=Math.ceil(-VR+1+Math.max(0,-v.x)),hx=Math.floor(VR-1-Math.max(0,v.x)),ly=Math.ceil(-VR+1+Math.max(0,-v.y)),hy=Math.floor(VR-1-Math.max(0,v.y));
+   v.tx=lx<hx?rnd(lx,hx):0;v.ty=ly<hy?rnd(ly,hy):0}
+  v.gx=null});
+ drawR=null;checked=false;gro=1;wasCh=!!chain();
+ $('#fb').innerHTML='';$('#hb').textContent='';$('#sol').hidden=true;
+ document.querySelectorAll('.row input').forEach(i=>i.className='');
+ draw();
+}
+function vtxt(v){
+ const u=unit?' '+unit:'';
+ if(polar()){const nm=mode=='phys'?'force ':'';
+  return `${nm}${v.n} = ${v.m.toFixed(1)}${u} at ${v.a}°`}
+ return `${v.n} = (${v.x}, ${v.y})`}
+function renderProblem(){
+ let h=`<b>${MODES[mode]}</b><br>`;
+ if(intro)h+=intro;
+ else{h+=mode=='phys'?`Several forces act on one object. Find the net force R = ${V.map(v=>v.n).join(' + ')}. Angles are measured counter-clockwise from +x.`
+  :polar()?'Add the vectors. Angles are measured counter-clockwise from +x.':'Find R = '+V.map(v=>v.n).join(' + ')+'.';
+  h+=V.map(v=>`<span class="v" style="color:var(--${v.n})">${vtxt(v)}</span>`).join('')}
+ $('#prob').innerHTML=h;
+ const am=ansMode();
+ document.querySelectorAll('.row').forEach(r=>r.style.display=(r.dataset.f=='c'?am!='polar':am!='comp')?'':'none');
+ document.querySelectorAll('.row input').forEach(i=>i.value='');
+ document.querySelectorAll('.u').forEach(u=>u.textContent=unit);
+ $('#hintb').style.display=$('#hn').checked?'':'none';
+ $('#cmp').checked=false;
+}
+
+/* ---------- geometry ---------- */
+function chain(){
+ const go=(cur,o)=>{if(o.length==V.length)return o;
+  for(const v of V)if(!o.includes(v)&&(!cur||near(tail(v),head(cur)))){const r=go(v,[...o,v]);if(r)return r}
+  return null};
+ return go(null,[]);
+}
+function snapT(v,x,y){
+ const c=[];V.forEach(o=>{if(o!=v){c.push(head(o));if($('#par').checked)c.push(tail(o))}});
+ let b=null,bd=.6;c.forEach(p=>{const d=dist(p,{x,y});if(d<bd){bd=d;b=p}});
+ return b?{x:b.x,y:b.y,hit:1}:{x:Math.round(x*2)/2,y:Math.round(y*2)/2};
+}
+function snapPt(x,y){
+ let b=null,bd=.6;V.forEach(o=>[tail(o),head(o)].forEach(p=>{const d=dist(p,{x,y});if(d<bd){bd=d;b=p}}));
+ return b?{x:b.x,y:b.y}:{x:Math.round(x*2)/2,y:Math.round(y*2)/2};
+}
+function resSeg(){
+ const ch=chain();
+ if(mode=='build'&&!checked)return null;
+ if(ch){const a=tail(ch[0]);return{a,b:{x:a.x+R.x,y:a.y+R.y}}}
+ if(mode=='build')return{a:tail(V[0]),b:{x:V[0].tx+R.x,y:V[0].ty+R.y}};
+ if($('#par').checked&&V.length==2&&near(tail(V[0]),tail(V[1]))){const a=tail(V[0]);return{a,b:{x:a.x+R.x,y:a.y+R.y}}}
+ return null;
+}
+
+/* ---------- drawing ---------- */
+function draw(){
+ const c=cv.getContext('2d'),dpr=window.devicePixelRatio||1,w=cv.clientWidth;
+ if(!w)return;
+ if(cv.width!=Math.round(w*dpr)){cv.width=cv.height=Math.round(w*dpr)}
+ c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,w,w);
+ const s=w/(2*VR),X=x=>w/2+x*s,Y=y=>w/2-y*s,col=n=>css(n);
+ let moving=false;
+ V.forEach(v=>{if(v.gx!=null){const dx=v.gx-v.tx,dy=v.gy-v.ty;if(Math.hypot(dx,dy)<.01){v.tx=v.gx;v.ty=v.gy;v.gx=null}else{v.tx+=dx*.35;v.ty+=dy*.35;moving=true}}});
+ const ch=chain();if(ch&&!wasCh)gro=0;wasCh=!!ch;
+ if(gro<1){gro=Math.min(1,gro+.07);moving=true}
+ // grid
+ c.lineWidth=1;c.strokeStyle=col('--ln');c.beginPath();
+ for(let i=-VR;i<=VR;i++){c.moveTo(X(i),0);c.lineTo(X(i),w);c.moveTo(0,Y(i));c.lineTo(w,Y(i))}c.stroke();
+ c.strokeStyle=col('--ax');c.lineWidth=1.8;c.beginPath();c.moveTo(0,Y(0));c.lineTo(w,Y(0));c.moveTo(X(0),0);c.lineTo(X(0),w);c.stroke();
+ c.fillStyle=col('--mut');c.font='11px system-ui';const st=VR>12?4:2;
+ for(let i=-VR+1;i<VR;i++)if(i&&i%st==0){c.textAlign='center';c.fillText(i,X(i),Y(0)+13);c.textAlign='right';c.fillText(i,X(0)-4,Y(i)+4)}
+ const arrow=(a,b,color,lw=3,dash=[],al=1)=>{
+  const ax=X(a.x),ay=Y(a.y),bx=X(b.x),by=Y(b.y),L=Math.hypot(bx-ax,by-ay);if(L<2)return;
+  const th=Math.atan2(by-ay,bx-ax),hs=Math.min(11+lw*1.5,L*.6);
+  c.save();c.globalAlpha=al;if(!dash.length){const hl='#ffffff';c.strokeStyle=c.fillStyle=hl;c.lineJoin='round';c.lineCap='round';c.lineWidth=lw+5;c.beginPath();c.moveTo(ax,ay);c.lineTo(bx,by);c.stroke();c.beginPath();c.moveTo(bx+Math.cos(th)*2,by+Math.sin(th)*2);c.lineTo(bx-hs*Math.cos(th-.38),by-hs*Math.sin(th-.38));c.lineTo(bx-hs*Math.cos(th+.38),by-hs*Math.sin(th+.38));c.closePath();c.fill();c.stroke()}c.strokeStyle=c.fillStyle=color;c.lineWidth=lw;c.lineCap='round';c.setLineDash(dash);
+  c.beginPath();c.moveTo(ax,ay);c.lineTo(bx-Math.cos(th)*hs*.7,by-Math.sin(th)*hs*.7);c.stroke();c.setLineDash([]);
+  c.beginPath();c.moveTo(bx,by);c.lineTo(bx-hs*Math.cos(th-.38),by-hs*Math.sin(th-.38));c.lineTo(bx-hs*Math.cos(th+.38),by-hs*Math.sin(th+.38));c.closePath();c.fill();c.restore()};
+ const lab=(a,b,t,color,off=14)=>{const mx=(X(a.x)+X(b.x))/2,my=(Y(a.y)+Y(b.y))/2,th=Math.atan2(Y(b.y)-Y(a.y),X(b.x)-X(a.x));
+  c.font='bold 17px system-ui';c.textAlign='center';const lx=mx+Math.sin(th)*off,ly=my-Math.cos(th)*off+5;c.lineWidth=4;c.lineJoin='round';c.strokeStyle='#ffffff';c.strokeText(t,lx,ly);c.fillStyle=color;c.fillText(t,lx,ly)};
+ const add=(p,v)=>({x:p.x+v.x,y:p.y+v.y}),ghost=(p,v)=>arrow(p,add(p,v),col('--'+v.n),2,[6,5],.5);
+ // parallelogram
+ if($('#par').checked&&V.length==2){
+  if(ch){const[p,q]=ch,t=tail(p);ghost(t,q);ghost(add(t,q),p)}
+  else if(near(tail(V[0]),tail(V[1]))){const t=tail(V[0]);ghost(add(t,V[0]),V[1]);ghost(add(t,V[1]),V[0])}}
+ // components
+ const comps=(a,b,k,color)=>{c.save();c.strokeStyle=color;c.setLineDash([4,4]);c.lineWidth=1.5;c.globalAlpha=.85;
+  c.beginPath();c.moveTo(X(a.x),Y(a.y));c.lineTo(X(b.x),Y(a.y));c.lineTo(X(b.x),Y(b.y));c.stroke();c.restore();
+  if(Math.abs(b.x-a.x)>.4)lab({x:a.x,y:a.y},{x:b.x,y:a.y},k+'ₓ',color,a.y<b.y?-14:-14);
+  if(Math.abs(b.y-a.y)>.4)lab({x:b.x,y:a.y},{x:b.x,y:b.y},k+'ᵧ',color,b.x>=a.x?-16:16)};
+ if($('#cmp').checked)V.forEach(v=>comps(tail(v),head(v),v.n,col('--gh')));
+ // vectors
+ V.forEach(v=>{arrow(tail(v),head(v),col('--'+v.n),4.5);lab(tail(v),head(v),v.n,col('--'+v.n));
+  c.fillStyle=col('--'+v.n);c.beginPath();c.arc(X(v.tx),Y(v.ty),3.5,0,7);c.fill()});
+ // resultant
+ const rs=resSeg();
+ if(rs){const e={x:rs.a.x+(rs.b.x-rs.a.x)*gro,y:rs.a.y+(rs.b.y-rs.a.y)*gro};
+  arrow(rs.a,e,col('--R'),6,mode=='build'?[8,5]:[]);if(gro>.95)lab(rs.a,rs.b,'R',col('--R'),-16);
+  if($('#cmp').checked&&gro>.95)comps(rs.a,rs.b,'R',col('--R'))}
+ if(drawR&&!(drawR.a.x==drawR.b.x&&drawR.a.y==drawR.b.y))arrow(drawR.a,drawR.b,col('--ax'),3.5,[2,6]);
+ // prediction
+ if(pred){const px=X(pred.x),py=Y(pred.y);c.strokeStyle=col('--mut');c.lineWidth=1.5;c.setLineDash([3,4]);c.beginPath();c.moveTo(X(0),Y(0));c.lineTo(px,py);c.stroke();c.setLineDash([]);
+  c.beginPath();c.arc(px,py,8,0,7);c.stroke();c.fillStyle=col('--mut');c.font='bold 12px system-ui';c.textAlign='center';c.fillText('?',px,py+4)}
+ if(snapC){c.strokeStyle=col('--R');c.lineWidth=2;c.beginPath();c.arc(X(snapC.x),Y(snapC.y),9,0,7);c.stroke()}
+ status();
+ if(moving)requestAnimationFrame(draw);
+}
+function status(){
+ let s;
+ if(needPred()&&!pred)s='Predict: click the grid where you think the resultant points from the origin.';
+ else if($('#rc').checked&&mode!='l1'&&!chain())s='Construct: drag each vector so its tail sits on the previous head.'+(mode=='build'?' Then drag across the grid from the start to the end of the chain to draw R.':' R appears when the chain is complete.');
+ else s=mode=='build'&&!checked?'Draw R on the grid, then calculate and enter your answer.':'Calculate: enter your answer on the left.';
+ $('#st').textContent=s;
+}
+
+/* ---------- interaction ---------- */
+const pos=e=>{const r=cv.getBoundingClientRect(),s=r.width/(2*VR);return{x:(e.clientX-r.left-r.width/2)/s,y:-(e.clientY-r.top-r.height/2)/s,s}};
+const dseg=(p,v)=>{const dx=v.x,dy=v.y,l2=dx*dx+dy*dy||1,u=Math.max(0,Math.min(1,((p.x-v.tx)*dx+(p.y-v.ty)*dy)/l2));return Math.hypot(p.x-v.tx-u*dx,p.y-v.ty-u*dy)*p.s};
+cv.onpointerdown=e=>{
+ const p=pos(e);cv.setPointerCapture(e.pointerId);
+ if(needPred()&&!pred){pred={x:Math.round(p.x*2)/2,y:Math.round(p.y*2)/2};draw();return}
+ for(let i=V.length-1;i>=0;i--)if(dseg(p,V[i])<14){drag={v:V[i],dx:p.x-V[i].tx,dy:p.y-V[i].ty};cv.style.cursor='grabbing';return}
+ if(mode=='build'&&!checked){const q=snapPt(p.x,p.y);drawR={a:q,b:q};drag={r:1}}
+};
+cv.onpointermove=e=>{
+ const p=pos(e);
+ if(!drag){cv.style.cursor=V.some(v=>dseg(p,v)<14)?'grab':'crosshair';return}
+ if(drag.r)drawR.b=snapPt(p.x,p.y);
+ else{const sn=snapT(drag.v,p.x-drag.dx,p.y-drag.dy);drag.v.gx=sn.x;drag.v.gy=sn.y;snapC=sn.hit?sn:null}
+ draw();
+};
+cv.onpointerup=cv.onpointercancel=()=>{drag=null;snapC=null;cv.style.cursor='grab';draw()};
+addEventListener('resize',draw);
+$('#par').onchange=$('#cmp').onchange=draw;
+
+/* ---------- checking ---------- */
+function check(){
+ const g=id=>{const v=$(id).value;return v===''?null:+v},ux=g('#rx'),uy=g('#ry'),um=g('#rm'),ua=g('#ra'),am=ansMode(),
+  t=+$('#pr').value,ta=t*5,U=unit?' '+unit:'';
+ if((am!='polar'&&(ux===null||uy===null))||(am!='comp'&&(um===null||ua===null))){$('#fb').innerHTML='<p>Fill in every answer box first.</p>';return}
+ att++;const L=[];let all=true;const add=(good,msg)=>{L.push([good,msg]);if(!good)all=false};
+ const mark=(id,ok)=>$(id).className=ok?'ok':'bad';
+ const okx=am=='polar'||Math.abs(ux-R.x)<=t,oky=am=='polar'||Math.abs(uy-R.y)<=t,okm=am=='comp'||Math.abs(um-R.m)<=t,
+  dA=am=='comp'?0:((ua-R.a)%360+540)%360-180,oka=am=='comp'||Math.abs(dA)<=ta;
+ if(am!='polar'){
+  mark('#rx',okx);mark('#ry',oky);
+  if(okx)add(1,'R<sub>x</sub> is correct.');
+  else add(0,Math.abs(ux+R.x)<=t&&R.x?'R<sub>x</sub> has the wrong sign. A negative x-component points left.':!oky&&Math.abs(ux-R.y)<=t&&Math.abs(uy-R.x)<=t?'x and y look swapped.':'R<sub>x</sub> is incorrect. Add only the x-components.');
+  if(oky)add(1,'R<sub>y</sub> is correct.');
+  else add(0,Math.abs(uy+R.y)<=t&&R.y?'R<sub>y</sub> has the wrong sign. A negative y-component points down.':'R<sub>y</sub> is incorrect. Add only the y-components.')}
+ if(am!='comp'){
+  mark('#rm',okm);mark('#ra',oka);
+  if(okm)add(1,'Magnitude is correct.');
+  else add(0,Math.abs(um-R.sum)<=Math.max(t,.05)?'You added the magnitudes. Vectors in different directions must be added by components, so |R| is less than the sum.':okx&&oky&&am=='all'?'Your components are right. Use |R| = √(R<sub>x</sub>² + R<sub>y</sub>²).':'Magnitude is off. Find R<sub>x</sub> and R<sub>y</sub> first.');
+  if(oka)add(1,'Direction is correct.');
+  else{const a180=Math.abs(Math.abs(dA)-180)<=ta,swap=Math.abs((((ua-(90-R.a))%360)+540)%360-180)<=ta;
+   add(0,a180?(okm?'Your magnitude is correct, but the direction is 180° off. Check the quadrant: tan⁻¹(R<sub>y</sub>/R<sub>x</sub>) alone cannot tell left from right.':'Direction is 180° off. Check the quadrant.'):swap?'This looks like tan⁻¹(R<sub>x</sub>/R<sub>y</sub>). Use R<sub>y</sub> over R<sub>x</sub>.':R.x<0?'Direction is incorrect. R<sub>x</sub> is negative, so R points left of the y-axis.':'Direction is incorrect. Use θ = atan2(R<sub>y</sub>, R<sub>x</sub>).')}}
+ let ch=chain();
+ if($('#rc').checked&&mode!='l1'){
+  if(ch)add(1,'Your tip-to-tail construction is complete.');else add(0,'Construction incomplete: each tail must sit on the previous head.');
+  if(mode=='build'){
+   const a=ch?tail(ch[0]):tail(V[0]);
+   if(!drawR||dist(drawR.a,drawR.b)<.2)add(0,'You have not drawn the resultant on the grid.');
+   else if(dist(drawR.a,a)<.35&&dist(drawR.b,{x:a.x+R.x,y:a.y+R.y})<.35)add(1,'Your drawn resultant is correct.');
+   else if(dist(drawR.b,a)<.35)add(0,'Your resultant points the wrong way. It runs from the start of the chain to the end.');
+   else add(0,'Your drawn resultant does not run from the first tail to the last head.')}}
+ if(pred&&needPred()){const pa=Math.atan2(pred.y,pred.x)/rad,d=Math.abs(((pa-R.a)%360+540)%360-180);
+  L.push([d<=25,d<=25?`Prediction was close (off by ${d.toFixed(0)}°).`:`Your prediction was ${d.toFixed(0)}° from the real direction. Sketch the sum before calculating.`])}
+ $('#fb').innerHTML=`<p class="top ${all?'g':'b'}">${all?'✓ Correct! Your vector addition checks out.':'Not quite. See the notes below.'} <span style="font-weight:400;color:var(--mut)">(attempt ${att})</span></p>`+L.map(([g,m])=>`<p class="${g?'g':''}">${m}</p>`).join('');
+ checked=true;$('#sol').hidden=false;$('#solb').innerHTML=solution(U);
+ if(mode=='build'){gro=0}draw();
+}
+function solution(U){
+ let h='';
+ V.forEach(v=>h+=polar()?`<p>${v.n}ₓ = ${f(v.m)}cos(${v.a}°) = ${f(v.x)}, ${v.n}ᵧ = ${f(v.m)}sin(${v.a}°) = ${f(v.y)}</p>`:`<p>${v.n} = (${f(v.x)}, ${f(v.y)})</p>`);
+ h+=`<p>Rₓ = ${V.map(v=>par(v.x)).join(' + ')} = <b>${f(R.x)}${U}</b></p><p>Rᵧ = ${V.map(v=>par(v.y)).join(' + ')} = <b>${f(R.y)}${U}</b></p>`;
+ h+=`<p>|R| = √(${par(R.x)}² + ${par(R.y)}²) = <b>${f(R.m)}${U}</b></p>`;
+ const na=Math.atan(R.y/R.x)/rad;
+ h+=`<p>tan⁻¹(Rᵧ/Rₓ) = ${f(isFinite(na)?na:90)}°</p>`;
+ h+=R.x<0?`<p>Rₓ &lt; 0, so R points left: add 180°.</p>`:R.y<0?`<p>Rᵧ &lt; 0 and Rₓ &gt; 0: R points down-right, so add 360°.</p>`:'';
+ return h+`<p>θ = atan2(${f(R.y)}, ${f(R.x)}) = <b>${f(R.a)}°</b></p>`;
+}
+function hintFn(){
+ const u=unit?' '+unit:'',m=[
+  polar()?'Resolve each vector into components: Aₓ = A cosθ and Aᵧ = A sinθ. Then add all x-components together and all y-components together.':'Add x-components with x-components and y-components with y-components. Magnitudes alone cannot be added.',
+  polar()?'Components: '+V.map(v=>`${v.n} = (${f(v.x)}, ${f(v.y)})`).join(', ')+'.':'x-values to add: '+V.map(v=>par(v.x)).join(', ')+'. y-values to add: '+V.map(v=>par(v.y)).join(', ')+'.',
+  `Rₓ = ${f(R.x)}${u}, Rᵧ = ${f(R.y)}${u}. Now use |R| = √(Rₓ²+Rᵧ²) and θ = atan2(Rᵧ, Rₓ).`];
+ $('#hb').textContent=m[Math.min(hint++,2)];
+}
+
+/* ---------- wiring ---------- */
+const tabs=$('#tabs');
+Object.keys(MODES).forEach(k=>{const b=document.createElement('button');b.textContent=MODES[k];b.dataset.k=k;b.onclick=()=>{mode=k;$('#rc').checked=k=='l2'||k=='build';
+ tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x==b));gen()};tabs.appendChild(b)});
+tabs.children[1].classList.add('on');
+$('#chk').onclick=check;$('#hintb').onclick=hintFn;$('#newb').onclick=gen;$('#rst').onclick=()=>{pred=null;setPos()};
+document.querySelectorAll('.set select,#hn').forEach(e=>e.onchange=gen);
+$('#rc').onchange=$('#rp').onchange=draw;
+document.querySelectorAll('.row input').forEach(i=>i.onkeydown=e=>{if(e.key=='Enter')check()});
+$('#rc').checked=true;gen();
+</script></body></html>
