@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Infinite Square Well: Time Evolution</title>
+<style>
+:root{--bg:#eef2f5;--fg:#13222e;--mut:#5b6b78;--card:#fff;--bd:#cfd8df;--grid:#e3e9ee;--c1:#1f5fbf;--c2:#d6452d;--c3:#16805a;--f3:rgba(22,128,90,.22)}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1820;--fg:#e6edf2;--mut:#93a4b1;--card:#17232e;--bd:#2b3b49;--grid:#233240;--c1:#6aa6ff;--c2:#ff7d63;--c3:#43c795;--f3:rgba(67,199,149,.25)}}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:980px;padding:16px;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+h1{font:600 1.6rem Georgia,serif;margin:.2em 0}h2{font:600 1.1rem Georgia,serif;margin:0 0 8px}
+.sub,.hint{color:var(--mut);font-size:.87rem;margin:.3em 0}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:14px;margin:12px 0}
+label{display:block;font-size:.85rem;color:var(--mut);margin-top:8px}
+input[type=text],select{width:100%;padding:7px 9px;font:14px ui-monospace,Consolas,monospace;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:6px}
+button{padding:8px 16px;font:inherit;background:#1f5fbf;color:#fff;border:0;border-radius:6px;cursor:pointer}
+button.sec{background:transparent;color:var(--fg);border:1px solid var(--bd)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--c1);outline-offset:2px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.row input[type=range]{flex:1;min-width:120px}
+canvas{display:block;width:100%;height:230px;margin-top:6px}
+.err{color:var(--c2);font-size:.9rem;min-height:1.2em;margin-top:6px}
+.chip{display:inline-block;margin:0 6px 6px 0;padding:3px 10px;border:1px solid var(--bd);border-radius:12px;font-size:.88rem}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:.9rem}
+</style></head><body>
+<h1>Particle in an Infinite Square Well</h1>
+<p class="sub">Walls at x = 0 and x = a. Units: ħ = m = a = 1, so x runs from 0 to 1. Time is measured in T = 4ma²/(πħ), the ground-state period; every initial state revives exactly at t = T.</p>
+
+<section class="card">
+<h2>Initial wave function Ψ(x, 0)</h2>
+<label for="pre">Preset</label><select id="pre"></select>
+<label for="fr">Real part f(x)</label><input type="text" id="fr" spellcheck="false">
+<label for="fi">Imaginary part g(x) (optional)</label><input type="text" id="fi" spellcheck="false">
+<div class="row"><button id="go">Calculate coefficients</button></div>
+<div class="err" id="err" role="alert"></div>
+<p class="hint">Use x for position (0 ≤ x ≤ 1) and pi for π. Available: sin, cos, exp, sqrt, abs, pow(x,2), x^2, and conditions like x&lt;0.5?1:0. The function is normalized automatically, and Ψ = f + i·g.</p>
+</section>
+
+<section class="card">
+<h2>Wave function Ψ(x, t)</h2>
+<canvas id="cPsi" aria-label="Real and imaginary parts of the wave function"></canvas>
+<canvas id="cProb" aria-label="Probability density"></canvas>
+<div class="row">
+<button id="play">▶ Play</button><button class="sec" id="reset">Reset</button>
+<label style="margin:0">Time <input type="range" id="ts" min="0" max="1000" value="0"></label>
+<span class="mono" id="tl"></span>
+</div>
+<div class="row"><label style="margin:0">Speed <input type="range" id="sp" min="1" max="100" value="20"></label><span class="mono" id="spl"></span></div>
+</section>
+
+<section class="card">
+<h2>Fraction of Ψ in each energy eigenstate</h2>
+<canvas id="cBar" aria-label="Bar chart of eigenstate probabilities"></canvas>
+<div id="info" style="margin-top:8px"></div>
+</section>
+
+<div class="row"><button id="bExp">Show ⟨x⟩ and ⟨p⟩ over time</button></div>
+<section class="card" id="exp" hidden>
+<h2>Expectation values</h2>
+<canvas id="cX"></canvas><canvas id="cP"></canvas>
+<div class="mono" id="exl" style="margin-top:6px"></div>
+<p class="hint">Computed from the expansion: ⟨x⟩ and ⟨p⟩ both repeat with period T. The vertical line marks the current time.</p>
+</section>
+
+<script>
+const N=40,M=400,S=300,PI=Math.PI,$=id=>document.getElementById(id);
+const G="exp(-pow(x-0.3,2)/(2*pow(0.05,2)))";
+const PRE=[
+["Moving Gaussian packet",G+"*cos(40*x)",G+"*sin(40*x)"],
+["Gaussian packet at rest",G,""],
+["Ground state (n = 1)","sin(pi*x)",""],
+["Superposition of n = 1 and n = 2","sin(pi*x)+sin(2*pi*x)",""],
+["Left half of the well","x<0.5?1:0",""],
+["Narrow box in the middle","abs(x-0.5)<0.1?1:0",""],
+["Triangle","x<0.5?x:1-x",""],
+["Parabola x(1-x)","x*(1-x)",""]];
+const phi=[],xg=new Float64Array(M+1),tg=new Float64Array(S+1);
+for(let j=0;j<=M;j++)xg[j]=j/M;for(let k=0;k<=S;k++)tg[k]=k/S;
+for(let n=1;n<=N;n++){const f=new Float64Array(M+1);for(let j=0;j<=M;j++)f[j]=Math.SQRT2*Math.sin(n*PI*j/M);phi.push(f)}
+let cr=[],ci=[],pr=[],ex,ep,yA=1,yP=1,tau=0,playing=false,last=0,speed=.1,col={};
+const R=new Float64Array(M+1),I=new Float64Array(M+1);
+
+function parse(s){s=s.trim();if(!s)return()=>0;
+ s=s.replace(/(\([^()]*\)|[\w.]+)\s*\^\s*(\([^()]*\)|[\w.]+)/g,'pow($1,$2)');
+ return new Function('x','a','pi','with(Math){return ('+s+');}')}
+
+function psi(t,r,i){r.fill(0);i.fill(0);t%=1;
+ for(let n=0;n<N;n++){if(pr[n]<1e-12)continue;const th=2*PI*(n+1)*(n+1)*t,c=Math.cos(th),s=Math.sin(th),
+  ar=cr[n]*c+ci[n]*s,ai=ci[n]*c-cr[n]*s,f=phi[n];
+  for(let j=0;j<=M;j++){r[j]+=ar*f[j];i[j]+=ai*f[j]}}}
+
+function compute(){
+ const err=$('err');err.textContent='';let fr,fi;
+ try{fr=parse($('fr').value);fi=parse($('fi').value)}catch(e){err.textContent='Syntax error: '+e.message;return}
+ const re=new Float64Array(M+1),im=new Float64Array(M+1);
+ try{for(let j=0;j<=M;j++){const x=j/M;re[j]=+fr(x,1,PI);im[j]=+fi(x,1,PI);
+  if(!isFinite(re[j])||!isFinite(im[j]))throw Error('the function is not a finite number at x = '+x.toFixed(3))}}
+ catch(e){err.textContent='Error: '+e.message+'. Check the spelling of function names.';return}
+ let nm=0;for(let j=0;j<=M;j++)nm+=(re[j]*re[j]+im[j]*im[j])*((j==0||j==M)?.5:1)/M;
+ if(nm<1e-12){err.textContent='The function is zero everywhere, so it cannot be normalized.';return}
+ nm=Math.sqrt(nm);cr=[];ci=[];pr=[];
+ for(let n=0;n<N;n++){let sr=0,si=0;const f=phi[n];
+  for(let j=1;j<M;j++){sr+=f[j]*re[j];si+=f[j]*im[j]}
+  sr/=M*nm;si/=M*nm;cr.push(sr);ci.push(si);pr.push(sr*sr+si*si)}
+ // plot ranges from sampled times
+ let mA=0,mP=0;
+ for(let k=0;k<120;k++){psi(k/120,R,I);for(let j=0;j<=M;j++){const p=R[j]*R[j]+I[j]*I[j];
+  if(p>mP)mP=p;mA=Math.max(mA,Math.abs(R[j]),Math.abs(I[j]))}}
+ yA=mA*1.2;yP=mP*1.2;
+ // <x>(t), <p>(t) from matrix elements: x_mn=-8mn/(pi^2 (m^2-n^2)^2), p_mn=-i*4mn/(m^2-n^2), m+n odd
+ const tot=pr.reduce((a,b)=>a+b,0);ex=new Float64Array(S+1);ep=new Float64Array(S+1);
+ for(let k=0;k<=S;k++){const ur=[],ui=[];
+  for(let n=0;n<N;n++){const th=2*PI*(n+1)*(n+1)*tg[k],c=Math.cos(th),s=Math.sin(th);ur[n]=cr[n]*c+ci[n]*s;ui[n]=ci[n]*c-cr[n]*s}
+  let X=.5*tot,P=0;
+  for(let m=0;m<N;m++)for(let n=m+1;n<N;n+=2){const a=m+1,b=n+1,d=a*a-b*b;
+   X+=2*(-8*a*b/(PI*PI*d*d))*(ur[m]*ur[n]+ui[m]*ui[n]);
+   P+=2*(4*a*b/d)*(ur[m]*ui[n]-ui[m]*ur[n])}
+  ex[k]=X;ep[k]=P}
+ const E=pr.reduce((a,v,n)=>a+v*(n+1)*(n+1),0);
+ const top=pr.map((v,n)=>[n+1,v]).sort((a,b)=>b[1]-a[1]).filter(a=>a[1]>5e-4).slice(0,8);
+ $('info').innerHTML=top.map(([n,v])=>`<span class="chip">n = ${n}: <b>${(100*v).toFixed(1)}%</b></span>`).join('')+
+  `<p class="hint">Total over n ≤ ${N}: ${tot.toFixed(4)} (equals 1 when the expansion is complete). ⟨E⟩ = ${E.toFixed(2)} E₁, where E₁ = π²ħ²/2ma².</p>`;
+ tau=0;draw()}
+
+function axes(cv,x0,x1,y0,y1,o){
+ const d=devicePixelRatio||1,r=cv.getBoundingClientRect(),W=Math.round(r.width*d),H=Math.round(r.height*d);
+ if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H}
+ const g=cv.getContext('2d');g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,r.width,r.height);
+ const w=r.width,h=r.height,L=52,Rt=12,T=12,B=32,X=v=>L+(v-x0)/(x1-x0)*(w-L-Rt),Y=v=>T+(y1-v)/(y1-y0)*(h-T-B);
+ const f=v=>String(+v.toPrecision(2));g.font='12px system-ui';g.lineWidth=1;g.textAlign='center';
+ for(const v of o.xt||[0,1,2,3,4].map(i=>x0+(x1-x0)*i/4)){g.strokeStyle=col.grid;g.beginPath();g.moveTo(X(v),T);g.lineTo(X(v),h-B);g.stroke();g.fillStyle=col.mut;g.fillText(f(v),X(v),h-B+15)}
+ g.textAlign='right';
+ for(let i=0;i<=4;i++){const v=y0+(y1-y0)*i/4;g.strokeStyle=col.grid;g.beginPath();g.moveTo(L,Y(v));g.lineTo(w-Rt,Y(v));g.stroke();g.fillStyle=col.mut;g.fillText(f(v),L-5,Y(v)+4)}
+ g.fillStyle=col.fg;g.textAlign='center';g.fillText(o.xl||'',(L+w-Rt)/2,h-4);
+ g.textAlign='left';g.fillText(o.yl||'',L+6,T+12);
+ if(o.walls){g.strokeStyle=col.fg;g.lineWidth=3;for(const v of[0,1]){g.beginPath();g.moveTo(X(v),T);g.lineTo(X(v),h-B);g.stroke()}}
+ return{g,X,Y,w,h,L,Rt,T,B}}
+function line(A,xs,ys,c,wd){const g=A.g;g.beginPath();for(let k=0;k<xs.length;k++){const x=A.X(xs[k]),y=A.Y(ys[k]);k?g.lineTo(x,y):g.moveTo(x,y)}
+ g.strokeStyle=c;g.lineWidth=wd||2;g.stroke()}
+function legend(A,items){const g=A.g;g.textAlign='right';let x=A.w-A.Rt-8;
+ for(const[t,c]of items.reverse()){g.fillStyle=c;g.fillText(t,x,A.T+12);x-=g.measureText(t).width+14}}
+
+function drawPsi(){
+ const A=axes($('cPsi'),0,1,-yA,yA,{xl:'x / a',yl:'Ψ (a^-1/2)',walls:1});
+ psi(tau,R,I);line(A,xg,R,col.c1);line(A,xg,I,col.c2);legend(A,[['Re Ψ',col.c1],['Im Ψ',col.c2]]);
+ const B=axes($('cProb'),0,1,0,yP,{xl:'x / a',yl:'|Ψ|² (1/a)',walls:1}),g=B.g;
+ g.beginPath();g.moveTo(B.X(0),B.Y(0));for(let j=0;j<=M;j++)g.lineTo(B.X(xg[j]),B.Y(R[j]*R[j]+I[j]*I[j]));
+ g.lineTo(B.X(1),B.Y(0));g.fillStyle=col.f3;g.fill();
+ g.beginPath();for(let j=0;j<=M;j++){const x=B.X(xg[j]),y=B.Y(R[j]*R[j]+I[j]*I[j]);j?g.lineTo(x,y):g.moveTo(x,y)}
+ g.strokeStyle=col.c3;g.lineWidth=2;g.stroke()}
+
+function drawBars(){
+ const mx=Math.max(...pr,.01)*1.15;
+ const A=axes($('cBar'),.5,N+.5,0,mx,{xl:'energy state n   (Eₙ = n²E₁)',yl:'fraction |cₙ|²',xt:[1,5,10,15,20,25,30,35,40]});
+ const bw=(A.X(2)-A.X(1))*.7;A.g.fillStyle=col.c1;
+ pr.forEach((v,n)=>A.g.fillRect(A.X(n+1)-bw/2,A.Y(v),bw,A.Y(0)-A.Y(v)))}
+
+function marker(A,v){const g=A.g,k=Math.round(tau*S);g.strokeStyle=col.fg;g.lineWidth=1;g.setLineDash([4,3]);
+ g.beginPath();g.moveTo(A.X(tau),A.T);g.lineTo(A.X(tau),A.h-A.B);g.stroke();g.setLineDash([]);
+ g.beginPath();g.arc(A.X(tau),A.Y(v[k]),5,0,2*PI);g.fillStyle=col.fg;g.fill()}
+function drawExp(){if($('exp').hidden)return;
+ const A=axes($('cX'),0,1,0,1,{xl:'t / T',yl:'⟨x⟩ / a'});
+ A.g.strokeStyle=col.mut;A.g.setLineDash([2,4]);A.g.beginPath();A.g.moveTo(A.L,A.Y(.5));A.g.lineTo(A.w-A.Rt,A.Y(.5));A.g.stroke();A.g.setLineDash([]);
+ line(A,tg,ex,col.c1);marker(A,ex);
+ let m=0;for(const v of ep)m=Math.max(m,Math.abs(v));m=m<1e-6?1:m*1.15;
+ const B=axes($('cP'),0,1,-m,m,{xl:'t / T',yl:'⟨p⟩ / (ħ/a)'});line(B,tg,ep,col.c2);marker(B,ep);
+ const k=Math.round(tau*S);$('exl').textContent=`⟨x⟩ = ${ex[k].toFixed(3)} a     ⟨p⟩ = ${ep[k].toFixed(2)} ħ/a`}
+
+function draw(){const cs=getComputedStyle(document.documentElement);
+ for(const k of['fg','mut','grid','c1','c2','c3','f3'])col[k]=cs.getPropertyValue('--'+k).trim();
+ drawPsi();drawBars();drawExp();$('tl').textContent='t = '+tau.toFixed(3)+' T';$('ts').value=Math.round(tau*1000)}
+
+function tick(ts){if(!playing)return;const dt=Math.min((ts-last)/1000,.1);last=ts;tau=(tau+dt*speed)%1;draw();requestAnimationFrame(tick)}
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'⏸ Pause':'▶ Play';if(playing){last=performance.now();requestAnimationFrame(tick)}};
+$('reset').onclick=()=>{tau=0;draw()};
+$('ts').oninput=e=>{tau=e.target.value/1000;draw()};
+$('sp').oninput=e=>{speed=e.target.value/200;$('spl').textContent=speed.toFixed(3)+' T per second'};
+$('go').onclick=compute;
+for(const id of['fr','fi'])$(id).addEventListener('keydown',e=>{if(e.key==='Enter')compute()});
+$('bExp').onclick=()=>{const h=!$('exp').hidden;$('exp').hidden=h;$('bExp').textContent=h?'Show ⟨x⟩ and ⟨p⟩ over time':'Hide ⟨x⟩ and ⟨p⟩';draw()};
+$('pre').innerHTML=PRE.map((p,i)=>`<option value="${i}">${p[0]}</option>`).join('');
+$('pre').onchange=e=>{const p=PRE[e.target.value];$('fr').value=p[1];$('fi').value=p[2];compute()};
+addEventListener('resize',()=>{if(cr.length)draw()});
+$('sp').oninput({target:$('sp')});$('pre').onchange({target:$('pre')});
+</script></body></html>
