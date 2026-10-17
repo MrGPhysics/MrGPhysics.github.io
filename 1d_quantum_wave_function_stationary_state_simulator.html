@@ -1,0 +1,2361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1-D Quantum Wave Function & Stationary State Simulator</title>
+  <style>
+    :root {
+      --bg-primary: #090d16;
+      --bg-panel: #111726;
+      --bg-panel-alt: #161f33;
+      --bg-input: #0b101d;
+      --border-subtle: #23304d;
+      --border-focus: #38bdf8;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent-cyan: #38bdf8;
+      --accent-teal: #2dd4bf;
+      --accent-indigo: #818cf8;
+      --accent-magenta: #f472b6;
+      --accent-amber: #fbbf24;
+      --accent-emerald: #34d399;
+      --accent-rose: #fb7185;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+      --shadow-panel: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(129, 140, 248, 0.06) 0%, transparent 40%);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      line-height: 1.45;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Header Bar */
+    .app-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 20px;
+      background: rgba(17, 23, 38, 0.9);
+      border-bottom: 1px solid var(--border-subtle);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(129, 140, 248, 0.2));
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 18px;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+    }
+
+    .brand-title h1 {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #f8fafc;
+    }
+
+    .brand-title p {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .header-badges {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 4px 11px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-pill strong {
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    /* Main Workspace Grid */
+    .workspace {
+      display: grid;
+      grid-template-columns: 1.35fr 0.95fr;
+      gap: 16px;
+      padding: 16px 20px 24px;
+      max-width: 1800px;
+      width: 100%;
+      margin: 0 auto;
+      flex: 1;
+    }
+
+    @media (max-width: 1150px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .col-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    /* Panel Styling */
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-panel);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bg-panel-alt);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 13.5px;
+      color: #f1f5f9;
+    }
+
+    .panel-title .badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .panel-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Controls: Selects, Buttons, Inputs */
+    select, input[type="text"] {
+      background: var(--bg-input);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      font-size: 12.5px;
+      font-family: var(--font-sans);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.18);
+    }
+
+    .btn {
+      background: #1e293b;
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      background: #283548;
+      border-color: #3b4f73;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: #38bdf8;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1, #1d4ed8);
+      border-color: #7dd3fc;
+    }
+
+    .btn-accent {
+      background: rgba(45, 212, 191, 0.14);
+      border-color: rgba(45, 212, 191, 0.4);
+      color: var(--accent-teal);
+    }
+
+    .btn-accent:hover {
+      background: rgba(45, 212, 191, 0.24);
+    }
+
+    /* Canvas Wrappers */
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 330px;
+      background: #070b12;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .canvas-container.tall {
+      height: 350px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    .canvas-overlay-hint {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      pointer-events: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .hint-tag {
+      background: rgba(9, 13, 22, 0.82);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      backdrop-filter: blur(4px);
+    }
+
+    .panel-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 14px;
+      background: rgba(11, 16, 29, 0.75);
+      border-top: 1px solid var(--border-subtle);
+      font-size: 12px;
+    }
+
+    .toggle-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 12px;
+      user-select: none;
+    }
+
+    .checkbox-label:hover {
+      color: var(--text-main);
+    }
+
+    .checkbox-label input {
+      accent-color: var(--accent-cyan);
+      cursor: pointer;
+    }
+
+    .legend-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* Equation Editor Section */
+    .equation-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .eq-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .eq-prefix {
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--accent-cyan);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .eq-input-wrapper {
+      flex: 1;
+      position: relative;
+      display: flex;
+    }
+
+    #waveEqInput {
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      padding: 8px 12px;
+      color: #f8fafc;
+      letter-spacing: 0.01em;
+    }
+
+    .eq-status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11.5px;
+      font-family: var(--font-mono);
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .eq-status-bar.valid {
+      border-color: rgba(52, 211, 153, 0.35);
+      color: var(--accent-emerald);
+    }
+
+    .eq-status-bar.invalid {
+      border-color: rgba(251, 113, 133, 0.45);
+      background: rgba(251, 113, 133, 0.08);
+      color: var(--accent-rose);
+    }
+
+    .syntax-help {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .syntax-help code {
+      font-family: var(--font-mono);
+      background: rgba(148, 163, 184, 0.12);
+      color: #cbd5e1;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .syntax-help code:hover {
+      background: rgba(56, 189, 248, 0.25);
+      color: #fff;
+    }
+
+    /* Playback & Slider Controls */
+    .playback-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .slider-control {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent-cyan);
+      cursor: pointer;
+      width: 95px;
+    }
+
+    /* Energy Decomposition Panel */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 12px 14px;
+      background: rgba(11, 16, 29, 0.6);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    @media (max-width: 640px) {
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .metric-card {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 7px 10px;
+    }
+
+    .metric-label {
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    /* Spectrum Overview Mini-Canvas */
+    .spectrum-overview-box {
+      padding: 10px 14px 6px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #080c15;
+    }
+
+    .spectrum-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      margin-bottom: 5px;
+    }
+
+    #spectrumCanvas {
+      width: 100%;
+      height: 85px;
+      cursor: pointer;
+    }
+
+    /* Scrollable State Breakdown Table */
+    .state-list-header {
+      display: grid;
+      grid-template-columns: 52px 78px 1fr 68px 72px;
+      gap: 8px;
+      padding: 7px 14px;
+      background: var(--bg-panel-alt);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .state-list-container {
+      max-height: 365px;
+      overflow-y: auto;
+      divide-y: 1px solid rgba(35, 48, 77, 0.4);
+    }
+
+    .state-list-container::-webkit-scrollbar {
+      width: 7px;
+    }
+    .state-list-container::-webkit-scrollbar-track {
+      background: var(--bg-input);
+    }
+    .state-list-container::-webkit-scrollbar-thumb {
+      background: #2b3b5c;
+      border-radius: 4px;
+    }
+
+    .state-row {
+      display: grid;
+      grid-template-columns: 52px 78px 1fr 68px 72px;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 14px;
+      border-bottom: 1px solid rgba(35, 48, 77, 0.35);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .state-row:hover {
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    .state-row.selected {
+      background: rgba(56, 189, 248, 0.16);
+      border-left: 3px solid var(--accent-cyan);
+      padding-left: 11px;
+    }
+
+    .state-n-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(148, 163, 184, 0.12);
+      color: #e2e8f0;
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 10px;
+      background: #090d16;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.12s ease-out;
+    }
+
+    .phase-cell {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 5px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .phase-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation & Telemetry Header -->
+  <header class="app-header">
+    <div class="brand-group">
+      <div class="brand-icon">&Psi;</div>
+      <div class="brand-title">
+        <h1>1-D Quantum Mechanics &amp; Stationary State Lab</h1>
+        <p>TISE Matrix Diagonalization (Wilkinson QL) &bull; Natural Units (&hbar; = 1, m = 1)</p>
+      </div>
+    </div>
+
+    <div class="header-badges">
+      <div class="stat-pill">Grid: <strong>N = 240</strong> (x &in; [-5, 5])</div>
+      <div class="stat-pill">Basis: <strong>M = 40</strong> states</div>
+      <div class="stat-pill">TISE Solver: <strong id="solverTimeBadge">0.0 ms</strong></div>
+    </div>
+  </header>
+
+  <!-- Main Two-Column Scientific Interface -->
+  <main class="workspace">
+    
+    <!-- LEFT COLUMN: Potential Canvas + Time-Evolution Canvas -->
+    <div class="col-stack">
+      
+      <!-- 1. Potential V(x) & Stationary States Panel -->
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>1. Potential Well <em>V(x)</em> &amp; Stationary Eigenstates <em>&psi;<sub>n</sub>(x)</em></span>
+            <span class="badge" id="selectedStateBadge">Hover/Click state</span>
+          </div>
+
+          <div class="panel-toolbar">
+            <label for="potentialPresetSelect" style="color:var(--text-muted);font-size:12px;">Preset:</label>
+            <select id="potentialPresetSelect" title="Choose a standard potential V(x)">
+              <option value="harmonic">Simple Harmonic Oscillator</option>
+              <option value="infinite_well">Infinite Square Well</option>
+              <option value="finite_well">Finite Square Well</option>
+              <option value="double_well_sym">Symmetric Double Well (Tunneling)</option>
+              <option value="double_well_asym">Asymmetric Double Well</option>
+              <option value="barrier">Central Rectangular Barrier</option>
+              <option value="triangle">Linear / Gravitational Triangle Well</option>
+              <option value="lattice">Periodic Multi-Well Lattice</option>
+            </select>
+            <button class="btn" id="smoothPotentialBtn" title="Smooth hand-drawn potential curve">Smooth V(x)</button>
+            <button class="btn" id="clearPotentialBtn" title="Reset V(x) = 0 across the domain">Zero V(x)</button>
+          </div>
+        </div>
+
+        <div class="canvas-container" id="potentialCanvasContainer">
+          <canvas id="potentialCanvas"></canvas>
+          <div class="canvas-overlay-hint">
+            <span class="hint-tag">Drag on canvas to sculpt V(x)</span>
+            <span class="hint-tag" id="cursorReadoutPotential">x: 0.00, V: 0.00</span>
+          </div>
+        </div>
+
+        <div class="panel-footer">
+          <div class="toggle-group">
+            <label class="checkbox-label">
+              <input type="radio" name="eigenDisplayMode" value="wavefunction" checked />
+              <span>Show &psi;<sub>n</sub>(x) + E<sub>n</sub></span>
+            </label>
+            <label class="checkbox-label">
+              <input type="radio" name="eigenDisplayMode" value="density" />
+              <span>Show |&psi;<sub>n</sub>(x)|&sup2; + E<sub>n</sub></span>
+            </label>
+            <label class="checkbox-label">
+              <input type="radio" name="eigenDisplayMode" value="levels_only" />
+              <span>Energy Levels Only</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="weightOpacityCheck" />
+              <span>Highlight Populated States (|c<sub>n</sub>|&sup2;)</span>
+            </label>
+          </div>
+
+          <div class="slider-control">
+            <span>Max Energy View:</span>
+            <input type="range" id="energyScaleSlider" min="8" max="60" step="1" value="25" />
+            <span id="energyScaleLabel">25</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Time-Dependent Wave Function Animation Panel -->
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>2. Time-Varying Wave Function <em>&Psi;(x, t) = &Sigma; c<sub>n</sub> &psi;<sub>n</sub>(x) e<sup>&minus;iE<sub>n</sub>t</sup></em></span>
+            <span class="badge" id="timeReadoutBadge">t = 0.000</span>
+          </div>
+
+          <div class="panel-toolbar">
+            <button class="btn btn-primary" id="playPauseBtn">&#9208; Pause</button>
+            <button class="btn" id="resetTimeBtn" title="Reset time to t = 0">&#8634; Reset (t=0)</button>
+            <button class="btn" id="stepTimeBtn" title="Advance one small time step">+&Delta;t</button>
+            <div class="slider-control">
+              <span>Speed:</span>
+              <input type="range" id="speedSlider" min="0.1" max="3.5" step="0.1" value="1.0" />
+              <span id="speedValueLabel">1.0&times;</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="canvas-container tall" id="waveCanvasContainer">
+          <canvas id="waveCanvas"></canvas>
+          <div class="canvas-overlay-hint">
+            <span class="hint-tag" id="expectationReadout">&langle;x&rangle; = 0.00 &bull; &Delta;x = 0.00 &bull; &langle;p&rangle; = 0.00</span>
+          </div>
+        </div>
+
+        <div class="panel-footer">
+          <div class="toggle-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="showProbCheck" checked />
+              <span class="legend-dot" style="background:#f8fafc;"></span>
+              <span>|&Psi;(x,t)|&sup2; Density</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showPhaseColorCheck" checked />
+              <span class="legend-dot" style="background:linear-gradient(90deg,#f43f5e,#eab308,#10b981,#3b82f6,#a855f7);"></span>
+              <span>Phase Rainbow Fill</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showRealCheck" checked />
+              <span class="legend-dot" style="background:#38bdf8;"></span>
+              <span>Re[&Psi;]</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showImagCheck" checked />
+              <span class="legend-dot" style="background:#f472b6;"></span>
+              <span>Im[&Psi;]</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showExpectXCheck" checked />
+              <span class="legend-dot" style="background:#fbbf24;"></span>
+              <span>&langle;x&rangle;(t) &plusmn; &Delta;x</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Initial Wave Function Parser + Eigenstate Expansion Panel -->
+    <div class="col-stack">
+      
+      <!-- 3. Custom Equation Parser for Initial Wave Function -->
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>3. Initial Wave Function <em>&Psi;(x, 0)</em> Equation</span>
+          </div>
+
+          <div class="panel-toolbar">
+            <label for="wavePresetSelect" style="color:var(--text-muted);font-size:12px;">Examples:</label>
+            <select id="wavePresetSelect" title="Load a preset initial wave function formula">
+              <option value="exp(-(x + 1.8)^2 / 0.5)">Displaced Gaussian (Coherent State)</option>
+              <option value="exp(-(x + 1.8)^2 / 0.5) * exp(i * 4.5 * x)">Moving Gaussian Wave Packet (Rightward)</option>
+              <option value="exp(-x^2 / 0.5)">Centered Gaussian Packet</option>
+              <option value="psi1">Stationary Ground State (psi1)</option>
+              <option value="psi1 + psi2">Superposition of n=1 &amp; n=2 (psi1 + psi2)</option>
+              <option value="psi1 + i*psi2 + 0.7*psi3">Complex Superposition (psi1 + i*psi2 + 0.7*psi3)</option>
+              <option value="exp(-(x + 2)^2 / 0.4)*exp(i*4*x) + exp(-(x - 2)^2 / 0.4)*exp(-i*4*x)">Colliding Wave Packets</option>
+              <option value="step(x + 1.5) - step(x - 1.5)">Step / Top-Hat Function</option>
+              <option value="rect(x / 3) * sin(3 * pi * x / 3)">Localized Sine Pulse</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="equation-body">
+          <div class="eq-input-row">
+            <div class="eq-prefix">&Psi;(x, 0) &prop;</div>
+            <div class="eq-input-wrapper">
+              <input
+                type="text"
+                id="waveEqInput"
+                value="exp(-(x + 1.8)^2 / 0.5)"
+                spellcheck="false"
+                autocomplete="off"
+                placeholder="e.g. exp(-(x+1.5)^2 / 0.4) * exp(i * 5 * x) or psi1 + psi2"
+              />
+            </div>
+            <button class="btn btn-accent" id="applyEqBtn">Apply &amp; Reset t=0</button>
+          </div>
+
+          <div class="eq-status-bar valid" id="eqStatusBar">
+            <span id="eqStatusText">&#10003; Valid expression &bull; Automatically normalized: &int;|&Psi;(x,0)|&sup2;dx = 1</span>
+            <span id="normFactorReadout">Norm factor: 1.000</span>
+          </div>
+
+          <div class="syntax-help">
+            <strong>Supported Syntax (click to insert):</strong>
+            Variables &amp; Constants:
+            <code data-insert="x">x</code>
+            <code data-insert="i">i</code>
+            <code data-insert="pi">pi</code>
+            &bull; Eigenstates:
+            <code data-insert="psi1">psi1</code>
+            <code data-insert="psi2">psi2</code>
+            <code data-insert="psi3">psi3</code>
+            <code data-insert="psi4">psi4</code>
+            <code data-insert="psi5">psi5</code>
+            &bull; Functions:
+            <code data-insert="exp(-x^2)">exp(z)</code>
+            <code data-insert="sin(pi*x)">sin(z)</code>
+            <code data-insert="cos(pi*x)">cos(z)</code>
+            <code data-insert="sqrt(abs(x))">sqrt(z)</code>
+            <code data-insert="step(x)">step(x)</code>
+            <code data-insert="rect(x/2)">rect(x)</code>
+            <code data-insert="sgn(x)">sgn(x)</code>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Eigenstate Expansion & Energy Level Percentage Breakdown -->
+      <section class="panel" style="flex:1;">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>4. Stationary State Expansion &amp; Energy Level Breakdown</span>
+            <span class="badge">c<sub>n</sub> = &langle;&psi;<sub>n</sub> | &Psi;(0)&rangle;</span>
+          </div>
+          <div class="panel-toolbar">
+            <button class="btn" id="clearSelectionBtn" style="display:none;">Clear Highlight</button>
+            <button class="btn" id="setPureStateBtn" style="display:none;" title="Set initial wave function to the selected eigenstate">Set &Psi;(0) = &psi;<sub>n</sub></button>
+          </div>
+        </div>
+
+        <!-- Summary Physics Metrics -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">Expectation &langle;E&rangle;</div>
+            <div class="metric-value" id="metricExpectE" style="color:var(--accent-amber);">0.000</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Uncertainty &Delta;E</div>
+            <div class="metric-value" id="metricDeltaE">0.000</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Captured &Sigma;|c<sub>n</sub>|&sup2;</div>
+            <div class="metric-value" id="metricCapturedProb" style="color:var(--accent-emerald);">100.0%</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Dominant Level</div>
+            <div class="metric-value" id="metricDominantState" style="color:var(--accent-cyan);">n = 1</div>
+          </div>
+        </div>
+
+        <!-- Visual Bar Chart Canvas for Top 25 States -->
+        <div class="spectrum-overview-box">
+          <div class="spectrum-header-row">
+            <span>Power Spectrum |c<sub>n</sub>|&sup2; (%) across Energy Levels (n = 1..25)</span>
+            <span>Color = Phase arg(c<sub>n</sub> e<sup>&minus;iE<sub>n</sub>t</sup>)</span>
+          </div>
+          <canvas id="spectrumCanvas"></canvas>
+        </div>
+
+        <!-- Detailed Scrollable Table of All M = 40 Eigenstates -->
+        <div class="state-list-header">
+          <div>State</div>
+          <div>Energy E<sub>n</sub></div>
+          <div>Probability |c<sub>n</sub>|&sup2;</div>
+          <div style="text-align:right;">% Share</div>
+          <div style="text-align:right;">Phase &phi;<sub>n</sub></div>
+        </div>
+
+        <div class="state-list-container" id="stateListContainer">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <script>
+    /**
+     * ============================================================================
+     * 1-D QUANTUM MECHANICS WAVE FUNCTION & STATIONARY STATE SIMULATOR
+     * Pure Vanilla JS Implementation:
+     * - Implicit Symmetric Tridiagonal QL Algorithm with Wilkinson Shifts (tql2)
+     * - Recursive-Descent Complex Mathematical Expression Parser
+     * - Real-time Eigenstate Superposition & Time-Evolution Engine
+     * ============================================================================
+     */
+
+    // --- 1. SPATIAL GRID & QUANTUM CONSTANTS ---
+    const N = 240;                    // Interior spatial grid points
+    const M_BASIS = 40;               // Number of eigenstates used in expansion
+    const X_MIN = -5.0;
+    const X_MAX = 5.0;
+    const L_DOMAIN = X_MAX - X_MIN;
+    const DX = L_DOMAIN / (N + 1);    // Grid spacing with Dirichlet boundaries at x = -5, +5
+
+    // Interior grid coordinates x_j for j = 0 ... N-1
+    const xGrid = new Float64Array(N);
+    for (let j = 0; j < N; j++) {
+      xGrid[j] = X_MIN + (j + 1) * DX;
+    }
+
+    // Potential array V(x_j)
+    const V = new Float64Array(N);
+
+    // Eigenvalues E_n (length M_BASIS) and normalized eigenvectors psi_n(x_j) (M_BASIS x N)
+    const energies = new Float64Array(M_BASIS);
+    const eigenstates = new Array(M_BASIS);
+    for (let n = 0; n < M_BASIS; n++) {
+      eigenstates[n] = new Float64Array(N);
+    }
+
+    // Initial wave function Psi(x_j, 0) and current Psi(x_j, t)
+    const psi0Re = new Float64Array(N);
+    const psi0Im = new Float64Array(N);
+    const psiTRe = new Float64Array(N);
+    const psiTIm = new Float64Array(N);
+    const probDensity = new Float64Array(N);
+
+    // Expansion coefficients c_n(0) = |c_n| exp(i * phi_n)
+    const coeffRe = new Float64Array(M_BASIS);
+    const coeffIm = new Float64Array(M_BASIS);
+    const coeffProb = new Float64Array(M_BASIS); // |c_n|^2
+    const coeffPhase0 = new Float64Array(M_BASIS);
+
+    // Simulation state
+    let simTime = 0.0;
+    let isPlaying = true;
+    let animSpeed = 1.0;
+    let maxEnergyView = 25.0;
+    let selectedStateIndex = -1; // -1 means none explicitly locked
+    let hoveredStateIndex = -1;
+    let expectEnergy = 0.0;
+    let deltaEnergy = 0.0;
+    let totalCapturedProb = 1.0;
+
+    // --- 2. SYMMETRIC TRIDIAGONAL QL SOLVER WITH WILKINSON SHIFTS (tql2) ---
+    // Pre-allocate work buffers so solving creates zero GC pressure
+    const diagBuf = new Float64Array(N);
+    const subDiagBuf = new Float64Array(N);
+    const zMatrix = new Float64Array(N * N); // Column-major: column c is zMatrix[c*N ... c*N + N - 1]
+    const sortIndices = new Int32Array(N);
+
+    function solveTISE() {
+      const t0 = performance.now();
+      const invDx2 = 1.0 / (DX * DX);
+      const offDiagVal = -0.5 * invDx2;
+
+      // Initialize tridiagonal matrix and identity eigenvector matrix
+      zMatrix.fill(0.0);
+      for (let j = 0; j < N; j++) {
+        diagBuf[j] = invDx2 + V[j];
+        subDiagBuf[j] = (j < N - 1) ? offDiagVal : 0.0;
+        zMatrix[j * N + j] = 1.0;
+      }
+
+      // Implicit QL with Wilkinson Shifts
+      const eps = 2.220446049250313e-16;
+      for (let l = 0; l < N; l++) {
+        let iter = 0;
+        while (true) {
+          // Look for small sub-diagonal element
+          let m = l;
+          while (m < N - 1) {
+            const dd = Math.abs(diagBuf[m]) + Math.abs(diagBuf[m + 1]);
+            if (Math.abs(subDiagBuf[m]) <= eps * dd) break;
+            m++;
+          }
+          if (m === l) break;
+          if (iter++ >= 40) break; // Safety cap
+
+          // Form Wilkinson shift
+          let g = (diagBuf[l + 1] - diagBuf[l]) / (2.0 * subDiagBuf[l]);
+          let r = Math.hypot(g, 1.0);
+          g = diagBuf[m] - diagBuf[l] + subDiagBuf[l] / (g + (g >= 0 ? r : -r));
+
+          let s = 1.0;
+          let c = 1.0;
+          let p = 0.0;
+          let i = m - 1;
+
+          for (; i >= l; i--) {
+            const f = s * subDiagBuf[i];
+            const b = c * subDiagBuf[i];
+            r = Math.hypot(f, g);
+            subDiagBuf[i + 1] = r;
+
+            if (r === 0.0) {
+              diagBuf[i + 1] -= p;
+              subDiagBuf[m] = 0.0;
+              break;
+            }
+
+            s = f / r;
+            c = g / r;
+            g = diagBuf[i + 1] - p;
+            r = (diagBuf[i] - g) * s + 2.0 * c * b;
+            p = s * r;
+            diagBuf[i + 1] = g + p;
+            g = c * r - b;
+
+            // Accumulate plane rotation in column-major eigenvector matrix zMatrix
+            const colI = i * N;
+            const colIp1 = (i + 1) * N;
+            for (let k = 0; k < N; k++) {
+              const fz = zMatrix[colIp1 + k];
+              const zi = zMatrix[colI + k];
+              zMatrix[colIp1 + k] = s * zi + c * fz;
+              zMatrix[colI + k] = c * zi - s * fz;
+            }
+          }
+
+          if (r === 0.0 && i >= l) continue;
+          diagBuf[l] -= p;
+          subDiagBuf[l] = g;
+          subDiagBuf[m] = 0.0;
+        }
+      }
+
+      // Sort eigenvalues in ascending order
+      for (let i = 0; i < N; i++) sortIndices[i] = i;
+      sortIndices.sort((a, b) => diagBuf[a] - diagBuf[b]);
+
+      // Extract first M_BASIS eigenstates, normalize over DX, and fix sign convention
+      const normScale = 1.0 / Math.sqrt(DX);
+      for (let n = 0; n < M_BASIS; n++) {
+        const colIdx = sortIndices[n];
+        energies[n] = diagBuf[colIdx];
+        const colOffset = colIdx * N;
+        const dest = eigenstates[n];
+
+        // Find largest amplitude to set consistent phase sign for first significant lobe
+        let maxAbs = 0.0;
+        for (let j = 0; j < N; j++) {
+          const val = Math.abs(zMatrix[colOffset + j]);
+          if (val > maxAbs) maxAbs = val;
+        }
+        const threshold = 0.15 * maxAbs;
+        let sign = 1.0;
+        for (let j = 0; j < N; j++) {
+          const v = zMatrix[colOffset + j];
+          if (Math.abs(v) >= threshold) {
+            sign = v >= 0 ? 1.0 : -1.0;
+            break;
+          }
+        }
+
+        const factor = sign * normScale;
+        for (let j = 0; j < N; j++) {
+          dest[j] = zMatrix[colOffset + j] * factor;
+        }
+      }
+
+      const elapsed = performance.now() - t0;
+      const badge = document.getElementById('solverTimeBadge');
+      if (badge) badge.textContent = `${elapsed.toFixed(1)} ms`;
+    }
+
+    // --- 3. POTENTIAL PRESETS & MANIPULATION ---
+    function loadPotentialPreset(presetName) {
+      for (let j = 0; j < N; j++) {
+        const x = xGrid[j];
+        switch (presetName) {
+          case 'infinite_well':
+            // Zero across whole [-5, 5] domain (Dirichlet walls at +/-5)
+            V[j] = 0.0;
+            break;
+          case 'finite_well':
+            V[j] = (Math.abs(x) <= 2.0) ? 0.0 : 15.0;
+            break;
+          case 'harmonic':
+            // V(x) = 1/2 k x^2 with k = 2.0
+            V[j] = 1.0 * x * x;
+            break;
+          case 'double_well_sym':
+            // Quartic double well with tunneling barrier in the center
+            V[j] = 1.15 * Math.pow(x * x - 2.25, 2);
+            break;
+          case 'double_well_asym':
+            V[j] = 1.15 * Math.pow(x * x - 2.25, 2) + 0.45 * x + 1.0;
+            break;
+          case 'barrier':
+            // Rectangular central barrier
+            V[j] = (Math.abs(x) <= 0.4) ? 14.0 : 0.0;
+            break;
+          case 'triangle':
+            // Linear V-shaped potential
+            V[j] = 4.2 * Math.abs(x);
+            break;
+          case 'lattice':
+            // Periodic 4-well potential showing band formation
+            V[j] = (Math.abs(x) > 4.0) ? 20.0 : 9.0 * Math.pow(Math.cos(Math.PI * x / 2.0), 2);
+            break;
+          default:
+            V[j] = 0.0;
+        }
+      }
+      recalculateAllPhysics(false);
+    }
+
+    function smoothPotential() {
+      const temp = new Float64Array(N);
+      for (let pass = 0; pass < 3; pass++) {
+        temp[0] = 0.7 * V[0] + 0.3 * V[1];
+        temp[N - 1] = 0.7 * V[N - 1] + 0.3 * V[N - 2];
+        for (let j = 1; j < N - 1; j++) {
+          temp[j] = 0.25 * V[j - 1] + 0.5 * V[j] + 0.25 * V[j + 1];
+        }
+        V.set(temp);
+      }
+      recalculateAllPhysics(false);
+    }
+
+    // --- 4. COMPLEX NUMBER MATH PARSER FOR INITIAL WAVE FUNCTION ---
+    const CMath = {
+      add: (a, b) => ({ re: a.re + b.re, im: a.im + b.im }),
+      sub: (a, b) => ({ re: a.re - b.re, im: a.im - b.im }),
+      mul: (a, b) => ({
+        re: a.re * b.re - a.im * b.im,
+        im: a.re * b.im + a.im * b.re
+      }),
+      div: (a, b) => {
+        const denom = b.re * b.re + b.im * b.im;
+        if (denom === 0) return { re: 0, im: 0 };
+        return {
+          re: (a.re * b.re + a.im * b.im) / denom,
+          im: (a.im * b.re - a.re * b.im) / denom
+        };
+      },
+      neg: (a) => ({ re: -a.re, im: -a.im }),
+      abs: (a) => ({ re: Math.hypot(a.re, a.im), im: 0 }),
+      conj: (a) => ({ re: a.re, im: -a.im }),
+      exp: (a) => {
+        const er = Math.exp(a.re);
+        return { re: er * Math.cos(a.im), im: er * Math.sin(a.im) };
+      },
+      sin: (a) => ({
+        re: Math.sin(a.re) * Math.cosh(a.im),
+        im: Math.cos(a.re) * Math.sinh(a.im)
+      }),
+      cos: (a) => ({
+        re: Math.cos(a.re) * Math.cosh(a.im),
+        im: -Math.sin(a.re) * Math.sinh(a.im)
+      }),
+      tan: (a) => CMath.div(CMath.sin(a), CMath.cos(a)),
+      sqrt: (a) => {
+        const r = Math.hypot(a.re, a.im);
+        const angle = 0.5 * Math.atan2(a.im, a.re);
+        const sr = Math.sqrt(r);
+        return { re: sr * Math.cos(angle), im: sr * Math.sin(angle) };
+      },
+      pow: (base, exp) => {
+        if (base.re === 0 && base.im === 0) return { re: 0, im: 0 };
+        // Fast path for real integer/float powers when base is real positive or integer exponent
+        if (base.im === 0 && exp.im === 0 && Number.isInteger(exp.re)) {
+          return { re: Math.pow(base.re, exp.re), im: 0 };
+        }
+        const r = Math.hypot(base.re, base.im);
+        const theta = Math.atan2(base.im, base.re);
+        const lnR = Math.log(r);
+        // exp( (exp.re + i exp.im) * (lnR + i theta) )
+        const realPart = exp.re * lnR - exp.im * theta;
+        const imagPart = exp.re * theta + exp.im * lnR;
+        return CMath.exp({ re: realPart, im: imagPart });
+      }
+    };
+
+    function tokenizeExpression(expr) {
+      const tokens = [];
+      let i = 0;
+      const len = expr.length;
+
+      while (i < len) {
+        const ch = expr[i];
+        if (/\s/.test(ch)) {
+          i++;
+          continue;
+        }
+        if (/[0-9.]/.test(ch)) {
+          let numStr = '';
+          while (i < len && /[0-9.]/.test(expr[i])) {
+            numStr += expr[i++];
+          }
+          const val = parseFloat(numStr);
+          if (Number.isNaN(val)) throw new Error(`Invalid number '${numStr}'`);
+          tokens.push({ type: 'NUMBER', value: val });
+          continue;
+        }
+        if (/[a-zA-Z_]/.test(ch)) {
+          let idStr = '';
+          while (i < len && /[a-zA-Z0-9_]/.test(expr[i])) {
+            idStr += expr[i++];
+          }
+          tokens.push({ type: 'IDENT', value: idStr.toLowerCase() });
+          continue;
+        }
+        if ('+-*/^()'.includes(ch)) {
+          tokens.push({ type: 'OP', value: ch });
+          i++;
+          continue;
+        }
+        throw new Error(`Unexpected character '${ch}'`);
+      }
+
+      // Insert implicit '*' where appropriate (e.g., 2x, 3(x+1), (x+1)(x-1), i*x)
+      const FUNCTIONS = new Set(['exp', 'sin', 'cos', 'tan', 'sqrt', 'abs', 'conj', 'step', 'rect', 'sgn', 're', 'im']);
+      const out = [];
+      for (let k = 0; k < tokens.length; k++) {
+        const curr = tokens[k];
+        out.push(curr);
+        if (k + 1 < tokens.length) {
+          const next = tokens[k + 1];
+          const currIsValue =
+            curr.type === 'NUMBER' ||
+            (curr.type === 'OP' && curr.value === ')') ||
+            (curr.type === 'IDENT' && !FUNCTIONS.has(curr.value));
+          const nextIsStarter =
+            next.type === 'NUMBER' ||
+            next.type === 'IDENT' ||
+            (next.type === 'OP' && next.value === '(');
+          if (currIsValue && nextIsStarter) {
+            out.push({ type: 'OP', value: '*' });
+          }
+        }
+      }
+      return out;
+    }
+
+    function compileComplexAST(exprString) {
+      const tokens = tokenizeExpression(exprString);
+      if (tokens.length === 0) throw new Error('Expression cannot be empty');
+      let pos = 0;
+
+      function peek() {
+        return pos < tokens.length ? tokens[pos] : null;
+      }
+
+      function consume() {
+        return tokens[pos++];
+      }
+
+      function parseExpr() {
+        let node = parseTerm();
+        while (peek() && peek().type === 'OP' && (peek().value === '+' || peek().value === '-')) {
+          const op = consume().value;
+          const right = parseTerm();
+          const left = node;
+          node = (op === '+')
+            ? (ctx) => CMath.add(left(ctx), right(ctx))
+            : (ctx) => CMath.sub(left(ctx), right(ctx));
+        }
+        return node;
+      }
+
+      function parseTerm() {
+        let node = parseUnary();
+        while (peek() && peek().type === 'OP' && (peek().value === '*' || peek().value === '/')) {
+          const op = consume().value;
+          const right = parseUnary();
+          const left = node;
+          node = (op === '*')
+            ? (ctx) => CMath.mul(left(ctx), right(ctx))
+            : (ctx) => CMath.div(left(ctx), right(ctx));
+        }
+        return node;
+      }
+
+      function parseUnary() {
+        if (peek() && peek().type === 'OP' && (peek().value === '+' || peek().value === '-')) {
+          const op = consume().value;
+          const operand = parseUnary();
+          return (op === '-') ? (ctx) => CMath.neg(operand(ctx)) : operand;
+        }
+        return parsePower();
+      }
+
+      function parsePower() {
+        const base = parsePrimary();
+        if (peek() && peek().type === 'OP' && peek().value === '^') {
+          consume();
+          const exponent = parseUnary(); // Right-associative
+          return (ctx) => CMath.pow(base(ctx), exponent(ctx));
+        }
+        return base;
+      }
+
+      function parsePrimary() {
+        const tok = peek();
+        if (!tok) throw new Error('Unexpected end of formula');
+
+        if (tok.type === 'NUMBER') {
+          consume();
+          const cVal = { re: tok.value, im: 0.0 };
+          return () => cVal;
+        }
+
+        if (tok.type === 'OP' && tok.value === '(') {
+          consume();
+          const inner = parseExpr();
+          const close = peek();
+          if (!close || close.type !== 'OP' || close.value !== ')') {
+            throw new Error('Missing closing parenthesis ")"');
+          }
+          consume();
+          return inner;
+        }
+
+        if (tok.type === 'IDENT') {
+          consume();
+          const name = tok.value;
+
+          // Check if function call
+          if (peek() && peek().type === 'OP' && peek().value === '(') {
+            consume(); // '('
+            const arg = parseExpr();
+            const close = peek();
+            if (!close || close.type !== 'OP' || close.value !== ')') {
+              throw new Error(`Missing ')' after ${name}(...`);
+            }
+            consume();
+
+            switch (name) {
+              case 'exp': return (ctx) => CMath.exp(arg(ctx));
+              case 'sin': return (ctx) => CMath.sin(arg(ctx));
+              case 'cos': return (ctx) => CMath.cos(arg(ctx));
+              case 'tan': return (ctx) => CMath.tan(arg(ctx));
+              case 'sqrt': return (ctx) => CMath.sqrt(arg(ctx));
+              case 'abs': return (ctx) => CMath.abs(arg(ctx));
+              case 'conj': return (ctx) => CMath.conj(arg(ctx));
+              case 're': return (ctx) => ({ re: arg(ctx).re, im: 0 });
+              case 'im': return (ctx) => ({ re: arg(ctx).im, im: 0 });
+              case 'step': return (ctx) => ({ re: arg(ctx).re >= 0 ? 1.0 : 0.0, im: 0 });
+              case 'rect': return (ctx) => ({ re: Math.abs(arg(ctx).re) <= 0.5 ? 1.0 : 0.0, im: 0 });
+              case 'sgn': return (ctx) => ({ re: Math.sign(arg(ctx).re), im: 0 });
+              default:
+                throw new Error(`Unknown function '${name}()'`);
+            }
+          }
+
+          // Constants & Variables
+          if (name === 'x') return (ctx) => ({ re: ctx.x, im: 0.0 });
+          if (name === 'i') return () => ({ re: 0.0, im: 1.0 });
+          if (name === 'pi') return () => ({ re: Math.PI, im: 0.0 });
+          if (name === 'e') return () => ({ re: Math.E, im: 0.0 });
+
+          // Stationary eigenstates psi1 .. psi40
+          const psiMatch = name.match(/^psi(\d+)$/);
+          if (psiMatch) {
+            const stateNum = parseInt(psiMatch[1], 10);
+            if (stateNum >= 1 && stateNum <= M_BASIS) {
+              const idx = stateNum - 1;
+              return (ctx) => ({ re: eigenstates[idx][ctx.j], im: 0.0 });
+            } else {
+              throw new Error(`State '${name}' out of range (use psi1..psi${M_BASIS})`);
+            }
+          }
+
+          throw new Error(`Unknown identifier '${name}'`);
+        }
+
+        throw new Error(`Unexpected token '${tok.value}'`);
+      }
+
+      const astRoot = parseExpr();
+      if (pos < tokens.length) {
+        throw new Error(`Unexpected token '${tokens[pos].value}'`);
+      }
+      return astRoot;
+    }
+
+    // --- 5. WAVE FUNCTION EVALUATION & EIGENSTATE DECOMPOSITION ---
+    function evaluateInitialWaveFunction() {
+      const inputEl = document.getElementById('waveEqInput');
+      const statusBar = document.getElementById('eqStatusBar');
+      const statusText = document.getElementById('eqStatusText');
+      const normReadout = document.getElementById('normFactorReadout');
+      const expr = inputEl.value.trim();
+
+      try {
+        const evalFn = compileComplexAST(expr);
+        const tempRe = new Float64Array(N);
+        const tempIm = new Float64Array(N);
+
+        let normSq = 0.0;
+        for (let j = 0; j < N; j++) {
+          const val = evalFn({ x: xGrid[j], j });
+          if (!Number.isFinite(val.re) || !Number.isFinite(val.im)) {
+            throw new Error('Formula produced NaN or Infinite value on domain');
+          }
+          tempRe[j] = val.re;
+          tempIm[j] = val.im;
+          normSq += (val.re * val.re + val.im * val.im) * DX;
+        }
+
+        if (normSq < 1e-14) {
+          throw new Error('Wave function is identically zero across [-5, 5]');
+        }
+
+        const normFactor = 1.0 / Math.sqrt(normSq);
+        for (let j = 0; j < N; j++) {
+          psi0Re[j] = tempRe[j] * normFactor;
+          psi0Im[j] = tempIm[j] * normFactor;
+        }
+
+        statusBar.className = 'eq-status-bar valid';
+        statusText.innerHTML = '&#10003; Valid expression &bull; Normalized: &int;|&Psi;(x,0)|&sup2;dx = 1';
+        normReadout.textContent = `Scale A = ${normFactor.toFixed(3)}`;
+
+        computeEigenstateExpansion();
+        return true;
+      } catch (err) {
+        statusBar.className = 'eq-status-bar invalid';
+        statusText.textContent = `Syntax / Math Error: ${err.message}`;
+        normReadout.textContent = 'Keeping previous state';
+        return false;
+      }
+    }
+
+    function computeEigenstateExpansion() {
+      let sumProb = 0.0;
+      let sumE = 0.0;
+      let sumE2 = 0.0;
+      let maxProb = -1.0;
+      let dominantIdx = 0;
+
+      for (let n = 0; n < M_BASIS; n++) {
+        const psiN = eigenstates[n];
+        let cRe = 0.0;
+        let cIm = 0.0;
+        for (let j = 0; j < N; j++) {
+          // psi_n is real, so <psi_n | Psi(0)> = sum psi_n(x_j) * Psi(x_j, 0) * dx
+          const p = psiN[j];
+          cRe += p * psi0Re[j];
+          cIm += p * psi0Im[j];
+        }
+        cRe *= DX;
+        cIm *= DX;
+
+        coeffRe[n] = cRe;
+        coeffIm[n] = cIm;
+        const prob = cRe * cRe + cIm * cIm;
+        coeffProb[n] = prob;
+        coeffPhase0[n] = Math.atan2(cIm, cRe);
+
+        sumProb += prob;
+        const En = energies[n];
+        sumE += prob * En;
+        sumE2 += prob * En * En;
+
+        if (prob > maxProb) {
+          maxProb = prob;
+          dominantIdx = n;
+        }
+      }
+
+      totalCapturedProb = Math.min(1.0, sumProb);
+      expectEnergy = sumE;
+      const varianceE = Math.max(0.0, sumE2 - sumE * sumE);
+      deltaEnergy = Math.sqrt(varianceE);
+
+      // Update summary metric cards
+      document.getElementById('metricExpectE').textContent = expectEnergy.toFixed(3);
+      document.getElementById('metricDeltaE').textContent = deltaEnergy.toFixed(3);
+      document.getElementById('metricCapturedProb').textContent = `${(totalCapturedProb * 100).toFixed(1)}%`;
+      document.getElementById('metricDominantState').textContent = `n = ${dominantIdx + 1} (${(maxProb * 100).toFixed(1)}%)`;
+
+      renderStateBreakdownTable();
+      updateTimeWaveFunction(simTime);
+    }
+
+    function updateTimeWaveFunction(t) {
+      psiTRe.fill(0.0);
+      psiTIm.fill(0.0);
+
+      // Psi(x, t) = sum_{n=1}^{M} c_n * psi_n(x) * exp(-i E_n t)
+      for (let n = 0; n < M_BASIS; n++) {
+        if (coeffProb[n] < 1e-9) continue; // Skip negligible states for speed
+        const phase = -energies[n] * t;
+        const cosP = Math.cos(phase);
+        const sinP = Math.sin(phase);
+
+        // c_n(t) = (cRe + i cIm) * (cosP + i sinP)
+        const cnTRe = coeffRe[n] * cosP - coeffIm[n] * sinP;
+        const cnTIm = coeffRe[n] * sinP + coeffIm[n] * cosP;
+
+        const psiN = eigenstates[n];
+        for (let j = 0; j < N; j++) {
+          const val = psiN[j];
+          psiTRe[j] += cnTRe * val;
+          psiTIm[j] += cnTIm * val;
+        }
+      }
+
+      for (let j = 0; j < N; j++) {
+        probDensity[j] = psiTRe[j] * psiTRe[j] + psiTIm[j] * psiTIm[j];
+      }
+    }
+
+    function recalculateAllPhysics(resetClock = false) {
+      solveTISE();
+      evaluateInitialWaveFunction();
+      if (resetClock) {
+        simTime = 0.0;
+      }
+      updateTimeWaveFunction(simTime);
+    }
+
+    // --- 6. COLOR UTILITIES (Phase -> Rainbow HSL) ---
+    function phaseToColor(angleRad, alpha = 1.0) {
+      // Map [-pi, pi] to [0, 360] degrees hue
+      let deg = ((angleRad + Math.PI) / (2 * Math.PI)) * 360.0;
+      deg = ((deg % 360) + 360) % 360;
+      return `hsla(${deg.toFixed(1)}, 85%, 60%, ${alpha})`;
+    }
+
+    // --- 7. STATE BREAKDOWN TABLE & INTERACTION ---
+    const stateRowElements = [];
+
+    function initStateBreakdownDOM() {
+      const container = document.getElementById('stateListContainer');
+      container.innerHTML = '';
+      stateRowElements.length = 0;
+
+      for (let n = 0; n < M_BASIS; n++) {
+        const row = document.createElement('div');
+        row.className = 'state-row';
+        row.dataset.index = n;
+
+        row.innerHTML = `
+          <div><span class="state-n-badge">n=${n + 1}</span></div>
+          <div class="energy-cell">0.000</div>
+          <div class="bar-track"><div class="bar-fill" style="width:0%"></div></div>
+          <div class="pct-cell" style="text-align:right;font-weight:600;">0.00%</div>
+          <div class="phase-cell"><span class="phase-dot"></span><span class="phase-text">0.00</span></div>
+        `;
+
+        row.addEventListener('mouseenter', () => {
+          hoveredStateIndex = n;
+          updateSelectedStateUI();
+        });
+        row.addEventListener('mouseleave', () => {
+          hoveredStateIndex = -1;
+          updateSelectedStateUI();
+        });
+        row.addEventListener('click', () => {
+          selectedStateIndex = (selectedStateIndex === n) ? -1 : n;
+          updateSelectedStateUI();
+        });
+
+        container.appendChild(row);
+        stateRowElements.push({
+          row,
+          energyCell: row.querySelector('.energy-cell'),
+          barFill: row.querySelector('.bar-fill'),
+          pctCell: row.querySelector('.pct-cell'),
+          phaseDot: row.querySelector('.phase-dot'),
+          phaseText: row.querySelector('.phase-text')
+        });
+      }
+    }
+
+    function renderStateBreakdownTable() {
+      for (let n = 0; n < M_BASIS; n++) {
+        const item = stateRowElements[n];
+        if (!item) continue;
+        const pct = coeffProb[n] * 100.0;
+        const phase = coeffPhase0[n];
+        const color = phaseToColor(phase, 0.95);
+
+        item.energyCell.textContent = energies[n].toFixed(3);
+        item.barFill.style.width = `${Math.min(100, pct).toFixed(2)}%`;
+        item.barFill.style.background = color;
+        item.pctCell.textContent = `${pct.toFixed(2)}%`;
+        item.pctCell.style.color = pct > 0.5 ? '#f8fafc' : 'var(--text-dim)';
+        item.phaseDot.style.background = color;
+        item.phaseText.textContent = coeffProb[n] > 1e-5 ? `${phase.toFixed(2)}r` : '—';
+      }
+      updateSelectedStateUI();
+    }
+
+    function updateSelectedStateUI() {
+      const activeIdx = selectedStateIndex !== -1 ? selectedStateIndex : hoveredStateIndex;
+      const badge = document.getElementById('selectedStateBadge');
+      const clearBtn = document.getElementById('clearSelectionBtn');
+      const setPureBtn = document.getElementById('setPureStateBtn');
+
+      for (let n = 0; n < M_BASIS; n++) {
+        if (stateRowElements[n]) {
+          stateRowElements[n].row.classList.toggle('selected', n === activeIdx);
+        }
+      }
+
+      if (activeIdx !== -1 && activeIdx < M_BASIS) {
+        const pct = (coeffProb[activeIdx] * 100).toFixed(2);
+        badge.textContent = `State n=${activeIdx + 1} | E_${activeIdx + 1} = ${energies[activeIdx].toFixed(3)} | ${pct}%`;
+      } else {
+        badge.textContent = 'Hover/Click state to inspect';
+      }
+
+      if (selectedStateIndex !== -1) {
+        clearBtn.style.display = 'inline-flex';
+        setPureBtn.style.display = 'inline-flex';
+        setPureBtn.innerHTML = `Set &Psi;(0) = &psi;<sub>${selectedStateIndex + 1}</sub>`;
+      } else {
+        clearBtn.style.display = 'none';
+        setPureBtn.style.display = 'none';
+      }
+    }
+
+    // --- 8. CANVAS RENDERING ENGINE (RETINA DPI SCALED) ---
+    const potentialCanvas = document.getElementById('potentialCanvas');
+    const potentialCtx = potentialCanvas.getContext('2d');
+    const waveCanvas = document.getElementById('waveCanvas');
+    const waveCtx = waveCanvas.getContext('2d');
+    const spectrumCanvas = document.getElementById('spectrumCanvas');
+    const spectrumCtx = spectrumCanvas.getContext('2d');
+
+    function resizeCanvases() {
+      const dpr = window.devicePixelRatio || 1;
+      [potentialCanvas, waveCanvas, spectrumCanvas].forEach((canvas) => {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          canvas.width = Math.round(rect.width * dpr);
+          canvas.height = Math.round(rect.height * dpr);
+        }
+      });
+    }
+
+    // Coordinate transforms for Potential Canvas
+    function getPotentialPlotBounds(width, height) {
+      const padLeft = 48;
+      const padRight = 18;
+      const padTop = 18;
+      const padBottom = 28;
+      const plotW = width - padLeft - padRight;
+      const plotH = height - padTop - padBottom;
+      const eMin = -1.5;
+      const eMax = maxEnergyView;
+      return {
+        padLeft, padRight, padTop, padBottom, plotW, plotH, eMin, eMax,
+        xToPx: (x) => padLeft + ((x - X_MIN) / L_DOMAIN) * plotW,
+        eToPy: (e) => padTop + plotH - ((e - eMin) / (eMax - eMin)) * plotH,
+        pxToX: (px) => X_MIN + ((px - padLeft) / plotW) * L_DOMAIN,
+        pyToE: (py) => eMin + ((padTop + plotH - py) / plotH) * (eMax - eMin)
+      };
+    }
+
+    function drawPotentialCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const width = potentialCanvas.width / dpr;
+      const height = potentialCanvas.height / dpr;
+      const ctx = potentialCtx;
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+
+      const b = getPotentialPlotBounds(width, height);
+
+      // 1. Background Grid
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.font = '10.5px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#64748b';
+
+      // Vertical x-grid lines
+      for (let xVal = -5; xVal <= 5; xVal += 1) {
+        const px = b.xToPx(xVal);
+        ctx.beginPath();
+        ctx.moveTo(px, b.padTop);
+        ctx.lineTo(px, b.padTop + b.plotH);
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillText(xVal.toString(), px, height - 8);
+      }
+
+      // Horizontal energy grid lines
+      const eStep = maxEnergyView <= 15 ? 2 : (maxEnergyView <= 30 ? 5 : 10);
+      for (let eVal = 0; eVal <= b.eMax; eVal += eStep) {
+        const py = b.eToPy(eVal);
+        ctx.beginPath();
+        ctx.moveTo(b.padLeft, py);
+        ctx.lineTo(b.padLeft + b.plotW, py);
+        ctx.stroke();
+        ctx.textAlign = 'right';
+        ctx.fillText(`E=${eVal}`, b.padLeft - 6, py + 3.5);
+      }
+
+      // Clip inside plot area
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(b.padLeft, b.padTop, b.plotW, b.plotH);
+      ctx.clip();
+
+      // 2. Draw Potential V(x) shaded area & curve
+      ctx.beginPath();
+      ctx.moveTo(b.xToPx(X_MIN), b.eToPy(V[0]));
+      for (let j = 0; j < N; j++) {
+        ctx.lineTo(b.xToPx(xGrid[j]), b.eToPy(V[j]));
+      }
+      ctx.lineTo(b.xToPx(X_MAX), b.eToPy(V[N - 1]));
+      ctx.lineTo(b.xToPx(X_MAX), b.padTop + b.plotH);
+      ctx.lineTo(b.xToPx(X_MIN), b.padTop + b.plotH);
+      ctx.closePath();
+      const vGrad = ctx.createLinearGradient(0, b.padTop, 0, b.padTop + b.plotH);
+      vGrad.addColorStop(0, 'rgba(56, 189, 248, 0.22)');
+      vGrad.addColorStop(1, 'rgba(56, 189, 248, 0.03)');
+      ctx.fillStyle = vGrad;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(b.xToPx(X_MIN), b.eToPy(V[0]));
+      for (let j = 0; j < N; j++) {
+        ctx.lineTo(b.xToPx(xGrid[j]), b.eToPy(V[j]));
+      }
+      ctx.lineTo(b.xToPx(X_MAX), b.eToPy(V[N - 1]));
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // 3. Draw Stationary States psi_n(x) and Energy Levels E_n
+      const displayMode = document.querySelector('input[name="eigenDisplayMode"]:checked').value;
+      const weightByProb = document.getElementById('weightOpacityCheck').checked;
+      const activeIdx = selectedStateIndex !== -1 ? selectedStateIndex : hoveredStateIndex;
+
+      // Determine good vertical scaling for wavefunctions in energy units
+      const avgGap = Math.max(0.8, (energies[Math.min(8, M_BASIS - 1)] - energies[0]) / 8);
+      const wfScaleE = avgGap * 0.72;
+
+      for (let n = 0; n < M_BASIS; n++) {
+        const En = energies[n];
+        if (En > b.eMax + 2) continue;
+
+        const isHighlighted = (n === activeIdx);
+        const prob = coeffProb[n];
+
+        let alpha = 0.42;
+        if (weightByProb) {
+          alpha = Math.max(0.08, Math.min(0.98, Math.sqrt(prob) * 1.15));
+        }
+        if (isHighlighted) alpha = 1.0;
+
+        const yBase = b.eToPy(En);
+        const hue = (n * 32) % 360;
+        const levelColor = isHighlighted
+          ? '#fbbf24'
+          : `hsla(${hue}, 80%, 65%, ${alpha})`;
+
+        // Energy baseline E_n
+        ctx.beginPath();
+        ctx.moveTo(b.padLeft, yBase);
+        ctx.lineTo(b.padLeft + b.plotW, yBase);
+        ctx.strokeStyle = isHighlighted ? 'rgba(251, 191, 36, 0.85)' : `rgba(148, 163, 184, ${alpha * 0.45})`;
+        ctx.lineWidth = isHighlighted ? 1.5 : 1.0;
+        ctx.stroke();
+
+        // Stationary state curve
+        if (displayMode !== 'levels_only' && (n < 16 || isHighlighted || prob > 0.01)) {
+          const psiN = eigenstates[n];
+          ctx.beginPath();
+          ctx.moveTo(b.xToPx(X_MIN), yBase);
+          for (let j = 0; j < N; j++) {
+            const val = (displayMode === 'density') ? (psiN[j] * psiN[j] * 1.4) : psiN[j];
+            const py = b.eToPy(En + val * wfScaleE);
+            ctx.lineTo(b.xToPx(xGrid[j]), py);
+          }
+          ctx.lineTo(b.xToPx(X_MAX), yBase);
+
+          if (isHighlighted) {
+            ctx.save();
+            ctx.lineTo(b.xToPx(X_MIN), yBase);
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.18)';
+            ctx.fill();
+            ctx.restore();
+          }
+
+          ctx.strokeStyle = levelColor;
+          ctx.lineWidth = isHighlighted ? 2.4 : 1.35;
+          ctx.stroke();
+        }
+      }
+
+      // 4. Draw Expectation Value of Energy <E> dashed line
+      if (expectEnergy >= b.eMin && expectEnergy <= b.eMax) {
+        const yExp = b.eToPy(expectEnergy);
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.moveTo(b.padLeft, yExp);
+        ctx.lineTo(b.padLeft + b.plotW, yExp);
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(9, 13, 22, 0.85)';
+        ctx.fillRect(b.padLeft + b.plotW - 102, yExp - 18, 98, 16);
+        ctx.fillStyle = '#fbbf24';
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 10.5px "JetBrains Mono", monospace';
+        ctx.fillText(`<E> = ${expectEnergy.toFixed(2)}`, b.padLeft + b.plotW - 8, yExp - 6);
+        ctx.restore();
+      }
+
+      ctx.restore(); // End clip
+      ctx.restore();
+    }
+
+    function drawTimeEvolutionCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const width = waveCanvas.width / dpr;
+      const height = waveCanvas.height / dpr;
+      const ctx = waveCtx;
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+
+      const padLeft = 48;
+      const padRight = 18;
+      const padTop = 18;
+      const padBottom = 28;
+      const plotW = width - padLeft - padRight;
+      const plotH = height - padTop - padBottom;
+
+      const yMax = 1.65; // Vertical range [-yMax, +yMax]
+      const xToPx = (x) => padLeft + ((x - X_MIN) / L_DOMAIN) * plotW;
+      const yToPy = (y) => padTop + plotH * 0.5 - (y / yMax) * (plotH * 0.5);
+      const yZero = yToPy(0);
+
+      // 1. Grid Lines
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.font = '10.5px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#64748b';
+
+      for (let xVal = -5; xVal <= 5; xVal += 1) {
+        const px = xToPx(xVal);
+        ctx.beginPath();
+        ctx.moveTo(px, padTop);
+        ctx.lineTo(px, padTop + plotH);
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillText(xVal.toString(), px, height - 8);
+      }
+
+      [-1.0, -0.5, 0.0, 0.5, 1.0, 1.5].forEach((yVal) => {
+        const py = yToPy(yVal);
+        ctx.beginPath();
+        ctx.moveTo(padLeft, py);
+        ctx.lineTo(padLeft + plotW, py);
+        ctx.strokeStyle = (yVal === 0) ? 'rgba(148, 163, 184, 0.28)' : 'rgba(148, 163, 184, 0.08)';
+        ctx.stroke();
+        ctx.textAlign = 'right';
+        ctx.fillText(yVal.toFixed(1), padLeft - 6, py + 3.5);
+      });
+
+      // Clip to plot area
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padLeft, padTop, plotW, plotH);
+      ctx.clip();
+
+      // 2. Subtle reference silhouette of Potential V(x) in background
+      ctx.beginPath();
+      ctx.moveTo(xToPx(X_MIN), yZero);
+      for (let j = 0; j < N; j++) {
+        const vScaled = (V[j] / maxEnergyView) * 1.35;
+        ctx.lineTo(xToPx(xGrid[j]), yToPy(vScaled));
+      }
+      ctx.lineTo(xToPx(X_MAX), yZero);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
+      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const showProb = document.getElementById('showProbCheck').checked;
+      const showRainbow = document.getElementById('showPhaseColorCheck').checked;
+      const showReal = document.getElementById('showRealCheck').checked;
+      const showImag = document.getElementById('showImagCheck').checked;
+      const showExpectX = document.getElementById('showExpectXCheck').checked;
+
+      // 3. Probability Density |Psi(x, t)|^2 Fill & Curve
+      if (showProb) {
+        if (showRainbow) {
+          // Draw vertical phase-colored bars under |Psi(x,t)|^2
+          const colW = (plotW / N) + 0.8;
+          for (let j = 0; j < N; j++) {
+            const p = probDensity[j];
+            if (p < 1e-4) continue;
+            const phase = Math.atan2(psiTIm[j], psiTRe[j]);
+            ctx.fillStyle = phaseToColor(phase, 0.42);
+            const px = xToPx(xGrid[j]) - colW * 0.5;
+            const py = yToPy(p);
+            ctx.fillRect(px, py, colW, yZero - py);
+          }
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(xToPx(X_MIN), yZero);
+          for (let j = 0; j < N; j++) {
+            ctx.lineTo(xToPx(xGrid[j]), yToPy(probDensity[j]));
+          }
+          ctx.lineTo(xToPx(X_MAX), yZero);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(248, 250, 252, 0.16)';
+          ctx.fill();
+        }
+      }
+
+      // 4. Real Part Re[Psi(x, t)]
+      if (showReal) {
+        ctx.beginPath();
+        ctx.moveTo(xToPx(X_MIN), yZero);
+        for (let j = 0; j < N; j++) {
+          ctx.lineTo(xToPx(xGrid[j]), yToPy(psiTRe[j]));
+        }
+        ctx.lineTo(xToPx(X_MAX), yZero);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+      }
+
+      // 5. Imaginary Part Im[Psi(x, t)]
+      if (showImag) {
+        ctx.beginPath();
+        ctx.moveTo(xToPx(X_MIN), yZero);
+        for (let j = 0; j < N; j++) {
+          ctx.lineTo(xToPx(xGrid[j]), yToPy(psiTIm[j]));
+        }
+        ctx.lineTo(xToPx(X_MAX), yZero);
+        ctx.strokeStyle = '#f472b6';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+      }
+
+      // 6. Probability Density |Psi(x,t)|^2 Envelope Line on top
+      if (showProb) {
+        ctx.beginPath();
+        ctx.moveTo(xToPx(X_MIN), yZero);
+        for (let j = 0; j < N; j++) {
+          ctx.lineTo(xToPx(xGrid[j]), yToPy(probDensity[j]));
+        }
+        ctx.lineTo(xToPx(X_MAX), yZero);
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 2.3;
+        ctx.stroke();
+      }
+
+      // 7. Compute & Draw Expectation Value <x>(t), Uncertainty Delta x(t), and Momentum <p>(t)
+      let meanX = 0.0;
+      let meanX2 = 0.0;
+      let meanP = 0.0; // <p> = Im( integral Psi^* (dPsi/dx) dx )
+      for (let j = 0; j < N; j++) {
+        const x = xGrid[j];
+        const rho = probDensity[j] * DX;
+        meanX += x * rho;
+        meanX2 += x * x * rho;
+
+        if (j > 0 && j < N - 1) {
+          const dRe = (psiTRe[j + 1] - psiTRe[j - 1]) / (2 * DX);
+          const dIm = (psiTIm[j + 1] - psiTIm[j - 1]) / (2 * DX);
+          // Im( (Re - i Im) * (dRe + i dIm) ) = Re * dIm - Im * dRe
+          meanP += (psiTRe[j] * dIm - psiTIm[j] * dRe) * DX;
+        }
+      }
+      const deltaX = Math.sqrt(Math.max(0.0, meanX2 - meanX * meanX));
+
+      document.getElementById('expectationReadout').textContent =
+        `<x> = ${meanX >= 0 ? '+' : ''}${meanX.toFixed(2)}  •  Δx = ${deltaX.toFixed(2)}  •  <p> = ${meanP >= 0 ? '+' : ''}${meanP.toFixed(2)}`;
+
+      if (showExpectX) {
+        const pxMean = xToPx(meanX);
+        const pxLeft = xToPx(meanX - deltaX);
+        const pxRight = xToPx(meanX + deltaX);
+
+        // Uncertainty band [ <x> - dx, <x> + dx ]
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.09)';
+        ctx.fillRect(pxLeft, padTop, pxRight - pxLeft, plotH);
+
+        // Vertical marker at <x>
+        ctx.beginPath();
+        ctx.setLineDash([4, 4]);
+        ctx.moveTo(pxMean, padTop);
+        ctx.lineTo(pxMean, padTop + plotH);
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Marker dot on axis
+        ctx.beginPath();
+        ctx.arc(pxMean, yZero, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fill();
+      }
+
+      ctx.restore(); // End clip
+      ctx.restore();
+    }
+
+    function drawSpectrumOverviewCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const width = spectrumCanvas.width / dpr;
+      const height = spectrumCanvas.height / dpr;
+      const ctx = spectrumCtx;
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+
+      const numBars = 25;
+      const padBottom = 16;
+      const padTop = 6;
+      const chartH = height - padBottom - padTop;
+      const colW = width / numBars;
+
+      const activeIdx = selectedStateIndex !== -1 ? selectedStateIndex : hoveredStateIndex;
+
+      // Find max probability for smart scaling (at least 0.25 so small bars aren't giant noise)
+      let maxP = 0.25;
+      for (let n = 0; n < numBars; n++) {
+        if (coeffProb[n] > maxP) maxP = coeffProb[n];
+      }
+
+      for (let n = 0; n < numBars; n++) {
+        const x = n * colW;
+        const prob = coeffProb[n];
+        const barH = Math.max(2, (prob / maxP) * chartH);
+        const y = padTop + chartH - barH;
+
+        // Time-dependent phase arg(c_n * exp(-i E_n t))
+        const livePhase = coeffPhase0[n] - energies[n] * simTime;
+        const isHighlighted = (n === activeIdx);
+
+        if (isHighlighted) {
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.16)';
+          ctx.fillRect(x, 0, colW, height);
+        }
+
+        ctx.fillStyle = prob > 1e-4 ? phaseToColor(livePhase, 0.92) : 'rgba(148, 163, 184, 0.18)';
+        ctx.fillRect(x + 2, y, Math.max(2, colW - 4), barH);
+
+        if (n % 2 === 0 || isHighlighted) {
+          ctx.fillStyle = isHighlighted ? '#38bdf8' : '#64748b';
+          ctx.font = isHighlighted ? 'bold 9.5px "JetBrains Mono", monospace' : '9px "JetBrains Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${n + 1}`, x + colW * 0.5, height - 3);
+        }
+      }
+
+      ctx.restore();
+    }
+
+    // --- 9. INTERACTIVE POTENTIAL DRAWING (MOUSE & TOUCH) ---
+    let isDrawingPotential = false;
+    let lastDrawGridIdx = -1;
+    let lastDrawValue = 0.0;
+
+    function getCanvasMouseCoords(canvas, clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        px: clientX - rect.left,
+        py: clientY - rect.top,
+        width: rect.width,
+        height: rect.height
+      };
+    }
+
+    function applyPotentialBrush(clientX, clientY) {
+      const { px, py, width, height } = getCanvasMouseCoords(potentialCanvas, clientX, clientY);
+      const b = getPotentialPlotBounds(width, height);
+
+      const xVal = b.pxToX(px);
+      const eVal = Math.max(b.eMin, Math.min(b.eMax, b.pyToE(py)));
+
+      // Map xVal to interior index j in [0, N-1]
+      const gridIdx = Math.max(0, Math.min(N - 1, Math.round(((xVal - X_MIN) / L_DOMAIN) * (N + 1) - 1)));
+
+      if (lastDrawGridIdx === -1) {
+        // Apply soft 3-point brush around gridIdx
+        for (let dj = -1; dj <= 1; dj++) {
+          const idx = gridIdx + dj;
+          if (idx >= 0 && idx < N) V[idx] = eVal;
+        }
+      } else {
+        // Linearly interpolate between lastDrawGridIdx and gridIdx so fast mouse movement has no gaps
+        const iStart = Math.min(lastDrawGridIdx, gridIdx);
+        const iEnd = Math.max(lastDrawGridIdx, gridIdx);
+        const vStart = (lastDrawGridIdx <= gridIdx) ? lastDrawValue : eVal;
+        const vEnd = (lastDrawGridIdx <= gridIdx) ? eVal : lastDrawValue;
+        const span = iEnd - iStart;
+
+        for (let idx = iStart; idx <= iEnd; idx++) {
+          const t = span === 0 ? 1.0 : (idx - iStart) / span;
+          V[idx] = vStart + t * (vEnd - vStart);
+        }
+      }
+
+      lastDrawGridIdx = gridIdx;
+      lastDrawValue = eVal;
+
+      recalculateAllPhysics(false);
+    }
+
+    potentialCanvas.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      isDrawingPotential = true;
+      lastDrawGridIdx = -1;
+      applyPotentialBrush(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      const { px, py, width, height } = getCanvasMouseCoords(potentialCanvas, e.clientX, e.clientY);
+      const b = getPotentialPlotBounds(width, height);
+
+      if (px >= b.padLeft && px <= b.padLeft + b.plotW && py >= b.padTop && py <= b.padTop + b.plotH) {
+        const xVal = b.pxToX(px);
+        const eVal = b.pyToE(py);
+        document.getElementById('cursorReadoutPotential').textContent =
+          `x: ${xVal >= 0 ? '+' : ''}${xVal.toFixed(2)}, E/V: ${eVal.toFixed(2)}`;
+
+        // If not dragging, allow hovering near an energy level E_n to highlight it
+        if (!isDrawingPotential) {
+          let closestState = -1;
+          let minPxDist = 9.0;
+          for (let n = 0; n < M_BASIS; n++) {
+            const yLevel = b.eToPy(energies[n]);
+            const dist = Math.abs(py - yLevel);
+            if (dist < minPxDist) {
+              minPxDist = dist;
+              closestState = n;
+            }
+          }
+          if (closestState !== hoveredStateIndex) {
+            hoveredStateIndex = closestState;
+            updateSelectedStateUI();
+          }
+        }
+      }
+
+      if (isDrawingPotential) {
+        applyPotentialBrush(e.clientX, e.clientY);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDrawingPotential = false;
+      lastDrawGridIdx = -1;
+    });
+
+    // Touch support for sculpting V(x) on mobile/tablets
+    potentialCanvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 0) {
+        e.preventDefault();
+        isDrawingPotential = true;
+        lastDrawGridIdx = -1;
+        applyPotentialBrush(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: false });
+
+    potentialCanvas.addEventListener('touchmove', (e) => {
+      if (isDrawingPotential && e.touches.length > 0) {
+        e.preventDefault();
+        applyPotentialBrush(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: false });
+
+    potentialCanvas.addEventListener('touchend', () => {
+      isDrawingPotential = false;
+      lastDrawGridIdx = -1;
+    });
+
+    // Spectrum overview bar chart click/hover interaction
+    spectrumCanvas.addEventListener('mousemove', (e) => {
+      const rect = spectrumCanvas.getBoundingClientRect();
+      const idx = Math.floor(((e.clientX - rect.left) / rect.width) * 25);
+      if (idx >= 0 && idx < 25) {
+        hoveredStateIndex = idx;
+        updateSelectedStateUI();
+      }
+    });
+
+    spectrumCanvas.addEventListener('mouseleave', () => {
+      hoveredStateIndex = -1;
+      updateSelectedStateUI();
+    });
+
+    spectrumCanvas.addEventListener('click', (e) => {
+      const rect = spectrumCanvas.getBoundingClientRect();
+      const idx = Math.floor(((e.clientX - rect.left) / rect.width) * 25);
+      if (idx >= 0 && idx < 25) {
+        selectedStateIndex = (selectedStateIndex === idx) ? -1 : idx;
+        updateSelectedStateUI();
+        if (selectedStateIndex !== -1 && stateRowElements[selectedStateIndex]) {
+          stateRowElements[selectedStateIndex].row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    });
+
+    // --- 10. UI CONTROLS & EVENT BINDINGS ---
+    document.getElementById('potentialPresetSelect').addEventListener('change', (e) => {
+      loadPotentialPreset(e.target.value);
+    });
+
+    document.getElementById('smoothPotentialBtn').addEventListener('click', () => {
+      smoothPotential();
+    });
+
+    document.getElementById('clearPotentialBtn').addEventListener('click', () => {
+      V.fill(0.0);
+      recalculateAllPhysics(false);
+    });
+
+    document.getElementById('energyScaleSlider').addEventListener('input', (e) => {
+      maxEnergyView = parseFloat(e.target.value);
+      document.getElementById('energyScaleLabel').textContent = maxEnergyView.toFixed(0);
+    });
+
+    // Wave function preset & equation input events
+    const waveEqInput = document.getElementById('waveEqInput');
+    document.getElementById('wavePresetSelect').addEventListener('change', (e) => {
+      waveEqInput.value = e.target.value;
+      simTime = 0.0;
+      evaluateInitialWaveFunction();
+    });
+
+    waveEqInput.addEventListener('input', () => {
+      evaluateInitialWaveFunction();
+    });
+
+    waveEqInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        simTime = 0.0;
+        evaluateInitialWaveFunction();
+      }
+    });
+
+    document.getElementById('applyEqBtn').addEventListener('click', () => {
+      simTime = 0.0;
+      evaluateInitialWaveFunction();
+    });
+
+    // Syntax helper quick-insert chips
+    document.querySelectorAll('.syntax-help code[data-insert]').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const snippet = chip.getAttribute('data-insert');
+        const start = waveEqInput.selectionStart || waveEqInput.value.length;
+        const end = waveEqInput.selectionEnd || waveEqInput.value.length;
+        const current = waveEqInput.value;
+        waveEqInput.value = current.slice(0, start) + snippet + current.slice(end);
+        waveEqInput.focus();
+        evaluateInitialWaveFunction();
+      });
+    });
+
+    // Selection buttons in State Breakdown panel
+    document.getElementById('clearSelectionBtn').addEventListener('click', () => {
+      selectedStateIndex = -1;
+      updateSelectedStateUI();
+    });
+
+    document.getElementById('setPureStateBtn').addEventListener('click', () => {
+      if (selectedStateIndex !== -1) {
+        waveEqInput.value = `psi${selectedStateIndex + 1}`;
+        simTime = 0.0;
+        evaluateInitialWaveFunction();
+      }
+    });
+
+    // Playback Controls
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    playPauseBtn.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      playPauseBtn.innerHTML = isPlaying ? '&#9208; Pause' : '&#9654; Play';
+    });
+
+    document.getElementById('resetTimeBtn').addEventListener('click', () => {
+      simTime = 0.0;
+      updateTimeWaveFunction(simTime);
+      document.getElementById('timeReadoutBadge').textContent = `t = ${simTime.toFixed(3)}`;
+    });
+
+    document.getElementById('stepTimeBtn').addEventListener('click', () => {
+      isPlaying = false;
+      playPauseBtn.innerHTML = '&#9654; Play';
+      simTime += 0.025 * animSpeed;
+      updateTimeWaveFunction(simTime);
+      document.getElementById('timeReadoutBadge').textContent = `t = ${simTime.toFixed(3)}`;
+    });
+
+    document.getElementById('speedSlider').addEventListener('input', (e) => {
+      animSpeed = parseFloat(e.target.value);
+      document.getElementById('speedValueLabel').textContent = `${animSpeed.toFixed(1)}×`;
+    });
+
+    // --- 11. MAIN ANIMATION LOOP ---
+    let lastFrameTime = performance.now();
+
+    function animationLoop(now) {
+      const dtReal = Math.min(0.05, (now - lastFrameTime) / 1000.0);
+      lastFrameTime = now;
+
+      if (isPlaying) {
+        simTime += dtReal * 0.45 * animSpeed;
+        updateTimeWaveFunction(simTime);
+        document.getElementById('timeReadoutBadge').textContent = `t = ${simTime.toFixed(3)}`;
+      }
+
+      drawPotentialCanvas();
+      drawTimeEvolutionCanvas();
+      drawSpectrumOverviewCanvas();
+
+      requestAnimationFrame(animationLoop);
+    }
+
+    // --- 12. INITIALIZATION ON WINDOW LOAD ---
+    window.addEventListener('resize', () => {
+      resizeCanvases();
+    });
+
+    window.onload = function () {
+      initStateBreakdownDOM();
+      resizeCanvases();
+      loadPotentialPreset('harmonic');
+      requestAnimationFrame((ts) => {
+        lastFrameTime = ts;
+        animationLoop(ts);
+      });
+    };
+  </script>
+</body>
+</html>
