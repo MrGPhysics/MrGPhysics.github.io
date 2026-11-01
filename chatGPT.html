@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AP Calculus AB · Area & Solids of Revolution</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@13.2.0/lib/browser/math.js"></script>
+<style>
+  :root {
+    --ink: #142237;
+    --muted: #617086;
+    --line: #d9e2ec;
+    --paper: #ffffff;
+    --wash: #f3f7fb;
+    --blue: #3267d5;
+    --orange: #e58a32;
+    --teal: #0f9f86;
+    --navy: #10233e;
+    --shadow: 0 12px 32px rgba(22, 43, 71, .08);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--wash); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  header { background: linear-gradient(125deg, #10233e, #203f6d); color: white; padding: 30px max(22px, calc((100vw - 1400px) / 2)); }
+  .eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: 11px; font-weight: 800; color: #9ec7ff; }
+  h1 { margin: 7px 0 8px; letter-spacing: -.035em; line-height: 1.1; font-size: clamp(27px, 3vw, 42px); }
+  header p { margin: 0; color: #d8e5f6; max-width: 850px; line-height: 1.55; }
+  main { width: min(1400px, calc(100% - 36px)); margin: 24px auto 46px; }
+  .controls { display: grid; grid-template-columns: 1.1fr 1fr 1fr 1fr 1fr; gap: 13px; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 17px; box-shadow: var(--shadow); }
+  .field { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+  label { font-size: 12px; font-weight: 800; color: #47566a; }
+  input, select { width: 100%; min-width: 0; height: 42px; border: 1px solid #c9d5e3; border-radius: 9px; padding: 0 11px; color: var(--ink); background: #fbfdff; font: 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; outline: none; }
+  select { font: 14px system-ui, sans-serif; }
+  input:focus, select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(50,103,213,.12); }
+  .form-bottom { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding-top: 2px; }
+  .button-row { display: flex; gap: 9px; flex-wrap: wrap; }
+  button { border: 0; border-radius: 9px; padding: 11px 16px; font-weight: 800; cursor: pointer; font-size: 13px; }
+  .primary { color: #fff; background: var(--blue); box-shadow: 0 5px 12px rgba(50,103,213,.2); }
+  .secondary { color: #24405e; background: #edf3fa; border: 1px solid #d9e3ee; }
+  .hint { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .message { margin-top: 12px; min-height: 18px; color: #a53c28; font-size: 13px; font-weight: 650; }
+  .readouts { display: flex; gap: 10px; flex-wrap: wrap; margin: 15px 0 21px; }
+  .metric { flex: 1 1 180px; background: white; border: 1px solid var(--line); border-radius: 12px; padding: 13px 16px; }
+  .metric .label { text-transform: uppercase; letter-spacing: .08em; color: #687990; font-size: 10px; font-weight: 850; }
+  .metric .value { margin-top: 5px; font-size: 19px; font-weight: 850; letter-spacing: -.02em; }
+  .sections { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: stretch; }
+  .panel { background: white; border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
+  .panel-head { padding: 18px 20px 12px; display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .step { display: inline-flex; width: 27px; height: 27px; justify-content: center; align-items: center; border-radius: 8px; background: #eaf1ff; color: #285ac0; font-weight: 900; font-size: 12px; margin-right: 8px; }
+  h2 { display: inline; font-size: 18px; letter-spacing: -.025em; margin: 0; }
+  .panel-head p { font-size: 12px; line-height: 1.45; color: var(--muted); margin: 8px 0 0 35px; }
+  .plot { width: 100%; height: 470px; }
+  .plot-note { padding: 0 20px 17px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+  .lesson-note { margin-top: 18px; padding: 15px 18px; border-radius: 12px; border: 1px solid #dbe5f0; background: #edf4fb; color: #42556c; font-size: 12px; line-height: 1.6; }
+  .lesson-note strong { color: #203c5c; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(25,55,90,.07); border-radius: 4px; padding: 1px 4px; }
+  footer { text-align: center; padding: 0 18px 28px; color: #8290a2; font-size: 11px; }
+  @media (max-width: 1050px) { .controls { grid-template-columns: repeat(3, minmax(0, 1fr)); } .sections { grid-template-columns: 1fr; } .plot { height: 440px; } }
+  @media (max-width: 620px) { main { width: calc(100% - 20px); margin-top: 12px; } header { padding: 24px 18px; } .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; gap: 11px; } .plot { height: 360px; } .panel-head { padding: 14px 14px 10px; } .plot-note { padding: 0 14px 14px; } .form-bottom { align-items: flex-start; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">AP Calculus AB · Interactive exploration</div>
+  <h1>Area Between Curves & Solids of Revolution</h1>
+  <p>Define two functions, choose an interval, explore the enclosed area, then rotate the region around a line. Drag the 3D graph to orbit and use the scroll wheel or trackpad to zoom.</p>
+</header>
+<main>
+  <section class="controls" aria-label="Function and rotation settings">
+    <div class="field">
+      <label for="fExpr">Function f(x)</label>
+      <input id="fExpr" value="x^2" spellcheck="false" autocomplete="off" aria-label="Function f of x expression">
+    </div>
+    <div class="field">
+      <label for="gExpr">Function g(x)</label>
+      <input id="gExpr" value="2" spellcheck="false" autocomplete="off" aria-label="Function g of x expression">
+    </div>
+    <div class="field">
+      <label for="aVal">Left endpoint a</label>
+      <input id="aVal" type="number" step="any" value="-1.25">
+    </div>
+    <div class="field">
+      <label for="bVal">Right endpoint b</label>
+      <input id="bVal" type="number" step="any" value="1.25">
+    </div>
+    <div class="field">
+      <label for="axisType">Axis of rotation</label>
+      <select id="axisType">
+        <option value="horizontal">Horizontal line y = c</option>
+        <option value="vertical">Vertical line x = c</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="axisVal">Axis value c</label>
+      <input id="axisVal" type="number" step="any" value="0">
+    </div>
+    <div class="form-bottom">
+      <div class="button-row">
+        <button id="updateBtn" class="primary" type="button">Update graphs</button>
+        <button id="resetBtn" class="secondary" type="button">Reset example</button>
+      </div>
+      <div class="hint">Examples: <code>x^2</code>, <code>sin(x)</code>, <code>sqrt(x+2)</code>, <code>e^x</code>, <code>2*x+1</code></div>
+    </div>
+  </section>
+  <div id="message" class="message" role="status" aria-live="polite"></div>
+  <section class="readouts" aria-label="Calculated information">
+    <div class="metric"><div class="label">Region area</div><div class="value" id="areaValue">—</div></div>
+    <div class="metric"><div class="label">Interval</div><div class="value" id="intervalValue">—</div></div>
+    <div class="metric"><div class="label">Rotation axis</div><div class="value" id="axisReadout">—</div></div>
+  </section>
+  <section class="sections">
+    <article class="panel">
+      <div class="panel-head">
+        <div><div><span class="step">01</span><h2>Area between curves</h2></div><p>Shaded region between the two functions on [a, b].</p></div>
+      </div>
+      <div id="plot2d" class="plot" aria-label="Two-dimensional graph showing the area between the functions"></div>
+      <div class="plot-note">The numerical area is approximated by adding thin trapezoids under the distance between the curves: <strong>∫ |f(x) − g(x)| dx</strong> on the chosen interval.</div>
+    </article>
+    <article class="panel">
+      <div class="panel-head">
+        <div><div><span class="step">02</span><h2>Solid of revolution</h2></div><p>Rotate the region around the selected line and inspect the resulting 3D surfaces.</p></div>
+      </div>
+      <div id="plot3d" class="plot" aria-label="Interactive three-dimensional solid of revolution"></div>
+      <div class="plot-note">Drag to rotate the view. Scroll or pinch to zoom; use the graph controls to reset the camera. The colored surfaces mark the boundary of the rotated region.</div>
+    </article>
+  </section>
+  <aside class="lesson-note">
+    <strong>Function input:</strong> type an expression in terms of <code>x</code>; use <code>^</code> for powers and standard functions such as <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>sqrt</code>, <code>abs</code>, <code>ln</code>, and <code>exp</code>. Trigonometric functions use radians.<br>
+    <strong>Rotation note:</strong> the horizontal-axis view builds inner/outer radius surfaces, including a disk where the region crosses the axis. For the cleanest vertical-axis solid, choose <code>x = c</code> outside the interval [a, b] or at an endpoint; if the axis cuts through the interval, the rotated surfaces can overlap.
+  </aside>
+</main>
+<footer>AP Calculus AB classroom tool · Runs in a modern browser</footer>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const fInput = $('fExpr'), gInput = $('gExpr'), aInput = $('aVal'), bInput = $('bVal');
+  const axisTypeInput = $('axisType'), axisValueInput = $('axisVal');
+  const message = $('message');
+  const N = 121;
+  const N_THETA = 49;
+  const theta = Array.from({ length: N_THETA }, (_, j) => 2 * Math.PI * j / (N_THETA - 1));
+  const plotConfig = { responsive: true, displaylogo: false, scrollZoom: true, modeBarButtonsToRemove: ['lasso2d', 'select2d'] };
+  const baseFont = { family: 'Inter, system-ui, sans-serif', color: '#34445a', size: 12 };
+
+  function linspace(start, end, count) {
+    return Array.from({ length: count }, (_, i) => start + (end - start) * i / (count - 1));
+  }
+  function safeCompile(expr) {
+    const text = expr.trim();
+    if (!text) throw new Error('Enter an expression for both functions.');
+    return math.compile(text);
+  }
+  function sampleFunction(compiled, x) {
+    const val = compiled.evaluate({ x });
+    if (typeof val !== 'number' || !Number.isFinite(val)) throw new Error('A function is undefined or non-real somewhere in the selected interval. Check the expression and interval.');
+    return val;
+  }
+  function approximateArea(xs, fv, gv) {
+    let sum = 0;
+    for (let i = 1; i < xs.length; i++) {
+      const d0 = Math.abs(fv[i - 1] - gv[i - 1]);
+      const d1 = Math.abs(fv[i] - gv[i]);
+      sum += (xs[i] - xs[i - 1]) * (d0 + d1) / 2;
+    }
+    return sum;
+  }
+  function constantColorScale(color) { return [[0, color], [1, color]]; }
+  function surfaceTrace(x, y, z, name, color, opacity, showlegend) {
+    return {
+      type: 'surface', x, y, z, name, showscale: false, showlegend: !!showlegend,
+      colorscale: constantColorScale(color), cmin: 0, cmax: 1, opacity,
+      hovertemplate: 'x: %{x:.3f}<br>y: %{y:.3f}<br>z: %{z:.3f}<extra>' + name + '</extra>',
+      lighting: { ambient: 0.72, diffuse: 0.75, specular: 0.22, roughness: 0.72, fresnel: 0.15 },
+      lightposition: { x: 100, y: 150, z: 100 }
+    };
+  }
+  function makeHorizontalRadiusSurface(xs, radii, c, name, color, opacity, showlegend) {
+    const X = [], Y = [], Z = [];
+    for (let i = 0; i < xs.length; i++) {
+      const xr = [], yr = [], zr = [];
+      for (let j = 0; j < theta.length; j++) {
+        xr.push(xs[i]);
+        yr.push(c + radii[i] * Math.cos(theta[j]));
+        zr.push(radii[i] * Math.sin(theta[j]));
+      }
+      X.push(xr); Y.push(yr); Z.push(zr);
+    }
+    return surfaceTrace(X, Y, Z, name, color, opacity, showlegend);
+  }
+  function makeHorizontalCap(xAt, rInner, rOuter, c, name) {
+    const radialSteps = 13, X = [], Y = [], Z = [];
+    for (let i = 0; i < radialSteps; i++) {
+      const r = rInner + (rOuter - rInner) * i / (radialSteps - 1);
+      const xr = [], yr = [], zr = [];
+      for (let j = 0; j < theta.length; j++) {
+        xr.push(xAt); yr.push(c + r * Math.cos(theta[j])); zr.push(r * Math.sin(theta[j]));
+      }
+      X.push(xr); Y.push(yr); Z.push(zr);
+    }
+    return surfaceTrace(X, Y, Z, name, '#0f9f86', 0.5, false);
+  }
+  function makeVerticalCurveSurface(xs, vals, h, name, color, opacity) {
+    const X = [], Y = [], Z = [];
+    for (let i = 0; i < xs.length; i++) {
+      const xr = [], yr = [], zr = [];
+      for (let j = 0; j < theta.length; j++) {
+        xr.push(h + (xs[i] - h) * Math.cos(theta[j]));
+        yr.push(vals[i]);
+        zr.push((xs[i] - h) * Math.sin(theta[j]));
+      }
+      X.push(xr); Y.push(yr); Z.push(zr);
+    }
+    return surfaceTrace(X, Y, Z, name, color, opacity, true);
+  }
+  function makeVerticalCap(xAt, fAt, gAt, h, name) {
+    const steps = 13, low = Math.min(fAt, gAt), high = Math.max(fAt, gAt), X = [], Y = [], Z = [];
+    for (let i = 0; i < steps; i++) {
+      const y = low + (high - low) * i / (steps - 1);
+      const xr = [], yr = [], zr = [];
+      for (let j = 0; j < theta.length; j++) {
+        xr.push(h + (xAt - h) * Math.cos(theta[j]));
+        yr.push(y);
+        zr.push((xAt - h) * Math.sin(theta[j]));
+      }
+      X.push(xr); Y.push(yr); Z.push(zr);
+    }
+    return surfaceTrace(X, Y, Z, name, '#0f9f86', 0.5, false);
+  }
+  function axisLine3d(axisType, c, a, b, yMin, yMax) {
+    if (axisType === 'horizontal') {
+      return { type: 'scatter3d', mode: 'lines', name: 'Axis of rotation', x: [a, b], y: [c, c], z: [0, 0],
+        line: { color: '#25354a', width: 6, dash: 'dash' }, hoverinfo: 'skip', showlegend: true };
+    }
+    return { type: 'scatter3d', mode: 'lines', name: 'Axis of rotation', x: [c, c], y: [yMin, yMax], z: [0, 0],
+      line: { color: '#25354a', width: 6, dash: 'dash' }, hoverinfo: 'skip', showlegend: true };
+  }
+  function render2d(xs, fv, gv, a, b, axisType, c) {
+    const lower = fv.map((v, i) => Math.min(v, gv[i]));
+    const upper = fv.map((v, i) => Math.max(v, gv[i]));
+    const polygonX = xs.concat(xs.slice().reverse());
+    const polygonY = lower.concat(upper.slice().reverse());
+    let yMin = Math.min(...fv, ...gv, ...(axisType === 'horizontal' ? [c] : []));
+    let yMax = Math.max(...fv, ...gv, ...(axisType === 'horizontal' ? [c] : []));
+    if (Math.abs(yMax - yMin) < 1e-8) { yMin -= 1; yMax += 1; }
+    const yPad = (yMax - yMin) * 0.09;
+    yMin -= yPad; yMax += yPad;
+    let xMin = a, xMax = b;
+    if (axisType === 'vertical') { xMin = Math.min(a, c); xMax = Math.max(b, c); }
+    if (Math.abs(xMax - xMin) < 1e-8) { xMin -= 1; xMax += 1; }
+    const xPad = (xMax - xMin) * 0.04;
+    xMin -= xPad; xMax += xPad;
+    const traces = [
+      { type: 'scatter', mode: 'lines', x: polygonX, y: polygonY, fill: 'toself', fillcolor: 'rgba(15,159,134,0.22)',
+        line: { color: 'rgba(15,159,134,0)', width: 0 }, name: 'Area between curves', hoverinfo: 'skip' },
+      { type: 'scatter', mode: 'lines', x: xs, y: fv, name: 'f(x)', line: { color: '#3267d5', width: 3 },
+        hovertemplate: 'x = %{x:.3f}<br>f(x) = %{y:.3f}<extra></extra>' },
+      { type: 'scatter', mode: 'lines', x: xs, y: gv, name: 'g(x)', line: { color: '#e58a32', width: 3 },
+        hovertemplate: 'x = %{x:.3f}<br>g(x) = %{y:.3f}<extra></extra>' }
+    ];
+    if (axisType === 'horizontal') {
+      traces.push({ type: 'scatter', mode: 'lines', x: [xMin, xMax], y: [c, c], name: 'Axis of rotation',
+        line: { color: '#25354a', width: 2, dash: 'dash' }, hovertemplate: 'y = ' + c + '<extra>Axis of rotation</extra>' });
+    } else {
+      traces.push({ type: 'scatter', mode: 'lines', x: [c, c], y: [yMin, yMax], name: 'Axis of rotation',
+        line: { color: '#25354a', width: 2, dash: 'dash' }, hoverinfo: 'skip' });
+    }
+    const layout = {
+      margin: { l: 48, r: 18, t: 10, b: 43 }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
+      font: baseFont, hovermode: 'closest', showlegend: true, legend: { orientation: 'h', x: 0, y: 1.03, font: { size: 10 } },
+      xaxis: { title: { text: 'x', standoff: 7 }, range: [xMin, xMax], gridcolor: '#e7edf4', zerolinecolor: '#c4ceda', linecolor: '#d5dee8', mirror: true },
+      yaxis: { title: { text: 'y', standoff: 5 }, range: [yMin, yMax], gridcolor: '#e7edf4', zerolinecolor: '#c4ceda', linecolor: '#d5dee8', mirror: true }
+    };
+    return Plotly.react('plot2d', traces, layout, plotConfig);
+  }
+  function render3d(xs, fv, gv, a, b, axisType, c) {
+    const yMin = Math.min(...fv, ...gv, ...(axisType === 'horizontal' ? [c] : []));
+    const yMax = Math.max(...fv, ...gv, ...(axisType === 'horizontal' ? [c] : []));
+    const traces = [];
+    if (axisType === 'horizontal') {
+      const inner = [], outer = [];
+      for (let i = 0; i < xs.length; i++) {
+        const low = Math.min(fv[i], gv[i]), high = Math.max(fv[i], gv[i]);
+        const dLow = low - c, dHigh = high - c;
+        outer.push(Math.max(Math.abs(dLow), Math.abs(dHigh)));
+        inner.push(dLow <= 0 && dHigh >= 0 ? 0 : Math.min(Math.abs(dLow), Math.abs(dHigh)));
+      }
+      traces.push(makeHorizontalRadiusSurface(xs, outer, c, 'Outer surface', '#3267d5', 0.78, true));
+      if (Math.max(...inner) > 1e-6) traces.push(makeHorizontalRadiusSurface(xs, inner, c, 'Inner surface', '#e58a32', 0.64, true));
+      const lowA = Math.min(fv[0], gv[0]) - c, highA = Math.max(fv[0], gv[0]) - c;
+      const lowB = Math.min(fv[fv.length - 1], gv[gv.length - 1]) - c, highB = Math.max(fv[fv.length - 1], gv[gv.length - 1]) - c;
+      const capRadii = (lo, hi) => lo <= 0 && hi >= 0 ? [0, Math.max(Math.abs(lo), Math.abs(hi))] : [Math.min(Math.abs(lo), Math.abs(hi)), Math.max(Math.abs(lo), Math.abs(hi))];
+      const capA = capRadii(lowA, highA), capB = capRadii(lowB, highB);
+      traces.push(makeHorizontalCap(a, capA[0], capA[1], c, 'End face at a'));
+      traces.push(makeHorizontalCap(b, capB[0], capB[1], c, 'End face at b'));
+    } else {
+      traces.push(makeVerticalCurveSurface(xs, fv, c, 'Rotated f(x)', '#3267d5', 0.72));
+      traces.push(makeVerticalCurveSurface(xs, gv, c, 'Rotated g(x)', '#e58a32', 0.72));
+      traces.push(makeVerticalCap(a, fv[0], gv[0], c, 'End surface at a'));
+      traces.push(makeVerticalCap(b, fv[fv.length - 1], gv[gv.length - 1], c, 'End surface at b'));
+    }
+    traces.push(axisLine3d(axisType, c, a, b, yMin, yMax));
+    const layout = {
+      margin: { l: 0, r: 0, t: 8, b: 0 }, paper_bgcolor: '#ffffff', font: baseFont,
+      showlegend: true, legend: { x: 0.01, y: 0.99, bgcolor: 'rgba(255,255,255,0.72)', font: { size: 10 } },
+      scene: {
+        bgcolor: '#ffffff', aspectmode: 'data', dragmode: 'orbit',
+        xaxis: { title: 'x', backgroundcolor: '#f7f9fc', gridcolor: '#dfe7f0', zerolinecolor: '#c1cbd8', showbackground: true },
+        yaxis: { title: 'y', backgroundcolor: '#f7f9fc', gridcolor: '#dfe7f0', zerolinecolor: '#c1cbd8', showbackground: true },
+        zaxis: { title: 'z', backgroundcolor: '#f7f9fc', gridcolor: '#dfe7f0', zerolinecolor: '#c1cbd8', showbackground: true },
+        camera: { eye: { x: 1.55, y: 1.35, z: 1.55 }, up: { x: 0, y: 1, z: 0 } }
+      }
+    };
+    return Plotly.react('plot3d', traces, layout, { ...plotConfig, displayModeBar: true, modeBarButtonsToRemove: ['toImage'] });
+  }
+  function fmt(value) {
+    if (Math.abs(value) > 99999 || (Math.abs(value) > 0 && Math.abs(value) < 0.0001)) return value.toExponential(3);
+    return Number(value.toFixed(4)).toString();
+  }
+  async function update() {
+    message.textContent = '';
+    try {
+      if (typeof math === 'undefined' || typeof Plotly === 'undefined') throw new Error('The graphing libraries did not load. Check your internet connection and reload this page.');
+      const fCompiled = safeCompile(fInput.value);
+      const gCompiled = safeCompile(gInput.value);
+      const a = Number(aInput.value), b = Number(bInput.value), c = Number(axisValueInput.value);
+      if (![a, b, c].every(Number.isFinite)) throw new Error('Enter valid numbers for a, b, and c.');
+      if (!(a < b)) throw new Error('The interval must satisfy a < b.');
+      if (b - a > 10000) throw new Error('Please choose a smaller interval for a clear graph.');
+      const xs = linspace(a, b, N);
+      const fv = xs.map(x => sampleFunction(fCompiled, x));
+      const gv = xs.map(x => sampleFunction(gCompiled, x));
+      const all = fv.concat(gv);
+      if (all.some(v => Math.abs(v) > 1e7)) throw new Error('Function values are too large to graph clearly. Try a smaller interval.');
+      const area = approximateArea(xs, fv, gv);
+      $('areaValue').textContent = '≈ ' + fmt(area) + ' square units';
+      $('intervalValue').textContent = '[' + fmt(a) + ', ' + fmt(b) + ']';
+      $('axisReadout').textContent = (axisTypeInput.value === 'horizontal' ? 'y = ' : 'x = ') + fmt(c);
+      await Promise.all([
+        render2d(xs, fv, gv, a, b, axisTypeInput.value, c),
+        render3d(xs, fv, gv, a, b, axisTypeInput.value, c)
+      ]);
+      message.textContent = 'Graphs updated. Area is a numerical approximation; increase the interval resolution by zooming into the graph as needed.';
+      message.style.color = '#24725d';
+    } catch (err) {
+      message.style.color = '#a53c28';
+      message.textContent = err && err.message ? err.message : 'Unable to graph these functions. Check the expressions and interval.';
+    }
+  }
+  $('updateBtn').addEventListener('click', update);
+  $('resetBtn').addEventListener('click', function () {
+    fInput.value = 'x^2'; gInput.value = '2'; aInput.value = '-1.25'; bInput.value = '1.25';
+    axisTypeInput.value = 'horizontal'; axisValueInput.value = '0'; update();
+  });
+  [fInput, gInput, aInput, bInput, axisValueInput].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') update(); }));
+  axisTypeInput.addEventListener('change', update);
+  update();
+})();
+</script>
+</body>
+</html>

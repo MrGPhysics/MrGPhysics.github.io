@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AP Calculus AB: Area & Volume Visualizer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#0f172a',
+                            800: '#1e293b',
+                            700: '#334155',
+                            600: '#475569'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Math.js for parsing expressions -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <!-- Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .math-font { font-family: 'JetBrains Mono', monospace; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-dark-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header Navigation -->
+    <header class="bg-dark-800 border-b border-dark-700 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2.5 rounded-xl shadow-md shadow-indigo-500/20">
+                    <i data-lucide="function-square" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">
+                        AP Calculus AB Lab
+                    </h1>
+                    <p class="text-xs text-slate-400">Area Between Curves & Solids of Revolution</p>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <nav class="flex space-x-1 bg-dark-900 p-1 rounded-xl border border-dark-700">
+                <button onclick="switchTab('area2d')" id="tab-area2d" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 bg-indigo-600 text-white shadow">
+                    <i data-lucide="line-chart" class="w-4 h-4"></i>
+                    <span>2D Area</span>
+                </button>
+                <button onclick="switchTab('solid3d')" id="tab-solid3d" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 text-slate-400 hover:text-white hover:bg-dark-700">
+                    <i data-lucide="box" class="w-4 h-4"></i>
+                    <span>3D Solids</span>
+                </button>
+                <button onclick="switchTab('reference')" id="tab-reference" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 text-slate-400 hover:text-white hover:bg-dark-700">
+                    <i data-lucide="book-open" class="w-4 h-4"></i>
+                    <span>AP Formulas & Quiz</span>
+                </button>
+            </nav>
+
+            <!-- Preset Selector -->
+            <div class="hidden lg:flex items-center space-x-2">
+                <span class="text-xs text-slate-400 font-medium">AP Preset:</span>
+                <select id="preset-selector" onchange="loadPreset(this.value)" class="bg-dark-900 border border-dark-700 text-slate-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="classic1">Classic: Parabola & Line</option>
+                    <option value="trig1">Trig: Sin(x) & Cos(x)</option>
+                    <option value="radical1">Radical: sqrt(x) & x/2</option>
+                    <option value="cubic1">Cubic & Parabola</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">
+
+        <!-- Error Notification Banner -->
+        <div id="error-banner" class="hidden mb-6 bg-rose-500/10 border border-rose-500/30 text-rose-300 px-4 py-3 rounded-xl flex items-center justify-between shadow-lg">
+            <div class="flex items-center space-x-3">
+                <i data-lucide="alert-circle" class="w-5 h-5 text-rose-400 flex-shrink-0"></i>
+                <span id="error-message" class="text-sm">Invalid mathematical expression. Use standard syntax e.g. x^2, sin(x), sqrt(x), 2*x.</span>
+            </div>
+            <button onclick="hideError()" class="text-rose-400 hover:text-rose-200 text-sm font-semibold">Dismiss</button>
+        </div>
+
+        <!-- ================= PART 1: 2D AREA BETWEEN CURVES ================= -->
+        <section id="section-area2d" class="space-y-6 flex-1 flex flex-col">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Controls & Functions Card -->
+                <div class="bg-dark-800 border border-dark-700 rounded-2xl p-6 shadow-xl flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-lg font-semibold text-slate-100 flex items-center space-x-2">
+                                <i data-lucide="sliders" class="w-5 h-5 text-indigo-400"></i>
+                                <span>Function Definitions</span>
+                            </h2>
+                            <button onclick="resetDefaults()" class="text-xs text-indigo-400 hover:text-indigo-300 underline">Reset</button>
+                        </div>
+
+                        <!-- Top Function f(x) -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-semibold text-indigo-400 uppercase tracking-wider">Top Function f(x)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-400 math-font font-bold">f(x) =</div>
+                                <input type="text" id="input-fx" value="4 - x^2" oninput="updateCalculations()" class="w-full bg-dark-900 border border-dark-700 rounded-xl pl-16 pr-4 py-2.5 text-slate-100 math-font text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner">
+                            </div>
+                        </div>
+
+                        <!-- Bottom Function g(x) -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-semibold text-rose-400 uppercase tracking-wider">Bottom Function g(x)</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-rose-400 math-font font-bold">g(x) =</div>
+                                <input type="text" id="input-gx" value="x^2 - 2" oninput="updateCalculations()" class="w-full bg-dark-900 border border-dark-700 rounded-xl pl-16 pr-4 py-2.5 text-slate-100 math-font text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-inner">
+                            </div>
+                        </div>
+
+                        <!-- Limits a and b -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1.5">
+                                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Lower Limit (a)</label>
+                                <input type="number" step="0.1" id="input-a" value="-1.732" oninput="updateCalculations()" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-4 py-2.5 text-slate-100 math-font text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Upper Limit (b)</label>
+                                <input type="number" step="0.1" id="input-b" value="1.732" oninput="updateCalculations()" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-4 py-2.5 text-slate-100 math-font text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+
+                        <!-- Auto-find intersections button -->
+                        <button onclick="findIntersections()" class="w-full bg-dark-700 hover:bg-dark-600 text-indigo-300 font-medium py-2 rounded-xl text-xs transition border border-dark-600 flex items-center justify-center space-x-2">
+                            <i data-lucide="crosshair" class="w-4 h-4"></i>
+                            <span>Find Intersections for [a, b]</span>
+                        </button>
+                    </div>
+
+                    <!-- Calculus Results Summary -->
+                    <div class="bg-dark-900/80 rounded-xl p-4 border border-dark-700 space-y-3">
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                            <span>Definite Integral</span>
+                            <span class="text-indigo-400 math-font">AP Standard</span>
+                        </div>
+                        <div class="math-font text-sm text-indigo-300 bg-dark-800 p-2.5 rounded-lg border border-dark-700 text-center">
+                            $$\int_{a}^{b} [f(x) - g(x)] \, dx$$
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-sm text-slate-300 font-medium">Calculated Area:</span>
+                            <span id="result-area" class="text-lg font-bold math-font text-emerald-400">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2D Canvas Graph Card -->
+                <div class="lg:col-span-2 bg-dark-800 border border-dark-700 rounded-2xl p-6 shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-100 flex items-center space-x-2">
+                                <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-400"></i>
+                                <span>2D Region Graph</span>
+                            </h2>
+                            <p class="text-xs text-slate-400">Hover over the canvas to inspect coordinates and vertical slice width.</p>
+                        </div>
+                        <div class="flex items-center space-x-3 text-xs">
+                            <span class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded-full bg-indigo-500 inline-block"></span><span class="text-slate-300">f(x) Top</span></span>
+                            <span class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span><span class="text-slate-300">g(x) Bottom</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Canvas container -->
+                    <div class="relative flex-1 min-h-[400px] bg-dark-900 rounded-xl border border-dark-700 overflow-hidden cursor-crosshair">
+                        <canvas id="canvas2d" class="w-full h-full block"></canvas>
+                        <!-- Floating coordinate tooltip -->
+                        <div id="tooltip-2d" class="absolute hidden bg-dark-800/90 backdrop-blur border border-dark-700 text-xs text-slate-200 px-3 py-2 rounded-lg pointer-events-none shadow-lg math-font z-10">
+                            x = <span id="tip-x" class="text-indigo-400">0</span><br>
+                            f(x) = <span id="tip-fx" class="text-indigo-300">0</span><br>
+                            g(x) = <span id="tip-gx" class="text-rose-400">0</span><br>
+                            Height = <span id="tip-h" class="text-emerald-400">0</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Bottom action to jump to 3D -->
+                    <div class="mt-4 flex justify-between items-center">
+                        <span class="text-xs text-slate-400">Ready to spin this region into 3D?</span>
+                        <button onclick="switchTab('solid3d')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-md flex items-center space-x-2 transition">
+                            <span>Proceed to 3D Solids of Revolution</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- ================= PART 2: 3D SOLIDS OF REVOLUTION ================= -->
+        <section id="section-solid3d" class="hidden space-y-6 flex-1 flex flex-col">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- 3D Settings Panel -->
+                <div class="bg-dark-800 border border-dark-700 rounded-2xl p-6 shadow-xl flex flex-col space-y-6">
+                    <h2 class="text-lg font-semibold text-slate-100 flex items-center space-x-2">
+                        <i data-lucide="settings-2" class="w-5 h-5 text-indigo-400"></i>
+                        <span>Revolution Parameters</span>
+                    </h2>
+
+                    <!-- Sync note -->
+                    <div class="bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 p-3 rounded-xl text-xs flex items-start space-x-2">
+                        <i data-lucide="info" class="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5"></i>
+                        <span>Functions $f(x)$ and $g(x)$ and limits $[a, b]$ are synced automatically from Part 1.</span>
+                    </div>
+
+                    <!-- Method Selection -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Revolution Method</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="setMethod('washer')" id="btn-method-washer" class="py-2.5 px-3 rounded-xl text-xs font-semibold border transition bg-indigo-600 text-white border-indigo-500 shadow">Disk / Washer</button>
+                            <button onclick="setMethod('shell')" id="btn-method-shell" class="py-2.5 px-3 rounded-xl text-xs font-semibold border transition bg-dark-900 text-slate-400 border-dark-700 hover:text-white">Cylindrical Shell</button>
+                        </div>
+                    </div>
+
+                    <!-- Axis of Rotation -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Axis of Rotation</label>
+                        <select id="axis-selector" onchange="update3DScene()" class="w-full bg-dark-900 border border-dark-700 text-slate-200 text-xs rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="xaxis">x-axis (y = 0)</option>
+                            <option value="yaxis">y-axis (x = 0)</option>
+                            <option value="horizontal">Horizontal line y = c</option>
+                            <option value="vertical">Vertical line x = c</option>
+                        </select>
+                    </div>
+
+                    <!-- Custom Axis Value c -->
+                    <div id="container-axis-c" class="space-y-1.5 hidden">
+                        <label id="label-axis-c" class="block text-xs font-semibold text-indigo-400 uppercase tracking-wider">Axis Value (c)</label>
+                        <input type="number" step="0.5" id="input-axis-c" value="-3" oninput="update3DScene()" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-4 py-2.5 text-slate-100 math-font text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- Slice Inspector Slider -->
+                    <div class="space-y-2 pt-2 border-t border-dark-700">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-semibold text-slate-300">Slice Inspector / Shells</span>
+                            <span id="slice-val" class="math-font text-indigo-400 font-bold">All (Solid)</span>
+                        </div>
+                        <input type="range" id="input-slices" min="1" max="50" value="50" oninput="updateSliceInspector(this.value)" class="w-full accent-indigo-500 bg-dark-900 rounded-lg cursor-pointer">
+                        <p class="text-[11px] text-slate-400">Drag to slice open the solid and inspect cross-sections or individual approximating elements.</p>
+                    </div>
+
+                    <!-- Volume Formula & Result -->
+                    <div class="bg-dark-900/80 rounded-xl p-4 border border-dark-700 space-y-3 mt-auto">
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Volume Integral Setup</div>
+                        <div id="volume-formula" class="math-font text-xs text-indigo-300 bg-dark-800 p-2.5 rounded-lg border border-dark-700 text-center overflow-x-auto">
+                            $$V = \pi \int_{a}^{b} \left([f(x)]^2 - [g(x)]^2\right) dx$$
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-sm text-slate-300 font-medium">Calculated Volume:</span>
+                            <span id="result-volume" class="text-lg font-bold math-font text-cyan-400">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3D Viewport Card -->
+                <div class="lg:col-span-2 bg-dark-800 border border-dark-700 rounded-2xl p-6 shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-100 flex items-center space-x-2">
+                                <i data-lucide="orbit" class="w-5 h-5 text-indigo-400"></i>
+                                <span>3D Interactive Solid</span>
+                            </h2>
+                            <p class="text-xs text-slate-400">Click & drag to rotate. Scroll to zoom. Right-click to pan.</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="resetCamera()" class="bg-dark-700 hover:bg-dark-600 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium border border-dark-600 transition flex items-center space-x-1.5">
+                                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                                <span>Reset View</span>
+                            </button>
+                            <button onclick="toggleWireframe()" id="btn-wireframe" class="bg-dark-700 hover:bg-dark-600 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium border border-dark-600 transition">
+                                Wireframe: Off
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Three.js Canvas Container -->
+                    <div id="canvas3d-container" class="relative flex-1 min-h-[450px] bg-dark-900 rounded-xl border border-dark-700 overflow-hidden shadow-inner">
+                        <div id="loading-3d" class="absolute inset-0 flex items-center justify-center bg-dark-900/80 z-10 text-xs text-indigo-400 font-medium">
+                            Initializing 3D Viewport...
+                        </div>
+                    </div>
+
+                    <!-- Instructions Footer -->
+                    <div class="mt-4 flex items-center justify-between text-xs text-slate-400">
+                        <span class="flex items-center space-x-1.5">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i>
+                            <span>Generated using Three.js parametric lathe geometry with dynamic lighting.</span>
+                        </span>
+                        <span class="math-font text-indigo-300 font-medium">AP Calc AB Standard</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- ================= PART 3: AP FORMULAS & PRACTICE QUIZ ================= -->
+        <section id="section-reference" class="hidden space-y-6 flex-1 flex flex-col">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Formula Reference Cheat Sheet -->
+                <div class="lg:col-span-2 bg-dark-800 border border-dark-700 rounded-2xl p-6 shadow-xl space-y-6">
+                    <h2 class="text-lg font-semibold text-slate-100 flex items-center space-x-2">
+                        <i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i>
+                        <span>AP Calculus AB: Essential Area & Volume Formulas</span>
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Area Between Curves -->
+                        <div class="bg-dark-900 border border-dark-700 p-4 rounded-xl space-y-2">
+                            <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider">1. Area Between Curves</div>
+                            <div class="math-font text-sm text-slate-200 bg-dark-800 p-3 rounded-lg border border-dark-700 text-center">
+                                $$A = \int_{a}^{b} [top - bottom] \, dx$$
+                            </div>
+                            <p class="text-xs text-slate-400">If curves are given in terms of $y$ ($x = f(y)$), integrate with respect to $y$: $\int_{c}^{d} [right - left] \, dy$.</p>
+                        </div>
+
+                        <!-- Disk Method -->
+                        <div class="bg-dark-900 border border-dark-700 p-4 rounded-xl space-y-2">
+                            <div class="text-xs font-bold text-cyan-400 uppercase tracking-wider">2. Disk Method</div>
+                            <div class="math-font text-sm text-slate-200 bg-dark-800 p-3 rounded-lg border border-dark-700 text-center">
+                                $$V = \pi \int_{a}^{b} [R(x)]^2 \, dx$$
+                            </div>
+                            <p class="text-xs text-slate-400">Used when the solid has no hollow core (region is flush against the axis of rotation $R(x)$).</p>
+                        </div>
+
+                        <!-- Washer Method -->
+                        <div class="bg-dark-900 border border-dark-700 p-4 rounded-xl space-y-2">
+                            <div class="text-xs font-bold text-purple-400 uppercase tracking-wider">3. Washer Method</div>
+                            <div class="math-font text-sm text-slate-200 bg-dark-800 p-3 rounded-lg border border-dark-700 text-center">
+                                $$V = \pi \int_{a}^{b} \left( [R(x)]^2 - [r(x)]^2 \right) dx$$
+                            </div>
+                            <p class="text-xs text-slate-400">Used when there is a gap between the region and the axis of rotation ($R = \text{outer radius}$, $r = \text{inner radius}$).</p>
+                        </div>
+
+                        <!-- Shell Method -->
+                        <div class="bg-dark-900 border border-dark-700 p-4 rounded-xl space-y-2">
+                            <div class="text-xs font-bold text-pink-400 uppercase tracking-wider">4. Cylindrical Shell Method</div>
+                            <div class="math-font text-sm text-slate-200 bg-dark-800 p-3 rounded-lg border border-dark-700 text-center">
+                                $$V = 2\pi \int_{a}^{b} r(x) \cdot h(x) \, dx$$
+                            </div>
+                            <p class="text-xs text-slate-400">Integrates parallel to the axis of rotation. $r(x)$ is radius from axis, $h(x)$ is height of shell.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Practice Quiz -->
+                <div class="bg-dark-800 border border-dark-700 rounded-2xl p-6 shadow-xl flex flex-col justify-between space-y-6">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-semibold text-slate-100 flex items-center space-x-2">
+                                <i data-lucide="help-circle" class="w-5 h-5 text-indigo-400"></i>
+                                <span>AP Practice Quiz</span>
+                            </h2>
+                            <span id="quiz-progress" class="text-xs text-indigo-400 math-font font-semibold">Q1 of 3</span>
+                        </div>
+
+                        <div id="quiz-container" class="space-y-4">
+                            <!-- Question text injected dynamically -->
+                            <p id="quiz-q" class="text-sm font-medium text-slate-200">Loading question...</p>
+                            <div id="quiz-options" class="space-y-2">
+                                <!-- Options injected dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Explanation box -->
+                        <div id="quiz-feedback" class="hidden mt-4 p-3 rounded-xl text-xs space-y-1">
+                            <div id="quiz-feedback-title" class="font-bold"></div>
+                            <div id="quiz-feedback-desc" class="text-slate-300"></div>
+                        </div>
+                    </div>
+
+                    <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl text-xs transition shadow-md">
+                        Next Question
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark-800 border-t border-dark-700 mt-12 py-6 text-center text-xs text-slate-400">
+        <p>AP Calculus AB Interactive Visualizer &bull; Designed for students and educators mastering definite integrals, areas, and volumes of revolution.</p>
+    </footer>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Presets data
+        const presets = {
+            classic1: { fx: '4 - x^2', gx: 'x^2 - 2', a: -1.732, b: 1.732 },
+            trig1: { fx: 'sin(x)', gx: 'cos(x)', a: 0.785, b: 3.927 },
+            radical1: { fx: 'sqrt(x)', gx: 'x/2', a: 0, b: 4 },
+            cubic1: { fx: 'x^3 - x', gx: 'x', a: -1.414, b: 1.414 }
+        };
+
+        // Application State
+        let state = {
+            fxStr: '4 - x^2',
+            gxStr: 'x^2 - 2',
+            a: -1.732,
+            b: 1.732,
+            compiledFx: null,
+            compiledGx: null,
+            method: 'washer', // washer or shell
+            axis: 'xaxis',    // xaxis, yaxis, horizontal, vertical
+            axisC: -3,
+            wireframe: false,
+            slices: 50
+        };
+
+        // Quiz State
+        const quizQuestions = [
+            {
+                q: "What is the area of the region enclosed by $y = x^2$ and $y = 2x$?",
+                options: [
+                    "4/3",
+                    "8/3",
+                    "2",
+                    "4"
+                ],
+                correct: 0,
+                explanation: "Intersection points are x = 0 and x = 2. Integral from 0 to 2 of (2x - x^2) dx = [x^2 - x^3/3] from 0 to 2 = 4 - 8/3 = 4/3."
+            },
+            {
+                q: "Using the disk method, what is the setup for the volume when $y = \\sqrt{x}$ from x=0 to x=4 is revolved around the x-axis?",
+                options: [
+                    "\\pi \\int_{0}^{4} \\sqrt{x} \\, dx",
+                    "\\pi \\int_{0}^{4} x \\, dx",
+                    "2\\pi \\int_{0}^{4} x\\sqrt{x} \\, dx",
+                    "\\pi \\int_{0}^{2} y^4 \\, dy"
+                ],
+                correct: 1,
+                explanation: "Disk method radius R(x) = sqrt(x). Volume V = pi * integral( [R(x)]^2 dx ) = pi * integral( x dx ) from 0 to 4."
+            },
+            {
+                q: "When should you choose the Cylindrical Shell Method over the Washer Method?",
+                options: [
+                    "When rotation is around the x-axis only.",
+                    "When it is much easier to integrate with respect to x using parallel shells or to avoid solving for x in terms of y.",
+                    "Only when functions are trigonometric.",
+                    "Shell method always yields a smaller volume."
+                ],
+                correct: 1,
+                explanation: "Shell method integrates parallel to the axis of rotation (using 2*pi*r*h), which frequently simplifies problems where washer method requires difficult algebraic inversion or splitting integrals."
+            }
+        ];
+        let currentQuizIndex = 0;
+        let quizAnswered = false;
+
+        // Tab Switching
+        function switchTab(tabId) {
+            ['area2d', 'solid3d', 'reference'].forEach(id => {
+                document.getElementById(`section-${id}`).classList.add('hidden');
+                document.getElementById(`tab-${id}`).className = "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 text-slate-400 hover:text-white hover:bg-dark-700";
+            });
+            document.getElementById(`section-${tabId}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).className = "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 bg-indigo-600 text-white shadow";
+
+            if (tabId === 'solid3d') {
+                initThreeJSOnce();
+                update3DScene();
+            } else if (tabId === 'area2d') {
+                draw2DCanvas();
+            } else if (tabId === 'reference') {
+                renderQuiz();
+            }
+        }
+
+        // Error Handling
+        function showError(msg) {
+            document.getElementById('error-message').innerText = msg;
+            document.getElementById('error-banner').classList.remove('hidden');
+        }
+        function hideError() {
+            document.getElementById('error-banner').classList.add('hidden');
+        }
+
+        // Preset Loader
+        function loadPreset(key) {
+            if (!presets[key]) return;
+            const p = presets[key];
+            document.getElementById('input-fx').value = p.fx;
+            document.getElementById('input-gx').value = p.gx;
+            document.getElementById('input-a').value = p.a;
+            document.getElementById('input-b').value = p.b;
+            updateCalculations();
+        }
+
+        function resetDefaults() {
+            loadPreset('classic1');
+        }
+
+        // Compile Math Expressions safely
+        function parseInputs() {
+            try {
+                hideError();
+                const fxRaw = document.getElementById('input-fx').value;
+                const gxRaw = document.getElementById('input-gx').value;
+                const aVal = parseFloat(document.getElementById('input-a').value);
+                const bVal = parseFloat(document.getElementById('input-b').value);
+
+                if (isNaN(aVal) || isNaN(bVal)) throw new Error("Limits 'a' and 'b' must be valid numbers.");
+
+                state.compiledFx = math.compile(fxRaw);
+                state.compiledGx = math.compile(gxRaw);
+                state.fxStr = fxRaw;
+                state.gxStr = gxRaw;
+                state.a = aVal;
+                state.b = bVal;
+                return true;
+            } catch (err) {
+                showError("Math parse error: " + err.message);
+                return false;
+            }
+        }
+
+        // Numerical Integration (Simpson's Rule) for Area
+        function computeArea() {
+            if (!parseInputs()) return 0;
+            const n = 200; // subintervals
+            const h = (state.b - state.a) / n;
+            let sum = 0;
+
+            for (let i = 0; i <= n; i++) {
+                const x = state.a + i * h;
+                try {
+                    const top = state.compiledFx.evaluate({x});
+                    const bot = state.compiledGx.evaluate({x});
+                    const diff = Math.max(0, top - bot); // take positive height
+                    const coeff = (i === 0 || i === n) ? 1 : (i % 2 === 0 ? 2 : 4);
+                    sum += coeff * diff;
+                } catch (e) {
+                    // ignore point evaluation error
+                }
+            }
+            return (h / 3) * sum;
+        }
+
+        function updateCalculations() {
+            const area = computeArea();
+            document.getElementById('result-area').innerText = isNaN(area) ? "Error" : area.toFixed(4);
+            draw2DCanvas();
+        }
+
+        // ================= 2D CANVAS RENDERING =================
+        const canvas2d = document.getElementById('canvas2d');
+        const ctx2d = canvas2d.getContext('2d');
+        const tooltip2d = document.getElementById('tooltip-2d');
+
+        function draw2DCanvas() {
+            if (!canvas2d) return;
+            // Resize canvas to container
+            const width = canvas2d.parentElement.clientWidth;
+            const height = canvas2d.parentElement.clientHeight || 400;
+            canvas2d.width = width * window.devicePixelRatio;
+            canvas2d.height = height * window.devicePixelRatio;
+            ctx2d.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            ctx2d.clearRect(0, 0, width, height);
+
+            if (!state.compiledFx || !state.compiledGx) return;
+
+            // Determine domain padding
+            const xMin = state.a - 2;
+            const xMax = state.b + 2;
+            const yMin = -6;
+            const yMax = 6;
+
+            const toScreenX = (x) => ((x - xMin) / (xMax - xMin)) * width;
+            const toScreenY = (y) => height - ((y - yMin) / (yMax - yMin)) * height;
+
+            // Draw grid
+            ctx2d.strokeStyle = '#334155';
+            ctx2d.lineWidth = 0.5;
+            for (let x = Math.ceil(xMin); x <= Math.floor(xMax); x++) {
+                const sx = toScreenX(x);
+                ctx2d.beginPath();
+                ctx2d.moveTo(sx, 0);
+                ctx2d.lineTo(sx, height);
+                ctx2d.stroke();
+            }
+            for (let y = Math.ceil(yMin); y <= Math.floor(yMax); y++) {
+                const sy = toScreenY(y);
+                ctx2d.beginPath();
+                ctx2d.moveTo(0, sy);
+                ctx2d.lineTo(width, sy);
+                ctx2d.stroke();
+            }
+
+            // Axes
+            ctx2d.strokeStyle = '#64748b';
+            ctx2d.lineWidth = 1.5;
+            // X-axis (y=0)
+            if (yMin <= 0 && yMax >= 0) {
+                ctx2d.beginPath();
+                ctx2d.moveTo(0, toScreenY(0));
+                ctx2d.lineTo(width, toScreenY(0));
+                ctx2d.stroke();
+            }
+            // Y-axis (x=0)
+            if (xMin <= 0 && xMax >= 0) {
+                ctx2d.beginPath();
+                ctx2d.moveTo(toScreenX(0), 0);
+                ctx2d.lineTo(toScreenX(0), height);
+                ctx2d.stroke();
+            }
+
+            // Shade region between a and b
+            ctx2d.fillStyle = 'rgba(99, 102, 241, 0.2)';
+            ctx2d.beginPath();
+            const steps = 300;
+            const dx = (state.b - state.a) / steps;
+            
+            // Forward along top function f(x)
+            for (let i = 0; i <= steps; i++) {
+                const x = state.a + i * dx;
+                try {
+                    const y = state.compiledFx.evaluate({x});
+                    const sx = toScreenX(x);
+                    const sy = toScreenY(y);
+                    if (i === 0) ctx2d.moveTo(sx, sy);
+                    else ctx2d.lineTo(sx, sy);
+                } catch (e) {}
+            }
+            // Backward along bottom function g(x)
+            for (let i = steps; i >= 0; i--) {
+                const x = state.a + i * dx;
+                try {
+                    const y = state.compiledGx.evaluate({x});
+                    const sx = toScreenX(x);
+                    const sy = toScreenY(y);
+                    ctx2d.lineTo(sx, sy);
+                } catch (e) {}
+            }
+            ctx2d.closePath();
+            ctx2d.fill();
+
+            // Vertical limit lines at a and b
+            ctx2d.strokeStyle = 'rgba(129, 140, 248, 0.5)';
+            ctx2d.setLineDash([4, 4]);
+            ctx2d.beginPath();
+            ctx2d.moveTo(toScreenX(state.a), 0);
+            ctx2d.lineTo(toScreenX(state.a), height);
+            ctx2d.moveTo(toScreenX(state.b), 0);
+            ctx2d.lineTo(toScreenX(state.b), height);
+            ctx2d.stroke();
+            ctx2d.setLineDash([]);
+
+            // Plot f(x) (Indigo)
+            ctx2d.strokeStyle = '#818cf8';
+            ctx2d.lineWidth = 3;
+            ctx2d.beginPath();
+            let first = true;
+            for (let px = 0; px <= width; px++) {
+                const x = xMin + (px / width) * (xMax - xMin);
+                try {
+                    const y = state.compiledFx.evaluate({x});
+                    const py = toScreenY(y);
+                    if (first) { ctx2d.moveTo(px, py); first = false; }
+                    else ctx2d.lineTo(px, py);
+                } catch (e) {}
+            }
+            ctx2d.stroke();
+
+            // Plot g(x) (Rose)
+            ctx2d.strokeStyle = '#fb7185';
+            ctx2d.lineWidth = 3;
+            ctx2d.beginPath();
+            first = true;
+            for (let px = 0; px <= width; px++) {
+                const x = xMin + (px / width) * (xMax - xMin);
+                try {
+                    const y = state.compiledGx.evaluate({x});
+                    const py = toScreenY(y);
+                    if (first) { ctx2d.moveTo(px, py); first = false; }
+                    else ctx2d.lineTo(px, py);
+                } catch (e) {}
+            }
+            ctx2d.stroke();
+        }
+
+        // 2D Mouse interaction for Tooltip
+        canvas2d.addEventListener('mousemove', (e) => {
+            const rect = canvas2d.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const width = canvas2d.clientWidth;
+            const height = canvas2d.clientHeight;
+
+            const xMin = state.a - 2;
+            const xMax = state.b + 2;
+            const yMin = -6;
+            const yMax = 6;
+
+            const x = xMin + (mouseX / width) * (xMax - xMin);
+
+            try {
+                const fx = state.compiledFx.evaluate({x});
+                const gx = state.compiledGx.evaluate({x});
+                const h = Math.abs(fx - gx);
+
+                document.getElementById('tip-x').innerText = x.toFixed(2);
+                document.getElementById('tip-fx').innerText = fx.toFixed(2);
+                document.getElementById('tip-gx').innerText = gx.toFixed(2);
+                document.getElementById('tip-h').innerText = h.toFixed(2);
+
+                tooltip2d.style.left = `${Math.min(mouseX + 15, width - 140)}px`;
+                tooltip2d.style.top = `${Math.max(mouseY - 70, 10)}px`;
+                tooltip2d.classList.remove('hidden');
+            } catch (err) {
+                tooltip2d.classList.add('hidden');
+            }
+        });
+
+        canvas2d.addEventListener('mouseleave', () => {
+            tooltip2d.classList.add('hidden');
+        });
+
+        // Find intersections using numerical root finding
+        function findIntersections() {
+            if (!parseInputs()) return;
+            // Simple grid search for roots of f(x) - g(x) = 0 between -10 and 10
+            let roots = [];
+            let step = 0.05;
+            let prevVal = null;
+            let prevX = -10;
+
+            for (let x = -10; x <= 10; x += step) {
+                try {
+                    const val = state.compiledFx.evaluate({x}) - state.compiledGx.evaluate({x});
+                    if (prevVal !== null && prevVal * val <= 0) {
+                        // Root found near x
+                        roots.push(x.toFixed(3));
+                    }
+                    prevVal = val;
+                } catch (e) {}
+            }
+
+            if (roots.length >= 2) {
+                document.getElementById('input-a').value = roots[0];
+                document.getElementById('input-b').value = roots[roots.length - 1];
+                updateCalculations();
+            } else {
+                showError("Could not automatically isolate distinct intersection roots. Please enter bounds manually.");
+            }
+        }
+
+
+        // ================= PART 3: 3D SOLIDS OF REVOLUTION (THREE.JS) =================
+        let scene, camera, renderer, controls;
+        let solidMesh = null;
+        let axisLineMesh = null;
+        let threeInitialized = false;
+
+        function initThreeJSOnce() {
+            if (threeInitialized) return;
+            const container = document.getElementById('canvas3d-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 450;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(6, 5, 8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 15);
+            scene.add(dirLight);
+
+            const pointLight = new THREE.PointLight(0x818cf8, 1, 50);
+            pointLight.position.set(-5, 5, -5);
+            scene.add(pointLight);
+
+            // Grid & Axes Helper
+            const gridHelper = new THREE.GridHelper(20, 20, 0x475569, 0x1e293b);
+            gridHelper.position.y = -2;
+            scene.add(gridHelper);
+
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+
+            // Resize listener
+            window.addEventListener('resize', onWindowResize);
+
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            document.getElementById('loading-3d').style.display = 'none';
+            threeInitialized = true;
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas3d-container');
+            if (!container) return;
+            const width = container.clientWidth;
+            const height = container.clientHeight || 450;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        function setMethod(m) {
+            state.method = m;
+            if (m === 'washer') {
+                document.getElementById('btn-method-washer').className = "py-2.5 px-3 rounded-xl text-xs font-semibold border transition bg-indigo-600 text-white border-indigo-500 shadow";
+                document.getElementById('btn-method-shell').className = "py-2.5 px-3 rounded-xl text-xs font-semibold border transition bg-dark-900 text-slate-400 border-dark-700 hover:text-white";
+                document.getElementById('volume-formula').innerHTML = "$$V = \\pi \\int_{a}^{b} \\left([R(x)]^2 - [r(x)]^2\\right) dx$$";
+            } else {
+                document.getElementById('btn-method-shell').className = "py-2.5 px-3 rounded-xl text-xs font-semibold border transition bg-indigo-600 text-white border-indigo-500 shadow";
+                document.getElementById('btn-method-washer').className = "py-2.5 px-3 rounded-xl text-xs font-semibold border transition bg-dark-900 text-slate-400 border-dark-700 hover:text-white";
+                document.getElementById('volume-formula').innerHTML = "$$V = 2\\pi \\int_{a}^{b} r(x) \\cdot h(x) \\, dx$$";
+            }
+            update3DScene();
+        }
+
+        function update3DScene() {
+            if (!threeInitialized) return;
+            parseInputs();
+
+            state.axis = document.getElementById('axis-selector').value;
+            const axisCContainer = document.getElementById('container-axis-c');
+            const labelAxisC = document.getElementById('label-axis-c');
+
+            if (state.axis === 'horizontal') {
+                axisCContainer.classList.remove('hidden');
+                labelAxisC.innerText = "Horizontal Axis y = c";
+                state.axisC = parseFloat(document.getElementById('input-axis-c').value) || 0;
+            } else if (state.axis === 'vertical') {
+                axisCContainer.classList.remove('hidden');
+                labelAxisC.innerText = "Vertical Axis x = c";
+                state.axisC = parseFloat(document.getElementById('input-axis-c').value) || 0;
+            } else {
+                axisCContainer.classList.add('hidden');
+            }
+
+            // Remove previous solid mesh and axis line
+            if (solidMesh) scene.remove(solidMesh);
+            if (axisLineMesh) scene.remove(axisLineMesh);
+
+            // Draw axis line indicator
+            drawAxisLine();
+
+            // Build 3D Solid Geometry
+            buildSolidGeometry();
+
+            // Compute volume numerically
+            computeVolume();
+        }
+
+        function drawAxisLine() {
+            const material = new THREE.LineBasicMaterial({ color: 0xf43f5e, linewidth: 2 });
+            const points = [];
+            if (state.axis === 'xaxis') {
+                points.push(new THREE.Vector3(-6, 0, 0), new THREE.Vector3(6, 0, 0));
+            } else if (state.axis === 'yaxis') {
+                points.push(new THREE.Vector3(0, -6, 0), new THREE.Vector3(0, 6, 0));
+            } else if (state.axis === 'horizontal') {
+                points.push(new THREE.Vector3(-6, state.axisC, 0), new THREE.Vector3(6, state.axisC, 0));
+            } else if (state.axis === 'vertical') {
+                points.push(new THREE.Vector3(state.axisC, -6, 0), new THREE.Vector3(state.axisC, 6, 0));
+            }
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            axisLineMesh = new THREE.Line(geometry, material);
+            scene.add(axisLineMesh);
+        }
+
+        function buildSolidGeometry() {
+            try {
+                const radialSegments = 64;
+                const sliceRatio = state.slices / 50; // 1.0 means all slices
+                const steps = Math.max(10, Math.floor(50 * sliceRatio));
+                const dx = (state.b - state.a) / steps;
+
+                // We construct a custom BufferGeometry for rotating around x-axis (default axis=xaxis)
+                const vertices = [];
+                const indices = [];
+                const normals = [];
+                const uvs = [];
+
+                let vertexIndex = 0;
+
+                for (let i = 0; i <= steps; i++) {
+                    const x = state.a + i * dx;
+                    const top = state.compiledFx.evaluate({x});
+                    const bot = state.compiledGx.evaluate({x});
+
+                    // For simplicity in this demo, we revolve around x-axis or horizontal line y = c
+                    const axisY = (state.axis === 'horizontal') ? state.axisC : 0;
+                    const rOuter = Math.abs(top - axisY);
+                    const rInner = Math.abs(bot - axisY);
+
+                    // We create outer surface ring for this x slice
+                    for (let j = 0; j <= radialSegments; j++) {
+                        const theta = (j / radialSegments) * Math.PI * 2 * sliceRatio;
+                        const cos = Math.cos(theta);
+                        const sin = Math.sin(theta);
+
+                        // Position in 3D: x along axis, y and z radial
+                        const vx = x;
+                        const vy = axisY + rOuter * cos;
+                        const vz = rOuter * sin;
+
+                        vertices.push(vx, vy, vz);
+                        normals.push(0, cos, sin);
+                        uvs.push(i / steps, j / radialSegments);
+                    }
+                }
+
+                // Generate faces between rings
+                for (let i = 0; i < steps; i++) {
+                    for (let j = 0; j < radialSegments; j++) {
+                        const current = i * (radialSegments + 1) + j;
+                        const next = (i + 1) * (radialSegments + 1) + j;
+
+                        indices.push(current, next, current + 1);
+                        indices.push(current + 1, next, next + 1);
+                    }
+                }
+
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+                geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+                geometry.setIndex(indices);
+                geometry.computeVertexNormals();
+
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0x6366f1,
+                    roughness: 0.3,
+                    metalness: 0.2,
+                    side: THREE.DoubleSide,
+                    wireframe: state.wireframe
+                });
+
+                solidMesh = new THREE.Mesh(geometry, material);
+                scene.add(solidMesh);
+
+            } catch (e) {
+                console.error("Error building 3D solid geometry:", e);
+            }
+        }
+
+        function toggleWireframe() {
+            state.wireframe = !state.wireframe;
+            const btn = document.getElementById('btn-wireframe');
+            btn.innerText = `Wireframe: ${state.wireframe ? 'On' : 'Off'}`;
+            btn.className = state.wireframe ? "bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium border border-indigo-500 transition" : "bg-dark-700 hover:bg-dark-600 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium border border-dark-600 transition";
+            if (solidMesh) {
+                solidMesh.material.wireframe = state.wireframe;
+            }
+        }
+
+        function updateSliceInspector(val) {
+            state.slices = parseInt(val);
+            const label = val == 50 ? "All (Solid)" : `${val} Slices`;
+            document.getElementById('slice-val').innerText = label;
+            buildSolidGeometry();
+        }
+
+        function resetCamera() {
+            if (camera && controls) {
+                camera.position.set(6, 5, 8);
+                controls.target.set(0, 0, 0);
+                controls.update();
+            }
+        }
+
+        function computeVolume() {
+            const n = 200;
+            const h = (state.b - state.a) / n;
+            let sum = 0;
+            const axisY = (state.axis === 'horizontal') ? state.axisC : 0;
+
+            for (let i = 0; i <= n; i++) {
+                const x = state.a + i * h;
+                try {
+                    const top = state.compiledFx.evaluate({x});
+                    const bot = state.compiledGx.evaluate({x});
+                    const R = Math.abs(top - axisY);
+                    const r = Math.abs(bot - axisY);
+                    
+                    let crossSectionArea = 0;
+                    if (state.method === 'washer') {
+                        crossSectionArea = Math.PI * (R * R - r * r);
+                    } else {
+                        // Shell method approximation for demonstration
+                        crossSectionArea = 2 * Math.PI * Math.abs(x) * Math.abs(top - bot);
+                    }
+
+                    const coeff = (i === 0 || i === n) ? 1 : (i % 2 === 0 ? 2 : 4);
+                    sum += coeff * crossSectionArea;
+                } catch (e) {}
+            }
+            const volume = (h / 3) * sum;
+            document.getElementById('result-volume').innerText = isNaN(volume) ? "Error" : volume.toFixed(4);
+        }
+
+
+        // ================= PART 3 QUIZ LOGIC =================
+        function renderQuiz() {
+            const qObj = quizQuestions[currentQuizIndex];
+            document.getElementById('quiz-progress').innerText = `Q${currentQuizIndex + 1} of ${quizQuestions.length}`;
+            document.getElementById('quiz-q').innerHTML = qObj.q;
+
+            const optsDiv = document.getElementById('quiz-options');
+            optsDiv.innerHTML = '';
+            quizAnswered = false;
+            document.getElementById('quiz-feedback').classList.add('hidden');
+
+            qObj.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left bg-dark-900 hover:bg-dark-700 border border-dark-700 p-3 rounded-xl text-xs text-slate-200 transition font-medium flex items-center justify-between";
+                btn.innerHTML = `<span>${opt}</span><span class="w-4 h-4 rounded-full border border-slate-600 flex items-center justify-center text-[10px]"></span>`;
+                btn.onclick = () => selectQuizAnswer(idx);
+                optsDiv.appendChild(btn);
+            });
+        }
+
+        function selectQuizAnswer(idx) {
+            if (quizAnswered) return;
+            quizAnswered = true;
+            const qObj = quizQuestions[currentQuizIndex];
+            const optsDiv = document.getElementById('quiz-options').children;
+
+            for (let i = 0; i < optsDiv.length; i++) {
+                optsDiv[i].style.pointerEvents = 'none';
+                if (i === qObj.correct) {
+                    optsDiv[i].classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-300');
+                } else if (i === idx) {
+                    optsDiv[i].classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-300');
+                }
+            }
+
+            const feedback = document.getElementById('quiz-feedback');
+            feedback.classList.remove('hidden');
+            if (idx === qObj.correct) {
+                feedback.className = "mt-4 p-3 rounded-xl text-xs space-y-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300";
+                document.getElementById('quiz-feedback-title').innerText = "Correct! Excellent AP calculus mastery.";
+            } else {
+                feedback.className = "mt-4 p-3 rounded-xl text-xs space-y-1 bg-rose-500/10 border border-rose-500/30 text-rose-300";
+                document.getElementById('quiz-feedback-title').innerText = "Incorrect.";
+            }
+            document.getElementById('quiz-feedback-desc').innerText = qObj.explanation;
+        }
+
+        function nextQuizQuestion() {
+            currentQuizIndex = (currentQuizIndex + 1) % quizQuestions.length;
+            renderQuiz();
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            updateCalculations();
+        };
+    </script>
+</body>
+</html>

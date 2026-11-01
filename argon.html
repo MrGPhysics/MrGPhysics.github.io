@@ -1,0 +1,2322 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AP Calculus AB Interactive Lab: Area Between Curves & Solids of Revolution</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Math.js for safe, flexible mathematical expression parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+
+  <!-- Three.js r128 for 3D Solids of Revolution -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            calc: {
+              bg: '#0f172a',
+              card: '#1e293b',
+              panel: '#0b1120',
+              f: '#38bdf8',     // Sky blue for f(x)
+              g: '#34d399',     // Emerald for g(x)
+              axis: '#f43f5e',  // Rose for axis of revolution
+              slice: '#fbbf24', // Amber for representative slice
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b1120;
+      color: #f1f5f9;
+      overflow-x: hidden;
+    }
+
+    /* Custom sleek scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Range slider styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      background: #334155;
+      height: 6px;
+      border-radius: 999px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      margin-top: -5px;
+      background-color: #38bdf8;
+      height: 16px;
+      width: 16px;
+      border-radius: 999px;
+      border: 2px solid #0f172a;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      background-color: #7dd3fc;
+    }
+    input[type="range"].slice-slider::-webkit-slider-thumb {
+      background-color: #fbbf24;
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+    }
+    input[type="range"].axis-slider::-webkit-slider-thumb {
+      background-color: #f43f5e;
+      box-shadow: 0 0 8px rgba(244, 63, 94, 0.6);
+    }
+
+    /* Math integral symbol styling */
+    .integral-symbol {
+      font-family: 'Times New Roman', serif;
+      font-size: 2.25rem;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-sky-500 selection:text-white">
+
+  <!-- TOP HEADER & NAVIGATION BAR -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-900/90 border-b border-slate-800 shadow-lg">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <!-- Brand / Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 via-indigo-500 to-emerald-500 flex items-center justify-center shadow-md shadow-sky-500/20 font-mono font-bold text-xl text-white">
+          ∫
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">AP Calculus AB Interactive Studio</h1>
+            <span class="hidden sm:inline-block px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider bg-sky-500/15 text-sky-400 border border-sky-500/30 rounded-full">
+              Unit 8: Applications of Integration
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Part 1: Area Between Two Curves &bull; Part 2: 3D Solids of Revolution</p>
+        </div>
+      </div>
+
+      <!-- View Mode Tabs -->
+      <div class="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700/70">
+        <button id="tabBoth" onclick="setLayoutMode('both')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all bg-sky-500 text-slate-950 font-semibold shadow-sm">
+          <i class="fa-solid fa-table-columns mr-1.5"></i>Split Lab (Part 1 &amp; 2)
+        </button>
+        <button id="tabPart1" onclick="setLayoutMode('part1')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-300 hover:text-white">
+          <i class="fa-solid fa-chart-area mr-1.5 text-sky-400"></i>Part 1: 2D Area
+        </button>
+        <button id="tabPart2" onclick="setLayoutMode('part2')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-300 hover:text-white">
+          <i class="fa-solid fa-cube mr-1.5 text-rose-400"></i>Part 2: 3D Revolution
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-5 space-y-6">
+
+    <!-- SHARED FUNCTION & BOUNDS CONTROL BAR -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-800/80">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300">
+            Function Definitions &amp; Interval Bounds
+          </h2>
+          <span id="parseStatusBadge" class="ml-2 px-2 py-0.5 text-xs font-medium rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            <i class="fa-solid fa-check mr-1"></i>Expressions Valid
+          </span>
+        </div>
+
+        <!-- AP Calculus AB Quick Preset Buttons -->
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span class="text-xs text-slate-400 mr-1 font-medium"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-amber-400"></i>AP Presets:</span>
+          <button onclick="loadPreset('parabola_line')" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+            Parabola &amp; Line
+          </button>
+          <button onclick="loadPreset('sqrt_quad')" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+            √x vs x²
+          </button>
+          <button onclick="loadPreset('two_quads')" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+            Intersecting Quadratics
+          </button>
+          <button onclick="loadPreset('trig')" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+            Trig Region
+          </button>
+          <button onclick="loadPreset('washer_shifted')" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+            Shifted Axis (y = -1)
+          </button>
+        </div>
+      </div>
+
+      <!-- Inputs Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+
+        <!-- Function f(x) -->
+        <div class="md:col-span-3 bg-slate-950/70 p-3 rounded-xl border border-sky-500/30 focus-within:border-sky-400 transition">
+          <label class="flex items-center justify-between text-xs font-semibold text-sky-400 mb-1.5">
+            <span><i class="fa-solid fa-wave-square mr-1.5"></i>Function f(x)</span>
+            <span class="text-[11px] text-slate-400 font-normal">Curve 1 (Blue)</span>
+          </label>
+          <div class="flex items-center bg-slate-900 rounded-lg border border-slate-700 px-3 py-1.5">
+            <span class="font-mono font-bold text-sky-400 mr-2 select-none">f(x) =</span>
+            <input id="inputF" type="text" value="4 - x^2" oninput="handleFunctionChange()"
+              class="w-full bg-transparent font-mono text-sm text-white focus:outline-none"
+              placeholder="e.g. 4 - x^2" />
+          </div>
+        </div>
+
+        <!-- Function g(x) -->
+        <div class="md:col-span-3 bg-slate-950/70 p-3 rounded-xl border border-emerald-500/30 focus-within:border-emerald-400 transition">
+          <label class="flex items-center justify-between text-xs font-semibold text-emerald-400 mb-1.5">
+            <span><i class="fa-solid fa-wave-square mr-1.5"></i>Function g(x)</span>
+            <span class="text-[11px] text-slate-400 font-normal">Curve 2 (Green)</span>
+          </label>
+          <div class="flex items-center bg-slate-900 rounded-lg border border-slate-700 px-3 py-1.5">
+            <span class="font-mono font-bold text-emerald-400 mr-2 select-none">g(x) =</span>
+            <input id="inputG" type="text" value="x + 2" oninput="handleFunctionChange()"
+              class="w-full bg-transparent font-mono text-sm text-white focus:outline-none"
+              placeholder="e.g. x + 2" />
+          </div>
+        </div>
+
+        <!-- Interval [a, b] + Auto-Intersect -->
+        <div class="md:col-span-3 bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-semibold text-slate-300">
+              <i class="fa-solid fa-arrows-left-right-to-line mr-1 text-indigo-400"></i>Interval Bounds [a, b]
+            </label>
+            <button onclick="snapToIntersections()" title="Automatically find intersections of f(x) and g(x) and set [a, b]"
+              class="px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 text-[11px] font-medium transition">
+              <i class="fa-solid fa-crosshairs mr-1"></i>Snap to Intersections
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="flex items-center bg-slate-900 rounded-lg border border-slate-700 px-2.5 py-1.5">
+              <span class="font-mono text-xs text-slate-400 mr-1.5">a =</span>
+              <input id="inputA" type="number" step="0.1" value="-2" oninput="handleBoundsChange()"
+                class="w-full bg-transparent font-mono text-sm text-white focus:outline-none" />
+            </div>
+            <div class="flex items-center bg-slate-900 rounded-lg border border-slate-700 px-2.5 py-1.5">
+              <span class="font-mono text-xs text-slate-400 mr-1.5">b =</span>
+              <input id="inputB" type="number" step="0.1" value="1" oninput="handleBoundsChange()"
+                class="w-full bg-transparent font-mono text-sm text-white focus:outline-none" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Representative Slice x_slice Control -->
+        <div class="md:col-span-3 bg-slate-950/70 p-3 rounded-xl border border-amber-500/30">
+          <div class="flex items-center justify-between text-xs font-semibold text-amber-400 mb-1.5">
+            <span><i class="fa-solid fa-ruler-vertical mr-1.5"></i>Sample Slice (x<sub>slice</sub>)</span>
+            <span id="sliceXLabel" class="font-mono text-amber-300">x = -0.50</span>
+          </div>
+          <input id="sliderSliceX" type="range" min="0" max="1" step="0.005" value="0.5"
+            oninput="handleSliceSliderChange()" class="w-full slice-slider mb-1" />
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>Thickness Δx:</span>
+            <div class="flex items-center gap-1">
+              <input id="sliderDeltaX" type="range" min="0.02" max="0.4" step="0.01" value="0.12"
+                oninput="handleDeltaXChange()" class="w-20" />
+              <span id="deltaXLabel" class="font-mono text-slate-300 w-10 text-right">0.12</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Syntax Helper & Found Intersections Bar -->
+      <div class="mt-3 pt-2.5 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-medium text-slate-300"><i class="fa-solid fa-circle-info mr-1 text-sky-400"></i>Syntax tips:</span>
+          <code class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">x^2</code>
+          <code class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">sqrt(x)</code>
+          <code class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">sin(x), cos(x)</code>
+          <code class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">e^x, ln(x)</code>
+          <code class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">abs(x)</code>
+        </div>
+        <div id="intersectionsList" class="flex flex-wrap items-center gap-2">
+          <!-- Populated dynamically with detected intersections -->
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN INTERACTIVE DUAL MODULE GRID -->
+    <div id="modulesGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- ===================================================================
+           PART 1: AREA BETWEEN TWO CURVES (2D GRAPH & INTEGRAL BREAKDOWN)
+           =================================================================== -->
+      <section id="part1Section" class="flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+        <!-- Part 1 Header -->
+        <div class="px-5 py-4 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5">
+            <span class="px-2.5 py-1 rounded-lg bg-sky-500/20 text-sky-400 border border-sky-500/30 font-bold text-xs uppercase tracking-wider">
+              Part 1
+            </span>
+            <div>
+              <h2 class="text-base font-bold text-white">Area Between Two Curves</h2>
+              <p class="text-xs text-slate-400">2D Coordinate Graph, Representative Rectangle Δx &amp; Definite Integral</p>
+            </div>
+          </div>
+
+          <!-- 2D Graph Toolbar -->
+          <div class="flex items-center gap-1.5">
+            <button id="btnRiemannToggle" onclick="toggleRiemannMode()"
+              class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+              title="Toggle Riemann Approximating Rectangles">
+              <i class="fa-solid fa-bars-staggered mr-1 text-amber-400"></i>Riemann Sum: <span id="riemannStateText">Off</span>
+            </button>
+            <button onclick="zoom2D(0.8)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Zoom In 2D Graph">
+              <i class="fa-solid fa-magnifying-glass-plus text-xs"></i>
+            </button>
+            <button onclick="zoom2D(1.25)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Zoom Out 2D Graph">
+              <i class="fa-solid fa-magnifying-glass-minus text-xs"></i>
+            </button>
+            <button onclick="reset2DView()" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Reset 2D Graph Camera">
+              <i class="fa-solid fa-expand mr-1"></i>Reset View
+            </button>
+          </div>
+        </div>
+
+        <!-- Optional Riemann Rectangles Subbar -->
+        <div id="riemannControlsBar" class="hidden px-5 py-2.5 bg-slate-950/80 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-amber-400"><i class="fa-solid fa-layer-group mr-1"></i>Subintervals (n):</span>
+            <input id="sliderRiemannN" type="range" min="2" max="60" step="1" value="12" oninput="updateRiemannN()" class="w-32 slice-slider" />
+            <span id="riemannNLabel" class="font-mono font-bold text-white">n = 12</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-slate-400">Riemann Approx Area: <strong id="riemannApproxVal" class="font-mono text-amber-300">0.0000</strong></span>
+          </div>
+        </div>
+
+        <!-- 2D Interactive Canvas Container -->
+        <div class="relative h-[400px] sm:h-[440px] w-full bg-slate-950 border-b border-slate-800 canvas-container">
+          <canvas id="canvas2D" class="cursor-grab active:cursor-grabbing"></canvas>
+
+          <!-- Floating Legend Overlay -->
+          <div class="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 text-xs space-y-1.5 pointer-events-none shadow-lg">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-1 rounded-full bg-sky-400 inline-block"></span>
+              <span class="font-mono text-sky-300 font-semibold" id="legendF">f(x) = 4 - x^2</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-1 rounded-full bg-emerald-400 inline-block"></span>
+              <span class="font-mono text-emerald-300 font-semibold" id="legendG">g(x) = x + 2</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-0.5 border-b-2 border-dashed border-rose-400 inline-block"></span>
+              <span class="font-mono text-rose-300" id="legendAxis2D">Axis: y = 0</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-2.5 rounded-sm bg-amber-400/70 border border-amber-300 inline-block"></span>
+              <span class="text-amber-300 font-medium">Slice Δx (Drag me!)</span>
+            </div>
+          </div>
+
+          <!-- Floating Cursor Coordinates & Hint -->
+          <div class="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+            <div class="px-2.5 py-1 rounded-lg bg-slate-900/85 border border-slate-800 text-[11px] text-slate-400">
+              <i class="fa-solid fa-hand-pointer mr-1 text-sky-400"></i>Drag yellow slice or bounds <strong>a, b</strong> &bull; Scroll to zoom &bull; Drag background to pan
+            </div>
+            <div id="cursorCoords2D" class="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-700 font-mono text-xs text-slate-300">
+              (x: 0.00, y: 0.00)
+            </div>
+          </div>
+        </div>
+
+        <!-- Part 1: Mathematical Breakdown & Area Computation -->
+        <div class="p-5 space-y-4 flex-1 flex flex-col justify-between bg-slate-900/60">
+          <!-- Integral Setup & Total Area Result -->
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center bg-slate-950/90 border border-slate-800/90 rounded-xl p-4">
+            <div class="sm:col-span-8">
+              <div class="text-xs font-bold uppercase tracking-wider text-sky-400 mb-1">
+                AP Calculus AB Definite Integral Setup (Area)
+              </div>
+              <div class="flex items-center flex-wrap gap-2 font-mono text-sm sm:text-base text-white py-1">
+                <span>Area =</span>
+                <div class="inline-flex items-center">
+                  <span class="integral-symbol text-sky-400 mr-1">∫</span>
+                  <div class="flex flex-col text-[11px] font-mono leading-tight -ml-1 mr-1.5 text-slate-300">
+                    <span id="intBoundB">1</span>
+                    <span class="my-0.5"></span>
+                    <span id="intBoundA">-2</span>
+                  </div>
+                </div>
+                <span id="areaIntegrandText" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-sky-200 text-xs sm:text-sm">
+                  |(4 - x^2) - (x + 2)| dx
+                </span>
+              </div>
+              <p id="topBottomSummaryText" class="text-xs text-slate-400 mt-1">
+                Since <span class="text-sky-400 font-medium">f(x) &ge; g(x)</span> on [-2, 1], Top = f(x) and Bottom = g(x).
+              </p>
+            </div>
+
+            <div class="sm:col-span-4 bg-gradient-to-br from-sky-500/15 to-emerald-500/10 border border-sky-500/30 rounded-xl p-3 text-center">
+              <div class="text-[11px] font-semibold uppercase tracking-wider text-sky-300">Total Area Between Curves</div>
+              <div id="computedAreaValue" class="text-2xl font-extrabold font-mono text-white mt-0.5">
+                4.5000
+              </div>
+              <div id="signedAreaSubtext" class="text-[11px] font-mono text-slate-400 mt-0.5">
+                Net ∫(f - g)dx = 4.5000
+              </div>
+            </div>
+          </div>
+
+          <!-- Representative Slice (Δx) Inspector Card -->
+          <div class="bg-slate-950/70 border border-amber-500/25 rounded-xl p-3.5">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-amber-400">
+                <i class="fa-solid fa-magnifying-glass-chart mr-1.5"></i>Representative Rectangle Slice at x = <span id="cardSliceX" class="font-mono">-0.50</span>
+              </span>
+              <span id="cardTopFunctionBadge" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                Top: f(x) | Bottom: g(x)
+              </span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+              <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                <div class="text-slate-400 text-[11px] font-sans">y<sub>top</sub> value</div>
+                <div id="sliceYTop" class="text-sm font-bold text-sky-300 mt-0.5">3.750</div>
+              </div>
+              <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                <div class="text-slate-400 text-[11px] font-sans">y<sub>bottom</sub> value</div>
+                <div id="sliceYBottom" class="text-sm font-bold text-emerald-300 mt-0.5">1.500</div>
+              </div>
+              <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                <div class="text-slate-400 text-[11px] font-sans">Height h(x) = y<sub>top</sub> - y<sub>bot</sub></div>
+                <div id="sliceHeightVal" class="text-sm font-bold text-amber-300 mt-0.5">2.250</div>
+              </div>
+              <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                <div class="text-slate-400 text-[11px] font-sans">Slice Area ΔA = h(x)·Δx</div>
+                <div id="sliceAreaVal" class="text-sm font-bold text-white mt-0.5">0.2700</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           PART 2: SOLIDS OF REVOLUTION (3D INTERACTIVE GRAPH & WASHER/SHELL)
+           =================================================================== -->
+      <section id="part2Section" class="flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+        <!-- Part 2 Header -->
+        <div class="px-5 py-4 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5">
+            <span class="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs uppercase tracking-wider">
+              Part 2
+            </span>
+            <div>
+              <h2 class="text-base font-bold text-white">3D Solids of Revolution</h2>
+              <p class="text-xs text-slate-400">Rotate Region Around a Line &bull; Orbit, Pan &amp; Zoom in 3D</p>
+            </div>
+          </div>
+
+          <!-- 3D Viewport Camera & Visual Buttons -->
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button id="btnPlaySweep" onclick="toggleSweepAnimation()"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500 hover:bg-rose-400 text-white shadow-sm shadow-rose-500/30 transition">
+              <i id="iconPlaySweep" class="fa-solid fa-rotate mr-1"></i><span id="textPlaySweep">Animate Sweep</span>
+            </button>
+            <button onclick="set3DCameraPreset('iso')" class="px-2 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="3D Isometric View">
+              3D Iso
+            </button>
+            <button onclick="set3DCameraPreset('xy')" class="px-2 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Front 2D XY Plane View">
+              XY Front
+            </button>
+            <button onclick="set3DCameraPreset('side')" class="px-2 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Side Cross-Section View">
+              Cross-Section
+            </button>
+          </div>
+        </div>
+
+        <!-- Axis of Revolution & 3D Sweep Controls Bar -->
+        <div class="px-5 py-3 bg-slate-950/85 border-b border-slate-800 grid grid-cols-1 sm:grid-cols-12 gap-3 items-center text-xs">
+          <!-- Axis Orientation & Value -->
+          <div class="sm:col-span-7 flex flex-wrap items-center gap-2">
+            <span class="font-bold text-rose-400 uppercase tracking-wider"><i class="fa-solid fa-arrows-spin mr-1"></i>Rotate Around:</span>
+
+            <!-- Axis Type Select -->
+            <div class="inline-flex rounded-lg bg-slate-900 p-0.5 border border-slate-700">
+              <button id="btnAxisHorizontal" onclick="setAxisOrientation('horizontal')"
+                class="px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-500 text-white transition">
+                Horizontal (y = k)
+              </button>
+              <button id="btnAxisVertical" onclick="setAxisOrientation('vertical')"
+                class="px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition">
+                Vertical (x = h)
+              </button>
+            </div>
+
+            <!-- Numeric Value Input -->
+            <div class="flex items-center bg-slate-900 rounded-lg border border-rose-500/40 px-2.5 py-1">
+              <span id="axisVarSymbol" class="font-mono font-bold text-rose-400 mr-1">y =</span>
+              <input id="inputAxisVal" type="number" step="0.5" value="0" oninput="handleAxisValChange()"
+                class="w-14 bg-transparent font-mono text-sm font-bold text-white focus:outline-none" />
+            </div>
+
+            <!-- Quick Axis Presets -->
+            <div class="flex items-center gap-1">
+              <button onclick="setQuickAxis(0)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono text-[11px]">0</button>
+              <button onclick="setQuickAxis(-1)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono text-[11px]">-1</button>
+              <button onclick="setQuickAxis(-2)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono text-[11px]">-2</button>
+              <button onclick="setQuickAxis(5)" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono text-[11px]">5</button>
+            </div>
+          </div>
+
+          <!-- Sweep Angle Slider (0 to 360 deg) -->
+          <div class="sm:col-span-5 flex items-center gap-2">
+            <span class="text-slate-300 font-medium whitespace-nowrap">Sweep θ:</span>
+            <input id="sliderSweepAngle" type="range" min="5" max="360" step="1" value="360"
+              oninput="handleSweepSliderChange()" class="w-full axis-slider" />
+            <span id="sweepAngleLabel" class="font-mono font-bold text-rose-400 w-11 text-right">360°</span>
+          </div>
+        </div>
+
+        <!-- 3D Interactive Three.js Viewport -->
+        <div class="relative h-[400px] sm:h-[440px] w-full bg-slate-950 border-b border-slate-800 canvas-container">
+          <div id="threeContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+          <!-- 3D Visual Toggles Overlay (Top Left) -->
+          <div class="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 text-xs space-y-2 shadow-lg">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input id="chkShow3DSlice" type="checkbox" checked onchange="rebuild3DSolid()" class="rounded text-amber-500 focus:ring-0" />
+              <span class="text-amber-300 font-semibold"><i class="fa-solid fa-compact-disc mr-1"></i>Show 3D Washer/Slice</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input id="chkSliceOnly" type="checkbox" onchange="update3DMaterials()" class="rounded text-amber-500 focus:ring-0" />
+              <span class="text-slate-300">Isolate 3D Slice (Ghost Solid)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input id="chkWireframe" type="checkbox" onchange="update3DMaterials()" class="rounded text-sky-500 focus:ring-0" />
+              <span class="text-slate-300">Wireframe Mesh</span>
+            </label>
+            <div class="flex items-center gap-2 pt-1 border-t border-slate-800">
+              <span class="text-slate-400 text-[11px]">Opacity:</span>
+              <input id="sliderOpacity" type="range" min="0.15" max="1" step="0.05" value="0.78"
+                oninput="update3DMaterials()" class="w-20" />
+            </div>
+          </div>
+
+          <!-- 3D Color Key Overlay (Top Right) -->
+          <div class="absolute top-3 right-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 text-[11px] space-y-1 pointer-events-none shadow-lg hidden sm:block">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-sky-400 inline-block"></span>
+              <span class="text-slate-300">f(x) Revolved Surface</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+              <span class="text-slate-300">g(x) Revolved Surface</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>
+              <span class="text-amber-300 font-medium">3D Representative Slice</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
+              <span class="text-rose-300 font-medium" id="legendAxis3D">Axis: y = 0</span>
+            </div>
+          </div>
+
+          <!-- 3D Navigation Instructions Banner (Bottom) -->
+          <div class="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+            <div class="px-2.5 py-1 rounded-lg bg-slate-900/85 border border-slate-800 text-[11px] text-slate-400">
+              <i class="fa-solid fa-cube mr-1 text-rose-400"></i><strong>Left-Drag:</strong> Orbit 3D &bull; <strong>Right-Drag / Shift+Drag:</strong> Pan &bull; <strong>Scroll:</strong> Zoom
+            </div>
+            <div class="flex items-center gap-1 pointer-events-auto">
+              <button onclick="zoom3D(0.85)" class="px-2 py-1 rounded bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs" title="Zoom In 3D">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+              <button onclick="zoom3D(1.18)" class="px-2 py-1 rounded bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs" title="Zoom Out 3D">
+                <i class="fa-solid fa-minus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Part 2: Volume Integral & Washer/Shell Radii Breakdown -->
+        <div class="p-5 space-y-4 flex-1 flex flex-col justify-between bg-slate-900/60">
+          <!-- Volume Integral Formula & Numerical Result -->
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center bg-slate-950/90 border border-slate-800/90 rounded-xl p-4">
+            <div class="sm:col-span-8">
+              <div class="flex items-center gap-2 mb-1">
+                <span id="methodBadge" class="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                  Washer / Disk Method (Horizontal Axis)
+                </span>
+              </div>
+
+              <div class="flex items-center flex-wrap gap-1.5 font-mono text-xs sm:text-sm text-white py-1">
+                <span id="volFormulaPrefix" class="font-bold text-rose-400">V = π</span>
+                <div class="inline-flex items-center">
+                  <span class="integral-symbol text-rose-400 mr-1">∫</span>
+                  <div class="flex flex-col text-[11px] font-mono leading-tight -ml-1 mr-1.5 text-slate-300">
+                    <span id="volBoundB">1</span>
+                    <span class="my-0.5"></span>
+                    <span id="volBoundA">-2</span>
+                  </div>
+                </div>
+                <span id="volIntegrandText" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-rose-200 text-xs break-all">
+                  [ (R(x))² - (r(x))² ] dx
+                </span>
+              </div>
+
+              <p id="volumeWarningText" class="text-xs text-slate-400 mt-1">
+                Outer Radius <strong class="text-sky-300">R(x)</strong> is distance from axis to farthest curve; Inner Radius <strong class="text-emerald-300">r(x)</strong> to closest curve.
+              </p>
+            </div>
+
+            <div class="sm:col-span-4 bg-gradient-to-br from-rose-500/15 to-amber-500/10 border border-rose-500/30 rounded-xl p-3 text-center">
+              <div class="text-[11px] font-semibold uppercase tracking-wider text-rose-300">Total 3D Solid Volume</div>
+              <div id="computedVolumeValue" class="text-2xl font-extrabold font-mono text-white mt-0.5">
+                33.9292
+              </div>
+              <div id="computedVolumePi" class="text-xs font-mono text-amber-300 font-semibold mt-0.5">
+                ≈ 10.8000 π
+              </div>
+            </div>
+          </div>
+
+          <!-- 3D Cross-Sectional Washer / Shell Radii Inspector at x_slice -->
+          <div class="bg-slate-950/70 border border-rose-500/25 rounded-xl p-3.5">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-rose-400">
+                <i class="fa-solid fa-bullseye mr-1.5"></i>3D Slice Geometry at x = <span id="card3DSliceX" class="font-mono">-0.50</span>
+              </span>
+              <span id="sliceTypeLabel" class="text-[11px] font-mono text-amber-300">
+                Cross-Section Area A(x) = π(R² - r²)
+              </span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+              <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                <div id="labelMetric1" class="text-slate-400 text-[11px] font-sans">Outer Radius R(x)</div>
+                <div id="valOuterRadius" class="text-sm font-bold text-sky-300 mt-0.5">3.750</div>
+              </div>
+              <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                <div id="labelMetric2" class="text-slate-400 text-[11px] font-sans">Inner Radius r(x)</div>
+                <div id="valInnerRadius" class="text-sm font-bold text-emerald-300 mt-0.5">1.500</div>
+              </div>
+              <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                <div id="labelMetric3" class="text-slate-400 text-[11px] font-sans">Slice Area A(x)</div>
+                <div id="valCrossSectionArea" class="text-sm font-bold text-rose-300 mt-0.5">37.110</div>
+              </div>
+              <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                <div id="labelMetric4" class="text-slate-400 text-[11px] font-sans">Slice Vol ΔV = A(x)·Δx</div>
+                <div id="valSliceVolume" class="text-sm font-bold text-amber-300 mt-0.5">4.453</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- AP CALCULUS AB QUICK REFERENCE GUIDE FOOTER -->
+    <section class="bg-slate-900/70 border border-slate-800/80 rounded-2xl p-5">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+        <i class="fa-solid fa-graduation-cap mr-1.5 text-sky-400"></i>AP Calculus AB Exam Concept Summary (Unit 8)
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300 leading-relaxed">
+        <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+          <div class="font-bold text-sky-400 mb-1">1. Area Between Two Curves (dx)</div>
+          <p class="text-slate-400">
+            To find the area bounded by <span class="font-mono text-sky-300">f(x)</span> and <span class="font-mono text-emerald-300">g(x)</span> on <span class="font-mono">[a, b]</span>, integrate vertical slices of height <span class="font-mono">(y<sub>top</sub> - y<sub>bottom</sub>)</span>:
+          </p>
+          <div class="mt-2 p-2 rounded bg-slate-900 font-mono text-center text-sky-200 border border-slate-800">
+            A = ∫<sub>a</sub><sup>b</sup> [ y<sub>top</sub> - y<sub>bottom</sub> ] dx
+          </div>
+        </div>
+        <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+          <div class="font-bold text-rose-400 mb-1">2. Washer Method around Horizontal Line y = k</div>
+          <p class="text-slate-400">
+            Revolving a vertical slice around <span class="font-mono text-rose-300">y = k</span> forms a washer with outer radius <span class="font-mono">R(x)</span> (distance from <span class="font-mono">y = k</span> to outer curve) and inner radius <span class="font-mono">r(x)</span>:
+          </p>
+          <div class="mt-2 p-2 rounded bg-slate-900 font-mono text-center text-rose-200 border border-slate-800">
+            V = π ∫<sub>a</sub><sup>b</sup> ( [R(x)]² - [r(x)]² ) dx
+          </div>
+        </div>
+        <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+          <div class="font-bold text-amber-400 mb-1">3. Visualizing 3D Cross-Sections</div>
+          <p class="text-slate-400">
+            Use the <strong>Sweep Angle θ</strong> slider to watch the flat 2D region revolve through space, and toggle <strong>Isolate 3D Slice</strong> to see how a single 2D rectangle <span class="font-mono">Δx</span> sweeps out a 3D washer!
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- APPLICATION JAVASCRIPT -->
+  <script>
+    /*************************************************************************
+     * 1. GLOBAL APPLICATION STATE
+     *************************************************************************/
+    const state = {
+      exprF: '4 - x^2',
+      exprG: 'x + 2',
+      fnF: (x) => 4 - x * x,
+      fnG: (x) => x + 2,
+      validF: true,
+      validG: true,
+
+      a: -2,
+      b: 1,
+
+      // Normalized slice position t in [0, 1] -> x_slice = a + t*(b - a)
+      sliceT: 0.5,
+      deltaX: 0.12,
+
+      // Part 1 Riemann mode
+      riemannMode: false,
+      riemannN: 12,
+
+      // Part 2 Axis of Revolution
+      axisOrientation: 'horizontal', // 'horizontal' (y = k) or 'vertical' (x = h)
+      axisValue: 0,                  // k or h
+      sweepAngleDeg: 360,
+      isAnimatingSweep: false,
+
+      // Detected intersections
+      intersections: [],
+
+      // 2D Viewport transform
+      view2D: {
+        centerX: -0.5,
+        centerY: 1.5,
+        scale: 52, // pixels per math unit
+        isDragging: false,
+        dragTarget: null, // 'pan' | 'slice' | 'boundA' | 'boundB'
+        lastMouseX: 0,
+        lastMouseY: 0,
+        hoverX: 0,
+        hoverY: 0
+      }
+    };
+
+    /*************************************************************************
+     * 2. MATHEMATICAL EXPRESSION PARSER & NUMERICAL ENGINE
+     *************************************************************************/
+    function compileMathFunction(exprStr) {
+      const cleaned = exprStr.trim()
+        .replace(/\bln\(/g, 'log('); // In math.js, log(x) is natural log
+      const compiled = math.compile(cleaned);
+      // Test evaluation
+      const testVal = compiled.evaluate({ x: 0.5, e: Math.E, pi: Math.PI });
+      if (typeof testVal !== 'number' && typeof testVal?.re !== 'number') {
+        throw new Error('Invalid expression output');
+      }
+      return (xVal) => {
+        try {
+          const res = compiled.evaluate({ x: xVal, e: Math.E, pi: Math.PI });
+          if (typeof res === 'number' && isFinite(res)) return res;
+          return NaN;
+        } catch (e) {
+          return NaN;
+        }
+      };
+    }
+
+    function safeEval(fn, x) {
+      try {
+        const y = fn(x);
+        return (typeof y === 'number' && isFinite(y)) ? y : NaN;
+      } catch {
+        return NaN;
+      }
+    }
+
+    function getSliceX() {
+      return state.a + state.sliceT * (state.b - state.a);
+    }
+
+    // Composite Simpson's / Midpoint Quadrature for accurate definite integrals
+    function numericIntegrate(integrand, a, b, n = 300) {
+      if (Math.abs(b - a) < 1e-9) return 0;
+      const sign = b >= a ? 1 : -1;
+      const low = Math.min(a, b);
+      const high = Math.max(a, b);
+      const h = (high - low) / n;
+      let sum = 0;
+
+      for (let i = 0; i < n; i++) {
+        const x0 = low + i * h;
+        const xMid = x0 + 0.5 * h;
+        const x1 = x0 + h;
+        const y0 = integrand(x0);
+        const yMid = integrand(xMid);
+        const y1 = integrand(x1);
+
+        if (isFinite(y0) && isFinite(yMid) && isFinite(y1)) {
+          sum += (h / 6) * (y0 + 4 * yMid + y1);
+        } else if (isFinite(yMid)) {
+          sum += h * yMid;
+        }
+      }
+      return sign * sum;
+    }
+
+    // Automatically find intersections f(x) = g(x) on [-10, 10]
+    function detectIntersections() {
+      const roots = [];
+      const xMin = -10;
+      const xMax = 10;
+      const steps = 800;
+      const dx = (xMax - xMin) / steps;
+
+      const diff = (x) => safeEval(state.fnF, x) - safeEval(state.fnG, x);
+
+      for (let i = 0; i < steps; i++) {
+        const x1 = xMin + i * dx;
+        const x2 = x1 + dx;
+        const d1 = diff(x1);
+        const d2 = diff(x2);
+
+        if (!isFinite(d1) || !isFinite(d2)) continue;
+
+        if (Math.abs(d1) < 1e-9) {
+          addUniqueRoot(roots, x1);
+        } else if (d1 * d2 < 0) {
+          // Bisection refinement
+          let lo = x1, hi = x2, mid = 0.5 * (x1 + x2);
+          for (let iter = 0; iter < 35; iter++) {
+            mid = 0.5 * (lo + hi);
+            const dMid = diff(mid);
+            if (!isFinite(dMid) || Math.abs(dMid) < 1e-10) break;
+            if (d1 * dMid <= 0) {
+              hi = mid;
+            } else {
+              lo = mid;
+            }
+          }
+          // Verify continuity (avoid vertical asymptote false roots)
+          if (Math.abs(diff(mid)) < 1e-2) {
+            addUniqueRoot(roots, mid);
+          }
+        }
+      }
+
+      state.intersections = roots.map(rx => ({
+        x: Math.abs(rx) < 1e-7 ? 0 : rx,
+        y: safeEval(state.fnF, rx)
+      }));
+
+      renderIntersectionPills();
+    }
+
+    function addUniqueRoot(arr, val) {
+      for (const r of arr) {
+        if (Math.abs(r - val) < 1e-3) return;
+      }
+      arr.push(val);
+    }
+
+    function renderIntersectionPills() {
+      const container = document.getElementById('intersectionsList');
+      if (!state.intersections.length) {
+        container.innerHTML = `<span class="text-slate-500">No intersections detected on [-10, 10]</span>`;
+        return;
+      }
+      const pills = state.intersections.slice(0, 5).map(pt =>
+        `<span class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-mono text-[11px]">
+          (${pt.x.toFixed(2)}, ${pt.y.toFixed(2)})
+        </span>`
+      ).join('');
+      container.innerHTML = `<span class="text-slate-400 font-medium">Intersections:</span> ${pills}`;
+    }
+
+    function snapToIntersections() {
+      detectIntersections();
+      if (state.intersections.length >= 2) {
+        // Pick the two intersections closest to current center or first two
+        state.a = Number(state.intersections[0].x.toFixed(4));
+        state.b = Number(state.intersections[1].x.toFixed(4));
+        document.getElementById('inputA').value = state.a;
+        document.getElementById('inputB').value = state.b;
+        autoFrame2D();
+        updateAll();
+      }
+    }
+
+    /*************************************************************************
+     * 3. UI HANDLERS & PRESETS
+     *************************************************************************/
+    function handleFunctionChange() {
+      const rawF = document.getElementById('inputF').value;
+      const rawG = document.getElementById('inputG').value;
+      const badge = document.getElementById('parseStatusBadge');
+
+      try {
+        state.fnF = compileMathFunction(rawF);
+        state.exprF = rawF;
+        state.validF = true;
+      } catch {
+        state.validF = false;
+      }
+
+      try {
+        state.fnG = compileMathFunction(rawG);
+        state.exprG = rawG;
+        state.validG = true;
+      } catch {
+        state.validG = false;
+      }
+
+      if (state.validF && state.validG) {
+        badge.className = 'ml-2 px-2 py-0.5 text-xs font-medium rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+        badge.innerHTML = '<i class="fa-solid fa-check mr-1"></i>Expressions Valid';
+        detectIntersections();
+        updateAll();
+      } else {
+        badge.className = 'ml-2 px-2 py-0.5 text-xs font-medium rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30';
+        badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i>Typing expression...';
+      }
+    }
+
+    function handleBoundsChange() {
+      const valA = parseFloat(document.getElementById('inputA').value);
+      const valB = parseFloat(document.getElementById('inputB').value);
+      if (isFinite(valA)) state.a = valA;
+      if (isFinite(valB)) state.b = valB;
+      updateAll();
+    }
+
+    function handleSliceSliderChange() {
+      state.sliceT = parseFloat(document.getElementById('sliderSliceX').value);
+      updateAll();
+    }
+
+    function handleDeltaXChange() {
+      state.deltaX = parseFloat(document.getElementById('sliderDeltaX').value);
+      document.getElementById('deltaXLabel').textContent = state.deltaX.toFixed(2);
+      updateAll();
+    }
+
+    function toggleRiemannMode() {
+      state.riemannMode = !state.riemannMode;
+      const btn = document.getElementById('btnRiemannToggle');
+      const bar = document.getElementById('riemannControlsBar');
+      const txt = document.getElementById('riemannStateText');
+
+      if (state.riemannMode) {
+        txt.textContent = 'On';
+        btn.classList.add('border-amber-500/50', 'bg-amber-500/15', 'text-amber-300');
+        bar.classList.remove('hidden');
+      } else {
+        txt.textContent = 'Off';
+        btn.classList.remove('border-amber-500/50', 'bg-amber-500/15', 'text-amber-300');
+        bar.classList.add('hidden');
+      }
+      updateAll();
+    }
+
+    function updateRiemannN() {
+      state.riemannN = parseInt(document.getElementById('sliderRiemannN').value, 10);
+      document.getElementById('riemannNLabel').textContent = `n = ${state.riemannN}`;
+      updateAll();
+    }
+
+    function setAxisOrientation(orientation) {
+      state.axisOrientation = orientation;
+      const btnH = document.getElementById('btnAxisHorizontal');
+      const btnV = document.getElementById('btnAxisVertical');
+      const sym = document.getElementById('axisVarSymbol');
+
+      if (orientation === 'horizontal') {
+        btnH.className = 'px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-500 text-white transition';
+        btnV.className = 'px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition';
+        sym.textContent = 'y =';
+      } else {
+        btnV.className = 'px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-500 text-white transition';
+        btnH.className = 'px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition';
+        sym.textContent = 'x =';
+      }
+      updateAll();
+    }
+
+    function handleAxisValChange() {
+      const val = parseFloat(document.getElementById('inputAxisVal').value);
+      if (isFinite(val)) {
+        state.axisValue = val;
+        updateAll();
+      }
+    }
+
+    function setQuickAxis(val) {
+      state.axisValue = val;
+      document.getElementById('inputAxisVal').value = val;
+      updateAll();
+    }
+
+    function handleSweepSliderChange() {
+      state.sweepAngleDeg = parseFloat(document.getElementById('sliderSweepAngle').value);
+      document.getElementById('sweepAngleLabel').textContent = `${Math.round(state.sweepAngleDeg)}°`;
+      rebuild3DSolid();
+    }
+
+    function setLayoutMode(mode) {
+      const grid = document.getElementById('modulesGrid');
+      const p1 = document.getElementById('part1Section');
+      const p2 = document.getElementById('part2Section');
+      const tBoth = document.getElementById('tabBoth');
+      const t1 = document.getElementById('tabPart1');
+      const t2 = document.getElementById('tabPart2');
+
+      const activeClass = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-sky-500 text-slate-950 shadow-sm';
+      const inactiveClass = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all text-slate-300 hover:text-white';
+
+      tBoth.className = mode === 'both' ? activeClass : inactiveClass;
+      t1.className = mode === 'part1' ? activeClass : inactiveClass;
+      t2.className = mode === 'part2' ? activeClass : inactiveClass;
+
+      if (mode === 'both') {
+        grid.className = 'grid grid-cols-1 lg:grid-cols-2 gap-6';
+        p1.classList.remove('hidden');
+        p2.classList.remove('hidden');
+      } else if (mode === 'part1') {
+        grid.className = 'grid grid-cols-1 gap-6';
+        p1.classList.remove('hidden');
+        p2.classList.add('hidden');
+      } else {
+        grid.className = 'grid grid-cols-1 gap-6';
+        p1.classList.add('hidden');
+        p2.classList.remove('hidden');
+      }
+
+      setTimeout(() => {
+        resize2DCanvas();
+        resize3DViewport();
+      }, 50);
+    }
+
+    function loadPreset(presetKey) {
+      const presets = {
+        parabola_line: {
+          f: '4 - x^2',
+          g: 'x + 2',
+          a: -2,
+          b: 1,
+          axisOrientation: 'horizontal',
+          axisValue: 0
+        },
+        sqrt_quad: {
+          f: 'sqrt(x)',
+          g: 'x^2',
+          a: 0,
+          b: 1,
+          axisOrientation: 'horizontal',
+          axisValue: 0
+        },
+        two_quads: {
+          f: '4 - x^2',
+          g: 'x^2 - 2*x',
+          a: -1,
+          b: 2,
+          axisOrientation: 'horizontal',
+          axisValue: 0
+        },
+        trig: {
+          f: 'sin(x) + 2',
+          g: 'cos(x) + 2',
+          a: 0.7854,
+          b: 3.927,
+          axisOrientation: 'horizontal',
+          axisValue: 0
+        },
+        washer_shifted: {
+          f: '3 - x^2',
+          g: 'x^2 + 1',
+          a: -1,
+          b: 1,
+          axisOrientation: 'horizontal',
+          axisValue: -1
+        }
+      };
+
+      const p = presets[presetKey];
+      if (!p) return;
+
+      document.getElementById('inputF').value = p.f;
+      document.getElementById('inputG').value = p.g;
+      document.getElementById('inputA').value = p.a;
+      document.getElementById('inputB').value = p.b;
+      document.getElementById('inputAxisVal').value = p.axisValue;
+
+      state.a = p.a;
+      state.b = p.b;
+      state.sliceT = 0.5;
+      document.getElementById('sliderSliceX').value = 0.5;
+
+      setAxisOrientation(p.axisOrientation);
+      state.axisValue = p.axisValue;
+
+      handleFunctionChange();
+      autoFrame2D();
+      set3DCameraPreset('iso');
+    }
+
+    /*************************************************************************
+     * 4. PART 1: 2D INTERACTIVE CANVAS ENGINE
+     *************************************************************************/
+    const canvas2D = document.getElementById('canvas2D');
+    const ctx2D = canvas2D.getContext('2d');
+
+    function resize2DCanvas() {
+      const rect = canvas2D.parentElement.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas2D.width = rect.width * dpr;
+      canvas2D.height = rect.height * dpr;
+      ctx2D.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw2DGraph();
+    }
+
+    function mathToScreenX(x, width) {
+      return width / 2 + (x - state.view2D.centerX) * state.view2D.scale;
+    }
+
+    function mathToScreenY(y, height) {
+      return height / 2 - (y - state.view2D.centerY) * state.view2D.scale;
+    }
+
+    function screenToMathX(px, width) {
+      return state.view2D.centerX + (px - width / 2) / state.view2D.scale;
+    }
+
+    function screenToMathY(py, height) {
+      return state.view2D.centerY - (py - height / 2) / state.view2D.scale;
+    }
+
+    function autoFrame2D() {
+      const low = Math.min(state.a, state.b);
+      const high = Math.max(state.a, state.b);
+      let yMin = Infinity;
+      let yMax = -Infinity;
+
+      for (let i = 0; i <= 50; i++) {
+        const x = low + (i / 50) * (high - low);
+        const yf = safeEval(state.fnF, x);
+        const yg = safeEval(state.fnG, x);
+        if (isFinite(yf)) { yMin = Math.min(yMin, yf); yMax = Math.max(yMax, yf); }
+        if (isFinite(yg)) { yMin = Math.min(yMin, yg); yMax = Math.max(yMax, yg); }
+      }
+      if (state.axisOrientation === 'horizontal') {
+        yMin = Math.min(yMin, state.axisValue);
+        yMax = Math.max(yMax, state.axisValue);
+      }
+
+      if (!isFinite(yMin) || !isFinite(yMax)) {
+        yMin = -3; yMax = 5;
+      }
+
+      state.view2D.centerX = 0.5 * (low + high);
+      state.view2D.centerY = 0.5 * (yMin + yMax);
+
+      const spanX = Math.max(high - low, 2.5) * 1.8;
+      const spanY = Math.max(yMax - yMin, 2.5) * 1.65;
+      const rect = canvas2D.parentElement.getBoundingClientRect();
+      const w = rect.width || 600;
+      const h = rect.height || 420;
+
+      state.view2D.scale = Math.min(w / spanX, h / spanY);
+      draw2DGraph();
+    }
+
+    function reset2DView() {
+      autoFrame2D();
+    }
+
+    function zoom2D(factor) {
+      state.view2D.scale = Math.max(10, Math.min(400, state.view2D.scale / factor));
+      draw2DGraph();
+    }
+
+    function draw2DGraph() {
+      const rect = canvas2D.parentElement.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (w === 0 || h === 0) return;
+
+      ctx2D.clearRect(0, 0, w, h);
+
+      // Background
+      ctx2D.fillStyle = '#090e1a';
+      ctx2D.fillRect(0, 0, w, h);
+
+      // Compute nice grid step
+      const rawStep = 70 / state.view2D.scale;
+      const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+      const residual = rawStep / mag;
+      let gridStep = mag;
+      if (residual > 5) gridStep = 10 * mag;
+      else if (residual > 2) gridStep = 5 * mag;
+      else if (residual > 1) gridStep = 2 * mag;
+
+      const xStart = Math.floor(screenToMathX(0, w) / gridStep) * gridStep;
+      const xEnd = Math.ceil(screenToMathX(w, w) / gridStep) * gridStep;
+      const yStart = Math.floor(screenToMathY(h, h) / gridStep) * gridStep;
+      const yEnd = Math.ceil(screenToMathY(0, h) / gridStep) * gridStep;
+
+      // Grid lines
+      ctx2D.lineWidth = 1;
+      ctx2D.strokeStyle = '#1e293b';
+      ctx2D.fillStyle = '#64748b';
+      ctx2D.font = '11px "JetBrains Mono", monospace';
+
+      for (let gx = xStart; gx <= xEnd; gx += gridStep) {
+        const sx = mathToScreenX(gx, w);
+        ctx2D.beginPath();
+        ctx2D.moveTo(sx, 0);
+        ctx2D.lineTo(sx, h);
+        ctx2D.stroke();
+      }
+      for (let gy = yStart; gy <= yEnd; gy += gridStep) {
+        const sy = mathToScreenY(gy, h);
+        ctx2D.beginPath();
+        ctx2D.moveTo(0, sy);
+        ctx2D.lineTo(w, sy);
+        ctx2D.stroke();
+      }
+
+      // Main Coordinate Axes (x=0, y=0)
+      const originX = mathToScreenX(0, w);
+      const originY = mathToScreenY(0, h);
+      ctx2D.strokeStyle = '#475569';
+      ctx2D.lineWidth = 1.8;
+
+      ctx2D.beginPath();
+      ctx2D.moveTo(0, originY);
+      ctx2D.lineTo(w, originY);
+      ctx2D.moveTo(originX, 0);
+      ctx2D.lineTo(originX, h);
+      ctx2D.stroke();
+
+      // Axis Tick Numbers
+      ctx2D.textAlign = 'center';
+      ctx2D.textBaseline = 'top';
+      for (let gx = xStart; gx <= xEnd; gx += gridStep) {
+        if (Math.abs(gx) < 1e-7) continue;
+        const sx = mathToScreenX(gx, w);
+        const labelY = Math.min(Math.max(originY + 6, 6), h - 18);
+        ctx2D.fillText(Number(gx.toPrecision(4)), sx, labelY);
+      }
+
+      ctx2D.textAlign = 'right';
+      ctx2D.textBaseline = 'middle';
+      for (let gy = yStart; gy <= yEnd; gy += gridStep) {
+        if (Math.abs(gy) < 1e-7) continue;
+        const sy = mathToScreenY(gy, h);
+        const labelX = Math.min(Math.max(originX - 6, 32), w - 6);
+        ctx2D.fillText(Number(gy.toPrecision(4)), labelX, sy);
+      }
+
+      // 1. Shaded Area Between Curves on [a, b]
+      const low = Math.min(state.a, state.b);
+      const high = Math.max(state.a, state.b);
+      const shadeSteps = 220;
+      const dx = (high - low) / shadeSteps;
+
+      if (!state.riemannMode) {
+        // Continuous exact shading
+        for (let i = 0; i < shadeSteps; i++) {
+          const x0 = low + i * dx;
+          const x1 = x0 + dx;
+          const yf0 = safeEval(state.fnF, x0);
+          const yg0 = safeEval(state.fnG, x0);
+          const yf1 = safeEval(state.fnF, x1);
+          const yg1 = safeEval(state.fnG, x1);
+
+          if (!isFinite(yf0) || !isFinite(yg0) || !isFinite(yf1) || !isFinite(yg1)) continue;
+
+          ctx2D.fillStyle = (yf0 >= yg0)
+            ? 'rgba(56, 189, 248, 0.24)'
+            : 'rgba(52, 211, 153, 0.24)';
+
+          ctx2D.beginPath();
+          ctx2D.moveTo(mathToScreenX(x0, w), mathToScreenY(yf0, h));
+          ctx2D.lineTo(mathToScreenX(x1, w), mathToScreenY(yf1, h));
+          ctx2D.lineTo(mathToScreenX(x1, w), mathToScreenY(yg1, h));
+          ctx2D.lineTo(mathToScreenX(x0, w), mathToScreenY(yg0, h));
+          ctx2D.closePath();
+          ctx2D.fill();
+        }
+      } else {
+        // Riemann Sum Rectangles Mode
+        const n = state.riemannN;
+        const rDx = (high - low) / n;
+        for (let i = 0; i < n; i++) {
+          const rx0 = low + i * rDx;
+          const rxMid = rx0 + 0.5 * rDx;
+          const yf = safeEval(state.fnF, rxMid);
+          const yg = safeEval(state.fnG, rxMid);
+          if (!isFinite(yf) || !isFinite(yg)) continue;
+
+          const sx = mathToScreenX(rx0, w);
+          const sw = rDx * state.view2D.scale;
+          const syTop = mathToScreenY(Math.max(yf, yg), h);
+          const syBot = mathToScreenY(Math.min(yf, yg), h);
+
+          ctx2D.fillStyle = yf >= yg ? 'rgba(56, 189, 248, 0.30)' : 'rgba(52, 211, 153, 0.30)';
+          ctx2D.strokeStyle = yf >= yg ? 'rgba(56, 189, 248, 0.8)' : 'rgba(52, 211, 153, 0.8)';
+          ctx2D.lineWidth = 1;
+          ctx2D.fillRect(sx, syTop, sw, syBot - syTop);
+          ctx2D.strokeRect(sx, syTop, sw, syBot - syTop);
+        }
+      }
+
+      // 2. Bound Vertical Lines x = a and x = b
+      [
+        { val: state.a, label: `a = ${state.a}` },
+        { val: state.b, label: `b = ${state.b}` }
+      ].forEach(bObj => {
+        const sx = mathToScreenX(bObj.val, w);
+        ctx2D.save();
+        ctx2D.setLineDash([5, 5]);
+        ctx2D.strokeStyle = '#818cf8';
+        ctx2D.lineWidth = 1.5;
+        ctx2D.beginPath();
+        ctx2D.moveTo(sx, 0);
+        ctx2D.lineTo(sx, h);
+        ctx2D.stroke();
+        ctx2D.restore();
+
+        // Bound Pill Badge
+        ctx2D.fillStyle = '#312e81';
+        ctx2D.strokeStyle = '#818cf8';
+        ctx2D.lineWidth = 1;
+        ctx2D.beginPath();
+        ctx2D.roundRect(sx - 28, h - 28, 56, 20, 6);
+        ctx2D.fill();
+        ctx2D.stroke();
+
+        ctx2D.fillStyle = '#e0e7ff';
+        ctx2D.textAlign = 'center';
+        ctx2D.textBaseline = 'middle';
+        ctx2D.font = 'bold 10px "JetBrains Mono", monospace';
+        ctx2D.fillText(bObj.label, sx, h - 18);
+      });
+
+      // 3. Line of Revolution (y = k or x = h)
+      ctx2D.save();
+      ctx2D.setLineDash([8, 5]);
+      ctx2D.strokeStyle = '#f43f5e';
+      ctx2D.lineWidth = 2.2;
+      ctx2D.beginPath();
+      if (state.axisOrientation === 'horizontal') {
+        const sy = mathToScreenY(state.axisValue, h);
+        ctx2D.moveTo(0, sy);
+        ctx2D.lineTo(w, sy);
+        ctx2D.stroke();
+
+        // Label
+        ctx2D.fillStyle = '#f43f5e';
+        ctx2D.font = 'bold 11px "JetBrains Mono", monospace';
+        ctx2D.textAlign = 'right';
+        ctx2D.fillText(`Axis of Rev: y = ${state.axisValue} ↻`, w - 12, sy - 8);
+      } else {
+        const sx = mathToScreenX(state.axisValue, w);
+        ctx2D.moveTo(sx, 0);
+        ctx2D.lineTo(sx, h);
+        ctx2D.stroke();
+
+        ctx2D.fillStyle = '#f43f5e';
+        ctx2D.font = 'bold 11px "JetBrains Mono", monospace';
+        ctx2D.textAlign = 'left';
+        ctx2D.fillText(`↻ Axis: x = ${state.axisValue}`, sx + 8, 20);
+      }
+      ctx2D.restore();
+
+      // 4. Plot Curves f(x) and g(x)
+      plotCurve2D(state.fnF, '#38bdf8', 2.8, w, h);
+      plotCurve2D(state.fnG, '#34d399', 2.8, w, h);
+
+      // 5. Representative Sample Slice (Δx) at x_slice
+      const xSlice = getSliceX();
+      const yfSlice = safeEval(state.fnF, xSlice);
+      const ygSlice = safeEval(state.fnG, xSlice);
+
+      if (isFinite(yfSlice) && isFinite(ygSlice)) {
+        const yTop = Math.max(yfSlice, ygSlice);
+        const yBot = Math.min(yfSlice, ygSlice);
+        const sxLeft = mathToScreenX(xSlice - state.deltaX / 2, w);
+        const sxRight = mathToScreenX(xSlice + state.deltaX / 2, w);
+        const sxCenter = mathToScreenX(xSlice, w);
+        const syTop = mathToScreenY(yTop, h);
+        const syBot = mathToScreenY(yBot, h);
+
+        // Draw radius connector to axis of revolution if horizontal axis
+        if (state.axisOrientation === 'horizontal') {
+          const syAxis = mathToScreenY(state.axisValue, h);
+          ctx2D.save();
+          ctx2D.setLineDash([3, 3]);
+          ctx2D.strokeStyle = 'rgba(251, 191, 36, 0.65)';
+          ctx2D.lineWidth = 1.5;
+          ctx2D.beginPath();
+          ctx2D.moveTo(sxCenter, syAxis);
+          ctx2D.lineTo(sxCenter, Math.abs(yTop - state.axisValue) >= Math.abs(yBot - state.axisValue) ? syTop : syBot);
+          ctx2D.stroke();
+          ctx2D.restore();
+        }
+
+        // Representative Rectangle Δx
+        ctx2D.fillStyle = 'rgba(251, 191, 36, 0.55)';
+        ctx2D.strokeStyle = '#fbbf24';
+        ctx2D.lineWidth = 2;
+        ctx2D.fillRect(sxLeft, syTop, sxRight - sxLeft, syBot - syTop);
+        ctx2D.strokeRect(sxLeft, syTop, sxRight - sxLeft, syBot - syTop);
+
+        // Top & Bottom Sample Points
+        [
+          { y: yfSlice, color: '#38bdf8' },
+          { y: ygSlice, color: '#34d399' }
+        ].forEach(pt => {
+          const py = mathToScreenY(pt.y, h);
+          ctx2D.fillStyle = pt.color;
+          ctx2D.strokeStyle = '#0f172a';
+          ctx2D.lineWidth = 2;
+          ctx2D.beginPath();
+          ctx2D.arc(sxCenter, py, 5.5, 0, Math.PI * 2);
+          ctx2D.fill();
+          ctx2D.stroke();
+        });
+      }
+
+      // 6. Plot Detected Intersection Dots
+      state.intersections.forEach(pt => {
+        const sx = mathToScreenX(pt.x, w);
+        const sy = mathToScreenY(pt.y, h);
+        if (sx < -10 || sx > w + 10 || sy < -10 || sy > h + 10) return;
+        ctx2D.fillStyle = '#f8fafc';
+        ctx2D.strokeStyle = '#6366f1';
+        ctx2D.lineWidth = 2.5;
+        ctx2D.beginPath();
+        ctx2D.arc(sx, sy, 4.5, 0, Math.PI * 2);
+        ctx2D.fill();
+        ctx2D.stroke();
+      });
+    }
+
+    function plotCurve2D(fn, color, lineWidth, w, h) {
+      ctx2D.strokeStyle = color;
+      ctx2D.lineWidth = lineWidth;
+      ctx2D.beginPath();
+      let penDown = false;
+      let prevY = 0;
+
+      for (let px = 0; px <= w; px += 2) {
+        const x = screenToMathX(px, w);
+        const y = safeEval(fn, x);
+        if (isFinite(y)) {
+          const py = mathToScreenY(y, h);
+          // Prevent vertical asymptote spikes
+          if (penDown && Math.abs(py - prevY) < h * 1.5) {
+            ctx2D.lineTo(px, py);
+          } else {
+            ctx2D.moveTo(px, py);
+            penDown = true;
+          }
+          prevY = py;
+        } else {
+          penDown = false;
+        }
+      }
+      ctx2D.stroke();
+    }
+
+    // 2D Canvas Pointer / Mouse / Touch Interaction
+    function init2DInteractions() {
+      const getPointerPos = (e) => {
+        const rect = canvas2D.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top, w: rect.width, h: rect.height };
+      };
+
+      const onDown = (e) => {
+        const pos = getPointerPos(e);
+        const xSliceScreen = mathToScreenX(getSliceX(), pos.w);
+        const aScreen = mathToScreenX(state.a, pos.w);
+        const bScreen = mathToScreenX(state.b, pos.w);
+
+        state.view2D.isDragging = true;
+        state.view2D.lastMouseX = pos.x;
+        state.view2D.lastMouseY = pos.y;
+
+        if (Math.abs(pos.x - xSliceScreen) < 18) {
+          state.view2D.dragTarget = 'slice';
+        } else if (Math.abs(pos.x - aScreen) < 14) {
+          state.view2D.dragTarget = 'boundA';
+        } else if (Math.abs(pos.x - bScreen) < 14) {
+          state.view2D.dragTarget = 'boundB';
+        } else {
+          state.view2D.dragTarget = 'pan';
+        }
+      };
+
+      const onMove = (e) => {
+        const pos = getPointerPos(e);
+        const mathX = screenToMathX(pos.x, pos.w);
+        const mathY = screenToMathY(pos.y, pos.h);
+
+        document.getElementById('cursorCoords2D').textContent =
+          `(x: ${mathX.toFixed(2)}, y: ${mathY.toFixed(2)})`;
+
+        if (!state.view2D.isDragging) return;
+        if (e.cancelable) e.preventDefault();
+
+        if (state.view2D.dragTarget === 'slice') {
+          const span = state.b - state.a;
+          if (Math.abs(span) > 1e-6) {
+            state.sliceT = Math.max(0, Math.min(1, (mathX - state.a) / span));
+            document.getElementById('sliderSliceX').value = state.sliceT;
+            updateAll();
+          }
+        } else if (state.view2D.dragTarget === 'boundA') {
+          state.a = Number(mathX.toFixed(2));
+          document.getElementById('inputA').value = state.a;
+          updateAll();
+        } else if (state.view2D.dragTarget === 'boundB') {
+          state.b = Number(mathX.toFixed(2));
+          document.getElementById('inputB').value = state.b;
+          updateAll();
+        } else if (state.view2D.dragTarget === 'pan') {
+          const dx = pos.x - state.view2D.lastMouseX;
+          const dy = pos.y - state.view2D.lastMouseY;
+          state.view2D.centerX -= dx / state.view2D.scale;
+          state.view2D.centerY += dy / state.view2D.scale;
+          state.view2D.lastMouseX = pos.x;
+          state.view2D.lastMouseY = pos.y;
+          draw2DGraph();
+        }
+      };
+
+      const onUp = () => {
+        state.view2D.isDragging = false;
+        state.view2D.dragTarget = null;
+      };
+
+      canvas2D.addEventListener('mousedown', onDown);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+
+      canvas2D.addEventListener('touchstart', onDown, { passive: false });
+      canvas2D.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('touchend', onUp);
+
+      canvas2D.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 1.12 : 0.89;
+        zoom2D(factor);
+      }, { passive: false });
+    }
+
+    /*************************************************************************
+     * 5. PART 2: THREE.JS 3D SOLIDS OF REVOLUTION ENGINE
+     *************************************************************************/
+    let scene3D, camera3D, renderer3D;
+    let solidGroup, sliceGroup, helpersGroup;
+    let solidMaterialF, solidMaterialG, capMaterial;
+
+    // Custom Orbit + Pan + Zoom Camera State
+    const cam3DState = {
+      radius: 14,
+      theta: 0.65, // horizontal azimuth angle (radians)
+      phi: 1.15,   // vertical polar angle from +Y (radians)
+      target: new THREE.Vector3(0, 1, 0),
+      isDragging: false,
+      mode: 'orbit', // 'orbit' | 'pan'
+      lastX: 0,
+      lastY: 0
+    };
+
+    function init3DEngine() {
+      const container = document.getElementById('threeContainer');
+      const rect = container.getBoundingClientRect();
+
+      scene3D = new THREE.Scene();
+      scene3D.background = new THREE.Color(0x090e1a);
+
+      camera3D = new THREE.PerspectiveCamera(45, (rect.width || 600) / (rect.height || 420), 0.1, 500);
+      update3DCameraPosition();
+
+      renderer3D = new THREE.WebGLRenderer({ antialias: true });
+      renderer3D.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer3D.setSize(rect.width || 600, rect.height || 420);
+      container.innerHTML = '';
+      container.appendChild(renderer3D.domElement);
+
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+      scene3D.add(ambientLight);
+
+      const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.85);
+      dirLight1.position.set(15, 25, 20);
+      scene3D.add(dirLight1);
+
+      const dirLight2 = new THREE.DirectionalLight(0x93c5fd, 0.45);
+      dirLight2.position.set(-15, -15, -20);
+      scene3D.add(dirLight2);
+
+      // Scene Groups
+      helpersGroup = new THREE.Group();
+      solidGroup = new THREE.Group();
+      sliceGroup = new THREE.Group();
+      scene3D.add(helpersGroup);
+      scene3D.add(solidGroup);
+      scene3D.add(sliceGroup);
+
+      // Reusable Materials
+      solidMaterialF = new THREE.MeshPhongMaterial({
+        color: 0x38bdf8,
+        specular: 0x1e293b,
+        shininess: 45,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.78
+      });
+
+      solidMaterialG = new THREE.MeshPhongMaterial({
+        color: 0x34d399,
+        specular: 0x1e293b,
+        shininess: 45,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.78
+      });
+
+      capMaterial = new THREE.MeshPhongMaterial({
+        color: 0x818cf8,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85
+      });
+
+      init3DOrbitControls(renderer3D.domElement);
+      rebuild3DSolid();
+      animate3DLoop();
+    }
+
+    function update3DCameraPosition() {
+      if (!camera3D) return;
+      const sinPhi = Math.sin(cam3DState.phi);
+      const cosPhi = Math.cos(cam3DState.phi);
+      const sinTheta = Math.sin(cam3DState.theta);
+      const cosTheta = Math.cos(cam3DState.theta);
+
+      camera3D.position.set(
+        cam3DState.target.x + cam3DState.radius * sinPhi * sinTheta,
+        cam3DState.target.y + cam3DState.radius * cosPhi,
+        cam3DState.target.z + cam3DState.radius * sinPhi * cosTheta
+      );
+      camera3D.lookAt(cam3DState.target);
+    }
+
+    function set3DCameraPreset(preset) {
+      const low = Math.min(state.a, state.b);
+      const high = Math.max(state.a, state.b);
+      const midX = 0.5 * (low + high);
+      const midY = state.axisOrientation === 'horizontal' ? state.axisValue : 0;
+
+      cam3DState.target.set(midX, midY, 0);
+
+      if (preset === 'iso') {
+        cam3DState.theta = 0.65;
+        cam3DState.phi = 1.15;
+        cam3DState.radius = 13.5;
+      } else if (preset === 'xy') {
+        // Look straight at XY plane (z > 0 looking at z = 0)
+        cam3DState.theta = 0;
+        cam3DState.phi = Math.PI / 2;
+        cam3DState.radius = 13;
+      } else if (preset === 'side') {
+        // Look along X axis to see circular cross section
+        cam3DState.theta = Math.PI / 2;
+        cam3DState.phi = Math.PI / 2;
+        cam3DState.radius = 13.5;
+      }
+      update3DCameraPosition();
+    }
+
+    function zoom3D(factor) {
+      cam3DState.radius = Math.max(3, Math.min(80, cam3DState.radius * factor));
+      update3DCameraPosition();
+    }
+
+    function init3DOrbitControls(domElem) {
+      domElem.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      domElem.addEventListener('mousedown', (e) => {
+        cam3DState.isDragging = true;
+        cam3DState.lastX = e.clientX;
+        cam3DState.lastY = e.clientY;
+        cam3DState.mode = (e.button === 2 || e.shiftKey) ? 'pan' : 'orbit';
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!cam3DState.isDragging) return;
+        const dx = e.clientX - cam3DState.lastX;
+        const dy = e.clientY - cam3DState.lastY;
+        cam3DState.lastX = e.clientX;
+        cam3DState.lastY = e.clientY;
+
+        if (cam3DState.mode === 'orbit') {
+          cam3DState.theta -= dx * 0.008;
+          cam3DState.phi = Math.max(0.08, Math.min(Math.PI - 0.08, cam3DState.phi - dy * 0.008));
+        } else {
+          // Pan along camera right & up vectors
+          const panScale = cam3DState.radius * 0.0015;
+          const forward = new THREE.Vector3().subVectors(cam3DState.target, camera3D.position).normalize();
+          const right = new THREE.Vector3().crossVectors(forward, camera3D.up).normalize();
+          const up = new THREE.Vector3().crossVectors(right, forward).normalize();
+          cam3DState.target.addScaledVector(right, -dx * panScale);
+          cam3DState.target.addScaledVector(up, dy * panScale);
+        }
+        update3DCameraPosition();
+      });
+
+      window.addEventListener('mouseup', () => {
+        cam3DState.isDragging = false;
+      });
+
+      domElem.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 1.1 : 0.9;
+        zoom3D(factor);
+      }, { passive: false });
+
+      // Touch support for mobile
+      let lastTouchDist = 0;
+      domElem.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          cam3DState.isDragging = true;
+          cam3DState.mode = 'orbit';
+          cam3DState.lastX = e.touches[0].clientX;
+          cam3DState.lastY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          lastTouchDist = Math.hypot(dx, dy);
+        }
+      }, { passive: false });
+
+      domElem.addEventListener('touchmove', (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (e.touches.length === 1 && cam3DState.isDragging) {
+          const dx = e.touches[0].clientX - cam3DState.lastX;
+          const dy = e.touches[0].clientY - cam3DState.lastY;
+          cam3DState.lastX = e.touches[0].clientX;
+          cam3DState.lastY = e.touches[0].clientY;
+          cam3DState.theta -= dx * 0.009;
+          cam3DState.phi = Math.max(0.08, Math.min(Math.PI - 0.08, cam3DState.phi - dy * 0.009));
+          update3DCameraPosition();
+        } else if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.hypot(dx, dy);
+          if (lastTouchDist > 0) {
+            zoom3D(lastTouchDist / dist);
+          }
+          lastTouchDist = dist;
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchend', () => {
+        cam3DState.isDragging = false;
+        lastTouchDist = 0;
+      });
+    }
+
+    function update3DMaterials() {
+      const opacitySlider = parseFloat(document.getElementById('sliderOpacity').value);
+      const isolateSlice = document.getElementById('chkSliceOnly').checked;
+      const wireframe = document.getElementById('chkWireframe').checked;
+
+      const targetOpacity = isolateSlice ? 0.12 : opacitySlider;
+
+      if (solidMaterialF && solidMaterialG && capMaterial) {
+        solidMaterialF.opacity = targetOpacity;
+        solidMaterialG.opacity = targetOpacity;
+        capMaterial.opacity = Math.min(targetOpacity + 0.08, 1);
+
+        solidMaterialF.wireframe = wireframe;
+        solidMaterialG.wireframe = wireframe;
+      }
+    }
+
+    // Clear a Three.js group cleanly
+    function clearGroup(group) {
+      while (group.children.length > 0) {
+        const obj = group.children[0];
+        if (obj.geometry) obj.geometry.dispose();
+        group.remove(obj);
+      }
+    }
+
+    // Build parametric surface of revolution for a single curve y = fn(x)
+    function createRevolvedCurveGeometry(fn, low, high, xSteps, thetaSteps, maxThetaRad) {
+      const positions = [];
+      const indices = [];
+
+      for (let i = 0; i <= xSteps; i++) {
+        const x = low + (i / xSteps) * (high - low);
+        const y = Math.max(-25, Math.min(25, safeEval(fn, x) || 0));
+
+        for (let j = 0; j <= thetaSteps; j++) {
+          const theta = (j / thetaSteps) * maxThetaRad;
+          let vx, vy, vz;
+
+          if (state.axisOrientation === 'horizontal') {
+            // Rotate around horizontal line y = k
+            const k = state.axisValue;
+            const r = y - k;
+            vx = x;
+            vy = k + r * Math.cos(theta);
+            vz = r * Math.sin(theta);
+          } else {
+            // Rotate around vertical line x = h
+            const h = state.axisValue;
+            const r = x - h;
+            vx = h + r * Math.cos(theta);
+            vy = y;
+            vz = r * Math.sin(theta);
+          }
+
+          positions.push(vx, vy, vz);
+        }
+      }
+
+      const ringVerts = thetaSteps + 1;
+      for (let i = 0; i < xSteps; i++) {
+        for (let j = 0; j < thetaSteps; j++) {
+          const a = i * ringVerts + j;
+          const b = (i + 1) * ringVerts + j;
+          const c = (i + 1) * ringVerts + (j + 1);
+          const d = i * ringVerts + (j + 1);
+          indices.push(a, b, d);
+          indices.push(b, c, d);
+        }
+      }
+
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geom.setIndex(indices);
+      geom.computeVertexNormals();
+      return geom;
+    }
+
+    // Build flat/swept cap at a fixed angle theta showing the 2D region between f(x) and g(x)
+    function createSweepAngleCapGeometry(low, high, xSteps, thetaRad) {
+      const positions = [];
+      const indices = [];
+
+      for (let i = 0; i <= xSteps; i++) {
+        const x = low + (i / xSteps) * (high - low);
+        const yf = Math.max(-25, Math.min(25, safeEval(state.fnF, x) || 0));
+        const yg = Math.max(-25, Math.min(25, safeEval(state.fnG, x) || 0));
+
+        [yf, yg].forEach(y => {
+          let vx, vy, vz;
+          if (state.axisOrientation === 'horizontal') {
+            const k = state.axisValue;
+            const r = y - k;
+            vx = x;
+            vy = k + r * Math.cos(thetaRad);
+            vz = r * Math.sin(thetaRad);
+          } else {
+            const h = state.axisValue;
+            const r = x - h;
+            vx = h + r * Math.cos(thetaRad);
+            vy = y;
+            vz = r * Math.sin(thetaRad);
+          }
+          positions.push(vx, vy, vz);
+        });
+      }
+
+      for (let i = 0; i < xSteps; i++) {
+        const a = i * 2;
+        const b = i * 2 + 1;
+        const c = (i + 1) * 2;
+        const d = (i + 1) * 2 + 1;
+        indices.push(a, b, c);
+        indices.push(b, d, c);
+      }
+
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geom.setIndex(indices);
+      geom.computeVertexNormals();
+      return geom;
+    }
+
+    // Build end-annulus washer at a fixed x (e.g., x = a or x = b)
+    function createWasherCapAtX(xVal, y1, y2, thetaSteps, maxThetaRad) {
+      const positions = [];
+      const indices = [];
+
+      for (let j = 0; j <= thetaSteps; j++) {
+        const theta = (j / thetaSteps) * maxThetaRad;
+        [y1, y2].forEach(y => {
+          let vx, vy, vz;
+          if (state.axisOrientation === 'horizontal') {
+            const k = state.axisValue;
+            const r = y - k;
+            vx = xVal;
+            vy = k + r * Math.cos(theta);
+            vz = r * Math.sin(theta);
+          } else {
+            const h = state.axisValue;
+            const r = xVal - h;
+            vx = h + r * Math.cos(theta);
+            vy = y;
+            vz = r * Math.sin(theta);
+          }
+          positions.push(vx, vy, vz);
+        });
+      }
+
+      for (let j = 0; j < thetaSteps; j++) {
+        const a = j * 2;
+        const b = j * 2 + 1;
+        const c = (j + 1) * 2;
+        const d = (j + 1) * 2 + 1;
+        indices.push(a, b, c);
+        indices.push(b, d, c);
+      }
+
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geom.setIndex(indices);
+      geom.computeVertexNormals();
+      return geom;
+    }
+
+    function rebuild3DSolid() {
+      if (!scene3D) return;
+
+      clearGroup(helpersGroup);
+      clearGroup(solidGroup);
+      clearGroup(sliceGroup);
+
+      const low = Math.min(state.a, state.b);
+      const high = Math.max(state.a, state.b);
+      if (Math.abs(high - low) < 1e-5) return;
+
+      const maxThetaRad = (state.sweepAngleDeg * Math.PI) / 180;
+
+      // 1. Coordinate Grid & X/Y/Z Reference Axes
+      const gridHelper = new THREE.GridHelper(20, 20, 0x334155, 0x1e293b);
+      gridHelper.rotation.x = Math.PI / 2; // Put grid in XY plane (z = 0)
+      helpersGroup.add(gridHelper);
+
+      // X Axis (Slate/Blue), Y Axis (Slate/Green), Z Axis (Subtle)
+      const createAxisLine = (p1, p2, colorHex) => {
+        const g = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+        const m = new THREE.LineBasicMaterial({ color: colorHex });
+        return new THREE.Line(g, m);
+      };
+      helpersGroup.add(createAxisLine(new THREE.Vector3(-10, 0, 0), new THREE.Vector3(10, 0, 0), 0x64748b));
+      helpersGroup.add(createAxisLine(new THREE.Vector3(0, -10, 0), new THREE.Vector3(0, 10, 0), 0x64748b));
+      helpersGroup.add(createAxisLine(new THREE.Vector3(0, 0, -10), new THREE.Vector3(0, 0, 10), 0x334155));
+
+      // Glowing Line of Revolution (Rose Red)
+      const axisGeo = new THREE.CylinderGeometry(0.055, 0.055, 22, 16);
+      const axisMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+      const axisMesh = new THREE.Mesh(axisGeo, axisMat);
+      if (state.axisOrientation === 'horizontal') {
+        axisMesh.rotation.z = Math.PI / 2;
+        axisMesh.position.set(0, state.axisValue, 0);
+      } else {
+        axisMesh.position.set(state.axisValue, 0, 0);
+      }
+      helpersGroup.add(axisMesh);
+
+      // 2. Main Revolved Surfaces for f(x) and g(x)
+      const xSteps = 65;
+      const thetaSteps = Math.max(16, Math.round((state.sweepAngleDeg / 360) * 64));
+
+      const geomF = createRevolvedCurveGeometry(state.fnF, low, high, xSteps, thetaSteps, maxThetaRad);
+      const geomG = createRevolvedCurveGeometry(state.fnG, low, high, xSteps, thetaSteps, maxThetaRad);
+
+      solidGroup.add(new THREE.Mesh(geomF, solidMaterialF));
+      solidGroup.add(new THREE.Mesh(geomG, solidMaterialG));
+
+      // End washers at x = low and x = high
+      const yFLow = safeEval(state.fnF, low) || 0;
+      const yGLow = safeEval(state.fnG, low) || 0;
+      const yFHigh = safeEval(state.fnF, high) || 0;
+      const yGHigh = safeEval(state.fnG, high) || 0;
+
+      solidGroup.add(new THREE.Mesh(createWasherCapAtX(low, yFLow, yGLow, thetaSteps, maxThetaRad), capMaterial));
+      solidGroup.add(new THREE.Mesh(createWasherCapAtX(high, yFHigh, yGHigh, thetaSteps, maxThetaRad), capMaterial));
+
+      // If sweep angle < 360, add start and end cross-section caps so student sees the 2D region sweeping!
+      if (state.sweepAngleDeg < 359.5) {
+        const startCap = createSweepAngleCapGeometry(low, high, xSteps, 0);
+        const endCap = createSweepAngleCapGeometry(low, high, xSteps, maxThetaRad);
+        solidGroup.add(new THREE.Mesh(startCap, capMaterial));
+        solidGroup.add(new THREE.Mesh(endCap, capMaterial));
+      }
+
+      // 3. Representative 3D Washer / Cylindrical Shell Slice at x_slice
+      const showSlice = document.getElementById('chkShow3DSlice').checked;
+      if (showSlice) {
+        const xSlice = getSliceX();
+        const halfDx = Math.min(state.deltaX / 2, Math.abs(high - low) / 3);
+        const sLow = Math.max(low, xSlice - halfDx);
+        const sHigh = Math.min(high, xSlice + halfDx);
+        const yfS = safeEval(state.fnF, xSlice);
+        const ygS = safeEval(state.fnG, xSlice);
+
+        if (isFinite(yfS) && isFinite(ygS)) {
+          const sliceMat = new THREE.MeshPhongMaterial({
+            color: 0xfbbf24,
+            emissive: 0x78350f,
+            emissiveIntensity: 0.35,
+            shininess: 80,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.95
+          });
+
+          const constF = () => yfS;
+          const constG = () => ygS;
+
+          const sGeomF = createRevolvedCurveGeometry(constF, sLow, sHigh, 2, thetaSteps, maxThetaRad);
+          const sGeomG = createRevolvedCurveGeometry(constG, sLow, sHigh, 2, thetaSteps, maxThetaRad);
+          const sCapLeft = createWasherCapAtX(sLow, yfS, ygS, thetaSteps, maxThetaRad);
+          const sCapRight = createWasherCapAtX(sHigh, yfS, ygS, thetaSteps, maxThetaRad);
+
+          sliceGroup.add(new THREE.Mesh(sGeomF, sliceMat));
+          sliceGroup.add(new THREE.Mesh(sGeomG, sliceMat));
+          sliceGroup.add(new THREE.Mesh(sCapLeft, sliceMat));
+          sliceGroup.add(new THREE.Mesh(sCapRight, sliceMat));
+        }
+      }
+
+      update3DMaterials();
+    }
+
+    // Animation loop for 3D Viewport and Sweep Animation
+    function toggleSweepAnimation() {
+      state.isAnimatingSweep = !state.isAnimatingSweep;
+      const btn = document.getElementById('btnPlaySweep');
+      const icon = document.getElementById('iconPlaySweep');
+      const txt = document.getElementById('textPlaySweep');
+
+      if (state.isAnimatingSweep) {
+        if (state.sweepAngleDeg >= 359) {
+          state.sweepAngleDeg = 5;
+        }
+        icon.className = 'fa-solid fa-pause mr-1';
+        txt.textContent = 'Pause Sweep';
+        btn.classList.replace('bg-rose-500', 'bg-amber-500');
+      } else {
+        icon.className = 'fa-solid fa-rotate mr-1';
+        txt.textContent = 'Animate Sweep';
+        btn.classList.replace('bg-amber-500', 'bg-rose-500');
+      }
+    }
+
+    function animate3DLoop() {
+      requestAnimationFrame(animate3DLoop);
+
+      if (state.isAnimatingSweep) {
+        state.sweepAngleDeg += 2.2;
+        if (state.sweepAngleDeg >= 360) {
+          state.sweepAngleDeg = 360;
+          toggleSweepAnimation(); // stop at 360
+        }
+        document.getElementById('sliderSweepAngle').value = state.sweepAngleDeg;
+        document.getElementById('sweepAngleLabel').textContent = `${Math.round(state.sweepAngleDeg)}°`;
+        rebuild3DSolid();
+      }
+
+      if (renderer3D && scene3D && camera3D) {
+        renderer3D.render(scene3D, camera3D);
+      }
+    }
+
+    function resize3DViewport() {
+      if (!renderer3D || !camera3D) return;
+      const container = document.getElementById('threeContainer');
+      const rect = container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+
+      camera3D.aspect = rect.width / rect.height;
+      camera3D.updateProjectionMatrix();
+      renderer3D.setSize(rect.width, rect.height);
+    }
+
+    /*************************************************************************
+     * 6. SYNCHRONIZED FORMULAS & CALCULUS READOUT UPDATES
+     *************************************************************************/
+    function updateAll() {
+      const xSlice = getSliceX();
+      const yf = safeEval(state.fnF, xSlice);
+      const yg = safeEval(state.fnG, xSlice);
+
+      // Update Slice X Readouts
+      document.getElementById('sliceXLabel').textContent = `x = ${xSlice.toFixed(2)}`;
+      document.getElementById('cardSliceX').textContent = xSlice.toFixed(2);
+      document.getElementById('card3DSliceX').textContent = xSlice.toFixed(2);
+
+      // Update Legends
+      document.getElementById('legendF').textContent = `f(x) = ${state.exprF}`;
+      document.getElementById('legendG').textContent = `g(x) = ${state.exprG}`;
+      const axisStr = state.axisOrientation === 'horizontal'
+        ? `Axis: y = ${state.axisValue}`
+        : `Axis: x = ${state.axisValue}`;
+      document.getElementById('legendAxis2D').textContent = axisStr;
+      document.getElementById('legendAxis3D').textContent = axisStr;
+
+      // =====================================================
+      // PART 1 CALCULATIONS: AREA BETWEEN CURVES
+      // =====================================================
+      const low = Math.min(state.a, state.b);
+      const high = Math.max(state.a, state.b);
+
+      const totalArea = numericIntegrate(
+        (x) => Math.abs(safeEval(state.fnF, x) - safeEval(state.fnG, x)),
+        low,
+        high
+      );
+      const signedArea = numericIntegrate(
+        (x) => safeEval(state.fnF, x) - safeEval(state.fnG, x),
+        state.a,
+        state.b
+      );
+
+      document.getElementById('intBoundA').textContent = state.a;
+      document.getElementById('intBoundB').textContent = state.b;
+      document.getElementById('computedAreaValue').textContent = totalArea.toFixed(4);
+      document.getElementById('signedAreaSubtext').textContent = `Net ∫(f - g)dx = ${signedArea.toFixed(4)}`;
+
+      // Check if f >= g or g >= f or crosses on [low, high]
+      let fAboveCount = 0, gAboveCount = 0;
+      for (let i = 1; i < 40; i++) {
+        const tx = low + (i / 40) * (high - low);
+        const d = safeEval(state.fnF, tx) - safeEval(state.fnG, tx);
+        if (d > 1e-4) fAboveCount++;
+        else if (d < -1e-4) gAboveCount++;
+      }
+
+      const integrandEl = document.getElementById('areaIntegrandText');
+      const summaryEl = document.getElementById('topBottomSummaryText');
+
+      if (fAboveCount > 0 && gAboveCount === 0) {
+        integrandEl.textContent = `[ (${state.exprF}) - (${state.exprG}) ] dx`;
+        summaryEl.innerHTML = `On [${low}, ${high}], <strong class="text-sky-400">f(x) &ge; g(x)</strong>, so Top = f(x) and Bottom = g(x).`;
+      } else if (gAboveCount > 0 && fAboveCount === 0) {
+        integrandEl.textContent = `[ (${state.exprG}) - (${state.exprF}) ] dx`;
+        summaryEl.innerHTML = `On [${low}, ${high}], <strong class="text-emerald-400">g(x) &ge; f(x)</strong>, so Top = g(x) and Bottom = f(x).`;
+      } else {
+        integrandEl.textContent = `| (${state.exprF}) - (${state.exprG}) | dx`;
+        summaryEl.innerHTML = `<span class="text-amber-300"><i class="fa-solid fa-code-branch mr-1"></i>Curves cross inside [${low}, ${high}]!</span> Split integral at intersection points.`;
+      }
+
+      // Riemann sum approximation value if active
+      if (state.riemannMode) {
+        const n = state.riemannN;
+        const rDx = (high - low) / n;
+        let rSum = 0;
+        for (let i = 0; i < n; i++) {
+          const xm = low + (i + 0.5) * rDx;
+          const d = Math.abs(safeEval(state.fnF, xm) - safeEval(state.fnG, xm));
+          if (isFinite(d)) rSum += d * rDx;
+        }
+        document.getElementById('riemannApproxVal').textContent = rSum.toFixed(4);
+      }
+
+      // Slice breakdown in Part 1
+      if (isFinite(yf) && isFinite(yg)) {
+        const yTop = Math.max(yf, yg);
+        const yBot = Math.min(yf, yg);
+        const hVal = yTop - yBot;
+        document.getElementById('sliceYTop').textContent = yTop.toFixed(3);
+        document.getElementById('sliceYBottom').textContent = yBot.toFixed(3);
+        document.getElementById('sliceHeightVal').textContent = hVal.toFixed(3);
+        document.getElementById('sliceAreaVal').textContent = (hVal * state.deltaX).toFixed(4);
+
+        const badge = document.getElementById('cardTopFunctionBadge');
+        if (yf >= yg) {
+          badge.textContent = 'At Slice: Top = f(x) | Bottom = g(x)';
+          badge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30';
+        } else {
+          badge.textContent = 'At Slice: Top = g(x) | Bottom = f(x)';
+          badge.className = 'px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        }
+      }
+
+      // =====================================================
+      // PART 2 CALCULATIONS: 3D VOLUME OF REVOLUTION
+      // =====================================================
+      document.getElementById('volBoundA').textContent = low;
+      document.getElementById('volBoundB').textContent = high;
+
+      const k = state.axisValue;
+      let volume = 0;
+
+      if (state.axisOrientation === 'horizontal') {
+        // Horizontal Axis y = k: Washer/Disk Method V = pi * int (R(x)^2 - r(x)^2) dx
+        document.getElementById('methodBadge').textContent = `Washer / Disk Method (Around Horizontal Line y = ${k})`;
+        document.getElementById('volFormulaPrefix').textContent = 'V = π';
+
+        const kStr = k === 0 ? '' : (k > 0 ? ` - ${k}` : ` + ${Math.abs(k)}`);
+        const r1Expr = `(${state.exprF}${kStr})`;
+        const r2Expr = `(${state.exprG}${kStr})`;
+
+        // Determine which curve is farther from y = k at xSlice
+        const distF = Math.abs(yf - k);
+        const distG = Math.abs(yg - k);
+        const outerExpr = distF >= distG ? r1Expr : r2Expr;
+        const innerExpr = distF >= distG ? r2Expr : r1Expr;
+
+        document.getElementById('volIntegrandText').textContent =
+          `[ ${outerExpr}² - ${innerExpr}² ] dx`;
+
+        volume = Math.PI * numericIntegrate((x) => {
+          const y1 = safeEval(state.fnF, x);
+          const y2 = safeEval(state.fnG, x);
+          if (!isFinite(y1) || !isFinite(y2)) return 0;
+          // If axis is between y1 and y2, max distance squared
+          if ((y1 - k) * (y2 - k) < 0) {
+            return Math.max((y1 - k) ** 2, (y2 - k) ** 2);
+          }
+          return Math.abs((y1 - k) ** 2 - (y2 - k) ** 2);
+        }, low, high);
+
+        // Slice Metrics for Washer
+        const R = Math.max(distF, distG);
+        const r = ((yf - k) * (yg - k) < 0) ? 0 : Math.min(distF, distG);
+        const crossArea = Math.PI * (R * R - r * r);
+
+        document.getElementById('sliceTypeLabel').textContent = 'Washer Cross-Section A(x) = π(R² - r²)';
+        document.getElementById('labelMetric1').textContent = 'Outer Radius R(x)';
+        document.getElementById('labelMetric2').textContent = 'Inner Radius r(x)';
+        document.getElementById('labelMetric3').textContent = 'Washer Area A(x)';
+        document.getElementById('labelMetric4').textContent = 'Slice Vol ΔV = A(x)·Δx';
+
+        document.getElementById('valOuterRadius').textContent = isFinite(R) ? R.toFixed(3) : '—';
+        document.getElementById('valInnerRadius').textContent = isFinite(r) ? r.toFixed(3) : '—';
+        document.getElementById('valCrossSectionArea').textContent = isFinite(crossArea) ? crossArea.toFixed(3) : '—';
+        document.getElementById('valSliceVolume').textContent = isFinite(crossArea) ? (crossArea * state.deltaX).toFixed(4) : '—';
+
+        const warnEl = document.getElementById('volumeWarningText');
+        if ((yf - k) * (yg - k) < 0) {
+          warnEl.innerHTML = `<span class="text-amber-300"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Note: Axis y = ${k} passes inside the shaded region!</span> Outer radius overlaps inner radius.`;
+        } else {
+          warnEl.innerHTML = `Outer Radius <strong class="text-sky-300">R(x)</strong> is distance from <span class="font-mono text-rose-300">y = ${k}</span> to farthest curve; Inner Radius <strong class="text-emerald-300">r(x)</strong> to closest curve.`;
+        }
+      } else {
+        // Vertical Axis x = h: Cylindrical Shells reference V = 2*pi * int |x - h| * |f(x) - g(x)| dx
+        document.getElementById('methodBadge').textContent = `Vertical Axis Revolution (Around Line x = ${k})`;
+        document.getElementById('volFormulaPrefix').textContent = 'V = 2π';
+
+        const hStr = k === 0 ? 'x' : (k > 0 ? `|x - ${k}|` : `|x + ${Math.abs(k)}|`);
+        document.getElementById('volIntegrandText').textContent =
+          `${hStr} · |(${state.exprF}) - (${state.exprG})| dx`;
+
+        volume = 2 * Math.PI * numericIntegrate((x) => {
+          const y1 = safeEval(state.fnF, x);
+          const y2 = safeEval(state.fnG, x);
+          if (!isFinite(y1) || !isFinite(y2)) return 0;
+          return Math.abs(x - k) * Math.abs(y1 - y2);
+        }, low, high);
+
+        const radiusShell = Math.abs(xSlice - k);
+        const heightShell = Math.abs(yf - yg);
+        const surfArea = 2 * Math.PI * radiusShell * heightShell;
+
+        document.getElementById('sliceTypeLabel').textContent = 'Cylindrical Shell A(x) = 2π · r(x) · h(x)';
+        document.getElementById('labelMetric1').textContent = 'Shell Radius |x - h|';
+        document.getElementById('labelMetric2').textContent = 'Shell Height |f - g|';
+        document.getElementById('labelMetric3').textContent = 'Shell Area 2πrh';
+        document.getElementById('labelMetric4').textContent = 'Slice Vol ΔV = A·Δx';
+
+        document.getElementById('valOuterRadius').textContent = isFinite(radiusShell) ? radiusShell.toFixed(3) : '—';
+        document.getElementById('valInnerRadius').textContent = isFinite(heightShell) ? heightShell.toFixed(3) : '—';
+        document.getElementById('valCrossSectionArea').textContent = isFinite(surfArea) ? surfArea.toFixed(3) : '—';
+        document.getElementById('valSliceVolume').textContent = isFinite(surfArea) ? (surfArea * state.deltaX).toFixed(4) : '—';
+      }
+
+      document.getElementById('computedVolumeValue').textContent = volume.toFixed(4);
+      document.getElementById('computedVolumePi').textContent = `≈ ${(volume / Math.PI).toFixed(4)} π`;
+
+      // Redraw 2D & 3D
+      draw2DGraph();
+      rebuild3DSolid();
+    }
+
+    /*************************************************************************
+     * 7. INITIALIZATION ON WINDOW LOAD
+     *************************************************************************/
+    window.onload = function () {
+      init2DInteractions();
+      resize2DCanvas();
+      autoFrame2D();
+      detectIntersections();
+      init3DEngine();
+      updateAll();
+
+      window.addEventListener('resize', () => {
+        resize2DCanvas();
+        resize3DViewport();
+      });
+    };
+  </script>
+</body>
+</html>
