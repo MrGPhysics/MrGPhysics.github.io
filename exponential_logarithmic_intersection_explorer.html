@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exp × Log — Function Intersection Explorer</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            expColor: '#f43f5e', // Rose 500
+            logColor: '#06b6d4', // Cyan 500
+            symColor: '#a855f7', // Purple 500
+            intColor: '#f59e0b', // Amber 500
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Custom scrollbars and range sliders */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.5);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid #6366f1;
+      margin-top: -6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      border-color: #ec4899;
+    }
+
+    .glass-panel {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 glass-panel sticky top-0 z-30">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 via-purple-500 to-cyan-500 p-[2px] shadow-md shadow-purple-500/10">
+          <div class="w-full h-full bg-white dark:bg-slate-900 rounded-[10px] flex items-center justify-center font-mono font-bold text-sm">
+            <span class="text-rose-500">a<sup>x</sup></span>
+            <span class="text-slate-400 mx-0.5">=</span>
+            <span class="text-cyan-500">㏒</span>
+          </div>
+        </div>
+        <div>
+          <h1 class="font-bold text-sm sm:text-base tracking-tight flex items-center gap-2">
+            Exponential &amp; Logarithmic Intersection Lab
+            <span class="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+              Numerical Root &amp; Tangency Solver
+            </span>
+          </h1>
+        </div>
+      </div>
+
+      <!-- Quick Controls & Theme Toggle -->
+      <div class="flex items-center gap-2">
+        <button id="btnSyntaxModal" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 border border-slate-200/60 dark:border-slate-700">
+          <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span>Syntax Guide</span>
+        </button>
+
+        <button id="btnThemeToggle" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition border border-slate-200/60 dark:border-slate-700" title="Toggle Dark/Light Theme">
+          <!-- Sun Icon -->
+          <svg id="iconSun" class="w-4 h-4 hidden dark:block text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+          <!-- Moon Icon -->
+          <svg id="iconMoon" class="w-4 h-4 block dark:hidden text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace Container -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
+
+    <!-- LEFT COLUMN: Equations, Parameter 'a', Presets, & Intersections List -->
+    <section class="lg:col-span-4 xl:col-span-4 flex flex-col gap-4 order-2 lg:order-1">
+
+      <!-- Card 1: Equation Input Fields -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+            Function Definitions
+          </h2>
+          <button id="btnResetStandard" class="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+            Reset to a^x &amp; log(x, a)
+          </button>
+        </div>
+
+        <!-- Exponential Function f(x) -->
+        <div class="mb-3.5">
+          <div class="flex items-center justify-between mb-1">
+            <label for="inputFx" class="text-xs font-medium flex items-center gap-2">
+              <span class="inline-block w-3 h-3 rounded-sm bg-rose-500 shadow-sm shadow-rose-500/50"></span>
+              <span class="font-semibold text-slate-700 dark:text-slate-200">Exponential Function</span>
+              <code class="text-rose-600 dark:text-rose-400 font-mono font-semibold">f(x) =</code>
+            </label>
+            <label class="inline-flex items-center gap-1 cursor-pointer text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              <input type="checkbox" id="chkShowFx" checked class="rounded border-slate-300 text-rose-500 focus:ring-rose-500" />
+              <span>Plot</span>
+            </label>
+          </div>
+          <div class="relative">
+            <input
+              id="inputFx"
+              type="text"
+              value="a^x"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="e.g. a^x, 2^x - 3, exp(x)"
+              class="w-full font-mono text-sm px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-rose-500 dark:focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 outline-none transition text-slate-900 dark:text-slate-100 pr-20"
+            />
+            <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <span id="badgeFxStatus" class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                VALID
+              </span>
+            </div>
+          </div>
+          <p id="errFx" class="text-[11px] text-rose-500 mt-1 hidden font-mono"></p>
+        </div>
+
+        <!-- Logarithmic Function g(x) -->
+        <div class="mb-2">
+          <div class="flex items-center justify-between mb-1">
+            <label for="inputGx" class="text-xs font-medium flex items-center gap-2">
+              <span class="inline-block w-3 h-3 rounded-sm bg-cyan-500 shadow-sm shadow-cyan-500/50"></span>
+              <span class="font-semibold text-slate-700 dark:text-slate-200">Logarithmic Function</span>
+              <code class="text-cyan-600 dark:text-cyan-400 font-mono font-semibold">g(x) =</code>
+            </label>
+            <label class="inline-flex items-center gap-1 cursor-pointer text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              <input type="checkbox" id="chkShowGx" checked class="rounded border-slate-300 text-cyan-500 focus:ring-cyan-500" />
+              <span>Plot</span>
+            </label>
+          </div>
+          <div class="relative">
+            <input
+              id="inputGx"
+              type="text"
+              value="log(x, a)"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="e.g. log(x, a), ln(x) + 2"
+              class="w-full font-mono text-sm px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-cyan-500 dark:focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 outline-none transition text-slate-900 dark:text-slate-100 pr-20"
+            />
+            <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <span id="badgeGxStatus" class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                VALID
+              </span>
+            </div>
+          </div>
+          <p id="errGx" class="text-[11px] text-rose-500 mt-1 hidden font-mono"></p>
+        </div>
+
+        <!-- Quick Expression Tokens Bar -->
+        <div class="pt-2 border-t border-slate-100 dark:border-slate-800/70 flex flex-wrap items-center gap-1.5">
+          <span class="text-[10px] text-slate-400 mr-1">Insert token:</span>
+          <button type="button" data-insert="a^x" class="token-btn px-2 py-0.5 text-[11px] font-mono rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 hover:text-indigo-500 transition">a^x</button>
+          <button type="button" data-insert="log(x, a)" class="token-btn px-2 py-0.5 text-[11px] font-mono rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 hover:text-indigo-500 transition">log(x, a)</button>
+          <button type="button" data-insert="ln(x)" class="token-btn px-2 py-0.5 text-[11px] font-mono rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 hover:text-indigo-500 transition">ln(x)</button>
+          <button type="button" data-insert="exp(x)" class="token-btn px-2 py-0.5 text-[11px] font-mono rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 hover:text-indigo-500 transition">exp(x)</button>
+          <button type="button" data-insert="e^(1/e)" class="token-btn px-2 py-0.5 text-[11px] font-mono rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 hover:text-indigo-500 transition">e^(1/e)</button>
+        </div>
+      </div>
+
+      <!-- Card 2: Dynamic Base Parameter 'a' Control -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+              Dynamic Base Parameter <code class="text-purple-500 font-mono text-xs font-bold">a</code>
+            </h2>
+          </div>
+          <div class="flex items-center gap-1">
+            <button id="btnStepDown" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-mono" title="Decrease a by 0.001">-0.001</button>
+            <input
+              id="inputParamA"
+              type="number"
+              step="0.0001"
+              min="0.001"
+              max="10"
+              value="1.3500"
+              class="w-24 text-right font-mono text-xs font-semibold px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:border-purple-500 outline-none"
+            />
+            <button id="btnStepUp" class="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-mono" title="Increase a by 0.001">+0.001</button>
+          </div>
+        </div>
+
+        <!-- Slider for 'a' -->
+        <div class="my-3">
+          <input
+            id="sliderParamA"
+            type="range"
+            min="0.01"
+            max="3.00"
+            step="0.0005"
+            value="1.35"
+            class="w-full"
+          />
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
+            <span>0.01</span>
+            <span class="text-amber-500 cursor-pointer hover:underline" id="lblCritLower" title="Click to set a = e^(-e) ≈ 0.065988">e<sup>-e</sup> ≈ 0.066</span>
+            <span class="cursor-pointer hover:underline" id="lblBaseOne" title="Base a = 1 (Undefined log)">a = 1</span>
+            <span class="text-rose-500 cursor-pointer hover:underline" id="lblCritUpper" title="Click to set a = e^(1/e) ≈ 1.444668">e<sup>1/e</sup> ≈ 1.445</span>
+            <span>3.00</span>
+          </div>
+        </div>
+
+        <!-- Regime Indicator Pill -->
+        <div id="regimeBanner" class="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200/80 dark:border-slate-800 text-xs flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span id="regimeDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="regimeTitle" class="font-medium text-slate-700 dark:text-slate-200">Two Intersections Regime</span>
+          </div>
+          <span id="regimeMath" class="font-mono text-[11px] text-slate-500 dark:text-slate-400">1 &lt; a &lt; e^(1/e)</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Classic Intersection Scenario Presets -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2.5 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          Classic Intersection Scenarios
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2">
+          <!-- Preset 1: Critical Tangent -->
+          <button data-preset="tangent" class="preset-btn text-left p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-amber-500/60 dark:hover:border-amber-500/60 bg-slate-50/60 dark:bg-slate-950/50 hover:bg-amber-500/5 transition group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-800 dark:text-slate-100 group-hover:text-amber-500 transition">Critical Tangent</span>
+              <span class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold">1 pt</span>
+            </div>
+            <p class="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">a = e^(1/e) ≈ 1.44467</p>
+            <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Touches y = x at (e, e)</p>
+          </button>
+
+          <!-- Preset 2: Two Intersections -->
+          <button data-preset="two" class="preset-btn text-left p-2.5 rounded-xl border border-indigo-500/50 bg-indigo-500/5 hover:bg-indigo-500/10 transition group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-800 dark:text-slate-100 group-hover:text-indigo-400 transition">Two Intersections</span>
+              <span class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-semibold">2 pts</span>
+            </div>
+            <p class="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">a = 1.35 (1 &lt; a &lt; e^(1/e))</p>
+            <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Two crossings along y = x</p>
+          </button>
+
+          <!-- Preset 3: Three Intersections -->
+          <button data-preset="three" class="preset-btn text-left p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-purple-500/60 dark:hover:border-purple-500/60 bg-slate-50/60 dark:bg-slate-950/50 hover:bg-purple-500/5 transition group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-800 dark:text-slate-100 group-hover:text-purple-400 transition">Three Intersections</span>
+              <span class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-purple-500/15 text-purple-600 dark:text-purple-400 font-semibold">3 pts</span>
+            </div>
+            <p class="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">a = 0.04 (0 &lt; a &lt; e^-e)</p>
+            <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">1 on y=x + 2 symmetric off y=x</p>
+          </button>
+
+          <!-- Preset 4: Shifted Intersections -->
+          <button data-preset="shifted" class="preset-btn text-left p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500/60 dark:hover:border-emerald-500/60 bg-slate-50/60 dark:bg-slate-950/50 hover:bg-emerald-500/5 transition group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-800 dark:text-slate-100 group-hover:text-emerald-400 transition">Shifted Functions</span>
+              <span class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold">2 pts</span>
+            </div>
+            <p class="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">2^x - 3 vs ln(x) + 2</p>
+            <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Translated custom equations</p>
+          </button>
+
+          <!-- Preset 5: Lower Critical Bifurcation -->
+          <button data-preset="lower_crit" class="preset-btn text-left p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-pink-500/60 dark:hover:border-pink-500/60 bg-slate-50/60 dark:bg-slate-950/50 hover:bg-pink-500/5 transition group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-800 dark:text-slate-100 group-hover:text-pink-400 transition">Lower Bifurcation</span>
+              <span class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-pink-500/15 text-pink-600 dark:text-pink-400 font-semibold">1 pt</span>
+            </div>
+            <p class="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">a = e^(-e) ≈ 0.06599</p>
+            <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Triple root coalesces at (1/e, 1/e)</p>
+          </button>
+
+          <!-- Preset 6: Classic No Intersection -->
+          <button data-preset="none" class="preset-btn text-left p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-rose-500/60 dark:hover:border-rose-500/60 bg-slate-50/60 dark:bg-slate-950/50 hover:bg-rose-500/5 transition group">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-800 dark:text-slate-100 group-hover:text-rose-400 transition">Classic Base 2</span>
+              <span class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-slate-500/15 text-slate-500 dark:text-slate-400 font-semibold">0 pts</span>
+            </div>
+            <p class="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">a = 2 (2^x vs log₂(x))</p>
+            <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Exponential grows too fast</p>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 4: Detected Intersections Table -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            Detected Intersections <span class="font-mono text-slate-400">(f(x) = g(x))</span>
+          </h2>
+          <span id="badgeRootCount" class="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+            2 Found
+          </span>
+        </div>
+
+        <div id="intersectionsContainer" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+          <span>Search domain: <code id="lblSearchDomain" class="font-mono text-slate-500 dark:text-slate-300">Visible + [-20, 50]</code></span>
+          <button id="btnFocusRoots" class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+            Frame Intersections
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Interactive 2D Graph Canvas & Overlays -->
+    <section class="lg:col-span-8 xl:col-span-8 flex flex-col gap-4 order-1 lg:order-2">
+
+      <!-- Graph Canvas Wrapper Card -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col relative h-[480px] sm:h-[580px] lg:h-[680px]">
+
+        <!-- Top Canvas Toolbar -->
+        <div class="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-900/50 z-10">
+          <!-- Legend & Toggles -->
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-1 rounded-full bg-rose-500"></span>
+              <span class="font-mono text-slate-700 dark:text-slate-300" id="legendFx">f(x) = a^x</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-1 rounded-full bg-cyan-500"></span>
+              <span class="font-mono text-slate-700 dark:text-slate-300" id="legendGx">g(x) = log(x, a)</span>
+            </div>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer select-none px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/20">
+              <input type="checkbox" id="chkSymmetryLine" checked class="rounded border-purple-400 text-purple-600 focus:ring-0 w-3.5 h-3.5" />
+              <span class="font-mono text-[11px]">Symmetry y = x</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer select-none px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              <input type="checkbox" id="chkDiffShade" class="rounded border-slate-400 text-indigo-600 focus:ring-0 w-3.5 h-3.5" />
+              <span class="text-[11px]">Shade |f(x)-g(x)|</span>
+            </label>
+          </div>
+
+          <!-- Camera / Zoom Controls -->
+          <div class="flex items-center gap-1">
+            <button id="btnZoomIn" class="p-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition" title="Zoom In">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+            </button>
+            <button id="btnZoomOut" class="p-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition" title="Zoom Out">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"/></svg>
+            </button>
+            <button id="btnResetView" class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 transition" title="Reset Default Viewport">
+              Reset View
+            </button>
+          </div>
+        </div>
+
+        <!-- Interactive HTML5 Canvas -->
+        <div class="relative flex-1 w-full h-full select-none overflow-hidden" id="canvasContainer">
+          <canvas id="graphCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+          <!-- Floating Crosshair Inspector HUD (Top-Right of Canvas) -->
+          <div id="hoverHud" class="hidden pointer-events-none absolute top-3 right-3 bg-white/90 dark:bg-slate-900/90 glass-panel border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-3 shadow-lg text-xs font-mono min-w-[210px] space-y-1">
+            <div class="flex items-center justify-between text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-1 mb-1">
+              <span>CURSOR PROBE</span>
+              <span id="hudX" class="text-slate-800 dark:text-slate-100 font-semibold">x = 0.0000</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-rose-500">f(x):</span>
+              <span id="hudFx" class="text-slate-800 dark:text-slate-100">0.0000</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-cyan-500">g(x):</span>
+              <span id="hudGx" class="text-slate-800 dark:text-slate-100">0.0000</span>
+            </div>
+            <div class="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-800">
+              <span class="text-amber-500">|f(x) - g(x)|:</span>
+              <span id="hudDiff" class="font-semibold text-amber-600 dark:text-amber-400">0.0000</span>
+            </div>
+          </div>
+
+          <!-- Bottom-Left Hint Pill -->
+          <div class="pointer-events-none absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-900/80 glass-panel border border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <span>Drag to Pan • Scroll to Zoom • Click any intersection marker to lock coordinates</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Mathematical Phase Explorer Bar -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Bifurcation Theory of <code class="text-rose-500 font-mono">a^x</code> and <code class="text-cyan-500 font-mono">log_a(x)</code>
+          </h3>
+          <span class="text-[11px] text-slate-400">Click any regime below to jump parameter <code class="font-mono text-purple-400">a</code></span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-2.5 text-xs">
+          <div data-jump-a="0.04" class="regime-card cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 hover:border-purple-500 transition">
+            <div class="flex items-center justify-between font-mono text-[11px] text-purple-500 font-semibold mb-1">
+              <span>0 &lt; a &lt; e<sup>-e</sup></span>
+              <span>3 Roots</span>
+            </div>
+            <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              Below <code class="font-mono">e<sup>-e</sup> ≈ 0.06599</code>, the curve crosses <code class="font-mono">y = x</code> once and spawns a symmetric pair <code class="font-mono">(x₁, x₂)</code> and <code class="font-mono">(x₂, x₁)</code> off the diagonal.
+            </p>
+          </div>
+
+          <div data-jump-a="0.5" class="regime-card cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 hover:border-cyan-500 transition">
+            <div class="flex items-center justify-between font-mono text-[11px] text-cyan-500 font-semibold mb-1">
+              <span>e<sup>-e</sup> &le; a &lt; 1</span>
+              <span>1 Root</span>
+            </div>
+            <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              Both functions are strictly decreasing and intersect at a single point along the line of symmetry <code class="font-mono">y = x</code>.
+            </p>
+          </div>
+
+          <div data-jump-a="1.35" class="regime-card cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 transition">
+            <div class="flex items-center justify-between font-mono text-[11px] text-indigo-500 font-semibold mb-1">
+              <span>1 &lt; a &lt; e<sup>1/e</sup></span>
+              <span>2 Roots</span>
+            </div>
+            <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              For bases slightly above 1 (up to <code class="font-mono">e<sup>1/e</sup> ≈ 1.44467</code>), the curves cross twice on <code class="font-mono">y = x</code> before <code class="font-mono">a<sup>x</sup></code> overtakes <code class="font-mono">log_a(x)</code>.
+            </p>
+          </div>
+
+          <div data-jump-a="1.44466786" class="regime-card cursor-pointer p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 hover:border-amber-500 transition">
+            <div class="flex items-center justify-between font-mono text-[11px] text-amber-500 font-semibold mb-1">
+              <span>a = e<sup>1/e</sup> &amp; a &gt; e<sup>1/e</sup></span>
+              <span>1 or 0 Roots</span>
+            </div>
+            <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              At <code class="font-mono">a = e<sup>1/e</sup></code>, the curves kiss tangentially at <code class="font-mono">(e, e)</code>. For <code class="font-mono">a &gt; e<sup>1/e</sup></code>, they never intersect.
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Syntax Helper Modal -->
+  <div id="syntaxModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+          Mathematical Expression Syntax Guide
+        </h3>
+        <button id="btnCloseSyntax" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="py-4 space-y-3 text-xs text-slate-600 dark:text-slate-300 max-h-[70vh] overflow-y-auto">
+        <p>You can type any mathematical expression in terms of variable <code class="font-mono font-bold text-indigo-500">x</code> and dynamic base parameter <code class="font-mono font-bold text-purple-500">a</code>.</p>
+
+        <div class="grid grid-cols-2 gap-2 font-mono text-[11px]">
+          <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+            <div class="text-slate-400 font-sans text-[10px] uppercase mb-1">Exponentials &amp; Powers</div>
+            <div><strong class="text-rose-500">a^x</strong> : Base <em>a</em> to power <em>x</em></div>
+            <div><strong class="text-rose-500">exp(x)</strong> or <strong class="text-rose-500">e^x</strong> : Natural exp</div>
+            <div><strong class="text-rose-500">2^(x - 1) - 3</strong> : Shifted exp</div>
+          </div>
+
+          <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+            <div class="text-slate-400 font-sans text-[10px] uppercase mb-1">Logarithms</div>
+            <div><strong class="text-cyan-500">log(x, a)</strong> : Log of <em>x</em> in base <em>a</em></div>
+            <div><strong class="text-cyan-500">ln(x)</strong> or <strong class="text-cyan-500">log(x)</strong> : Natural log</div>
+            <div><strong class="text-cyan-500">log2(x)</strong>, <strong class="text-cyan-500">log10(x)</strong> : Base 2 / 10</div>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+          <div class="text-slate-400 font-sans text-[10px] uppercase">Supported Constants &amp; Functions</div>
+          <p class="font-mono text-[11px]">
+            <span class="text-indigo-500">e</span> (≈ 2.71828),
+            <span class="text-indigo-500">pi</span> (≈ 3.14159),
+            <span class="text-indigo-500">sqrt(x)</span>,
+            <span class="text-indigo-500">abs(x)</span>,
+            <span class="text-indigo-500">sin(x)</span>,
+            <span class="text-indigo-500">cos(x)</span>,
+            <span class="text-indigo-500">tan(x)</span>
+          </p>
+          <p class="text-[11px] text-slate-500">
+            Implicit multiplication such as <code class="font-mono">2x</code> or <code class="font-mono">3(x+1)</code> is automatically supported.
+          </p>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+        <button id="btnCloseSyntaxBottom" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
+          Got it
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    /*************************************************************************
+     * 1. MATHEMATICAL EXPRESSION PARSER & COMPILER
+     *    Clean Recursive-Descent Parser supporting:
+     *    - Variables: x, a
+     *    - Constants: e, pi
+     *    - Operators: +, -, *, /, ^ (right-associative power), unary +/-
+     *    - Implicit multiplication: 2x, 2(x+1), (x+1)(x-1)
+     *    - Functions: log(x), log(x, base), ln(x), log10(x), log2(x),
+     *                 exp(x), sqrt(x), cbrt(x), abs(x), sin(x), cos(x), tan(x), pow(x,y)
+     *************************************************************************/
+    class MathParser {
+      static tokenize(expr) {
+        const tokens = [];
+        let i = 0;
+        const s = expr.trim();
+
+        while (i < s.length) {
+          const ch = s[i];
+
+          if (/\s/.test(ch)) {
+            i++;
+            continue;
+          }
+
+          // Numbers (including decimals and scientific notation like 1e-4)
+          if (/[0-9]/.test(ch) || (ch === '.' && /[0-9]/.test(s[i + 1] || ''))) {
+            let numStr = '';
+            while (i < s.length && /[0-9.]/.test(s[i])) {
+              numStr += s[i++];
+            }
+            if (i < s.length && (s[i] === 'e' || s[i] === 'E')) {
+              const nextCh = s[i + 1] || '';
+              const nextNextCh = s[i + 2] || '';
+              if (/[0-9]/.test(nextCh) || ((nextCh === '+' || nextCh === '-') && /[0-9]/.test(nextNextCh))) {
+                numStr += s[i++];
+                if (s[i] === '+' || s[i] === '-') numStr += s[i++];
+                while (i < s.length && /[0-9]/.test(s[i])) {
+                  numStr += s[i++];
+                }
+              }
+            }
+            const val = parseFloat(numStr);
+            if (isNaN(val)) throw new Error(`Invalid number '${numStr}'`);
+            tokens.push({ type: 'NUMBER', value: val });
+            continue;
+          }
+
+          // Identifiers (functions, variables, constants)
+          if (/[a-zA-Z_]/.test(ch)) {
+            let id = '';
+            while (i < s.length && /[a-zA-Z0-9_]/.test(s[i])) {
+              id += s[i++];
+            }
+            tokens.push({ type: 'IDENT', value: id });
+            continue;
+          }
+
+          // Operators & Punctuation
+          if ('+-*/^(),'.includes(ch)) {
+            tokens.push({ type: 'SYM', value: ch });
+            i++;
+            continue;
+          }
+
+          throw new Error(`Unexpected character '${ch}'`);
+        }
+
+        // Insert implicit multiplication tokens where appropriate:
+        // e.g. NUMBER followed by IDENT or '(', ')' followed by IDENT or NUMBER or '('
+        const processed = [];
+        for (let j = 0; j < tokens.length; j++) {
+          const curr = tokens[j];
+          processed.push(curr);
+          if (j + 1 < tokens.length) {
+            const next = tokens[j + 1];
+            const currIsVal =
+              curr.type === 'NUMBER' ||
+              (curr.type === 'IDENT' && !(next.type === 'SYM' && next.value === '(')) ||
+              (curr.type === 'SYM' && curr.value === ')');
+            const nextIsVal =
+              next.type === 'NUMBER' ||
+              next.type === 'IDENT' ||
+              (next.type === 'SYM' && next.value === '(');
+
+            if (currIsVal && nextIsVal) {
+              processed.push({ type: 'SYM', value: '*' });
+            }
+          }
+        }
+
+        return processed;
+      }
+
+      static compile(exprStr) {
+        if (!exprStr || !exprStr.trim()) {
+          throw new Error('Empty expression');
+        }
+        const tokens = MathParser.tokenize(exprStr);
+        let pos = 0;
+
+        function peek() {
+          return tokens[pos] || null;
+        }
+        function consume() {
+          return tokens[pos++];
+        }
+
+        // Grammar:
+        // Expr   -> Term (( '+' | '-' ) Term)*
+        // Term   -> Factor (( '*' | '/' ) Factor)*
+        // Factor -> ('+' | '-') Factor | Power
+        // Power  -> Primary ('^' Factor)?
+        // Primary-> NUMBER | IDENT | IDENT '(' Expr (',' Expr)? ')' | '(' Expr ')'
+
+        function parseExpr() {
+          let left = parseTerm();
+          while (peek() && peek().type === 'SYM' && (peek().value === '+' || peek().value === '-')) {
+            const op = consume().value;
+            const right = parseTerm();
+            const lFn = left;
+            const rFn = right;
+            if (op === '+') {
+              left = (x, a) => lFn(x, a) + rFn(x, a);
+            } else {
+              left = (x, a) => lFn(x, a) - rFn(x, a);
+            }
+          }
+          return left;
+        }
+
+        function parseTerm() {
+          let left = parseFactor();
+          while (peek() && peek().type === 'SYM' && (peek().value === '*' || peek().value === '/')) {
+            const op = consume().value;
+            const right = parseFactor();
+            const lFn = left;
+            const rFn = right;
+            if (op === '*') {
+              left = (x, a) => lFn(x, a) * rFn(x, a);
+            } else {
+              left = (x, a) => lFn(x, a) / rFn(x, a);
+            }
+          }
+          return left;
+        }
+
+        function parseFactor() {
+          if (peek() && peek().type === 'SYM' && (peek().value === '+' || peek().value === '-')) {
+            const op = consume().value;
+            const operand = parseFactor();
+            return op === '-' ? (x, a) => -operand(x, a) : operand;
+          }
+          return parsePower();
+        }
+
+        function parsePower() {
+          const base = parsePrimary();
+          if (peek() && peek().type === 'SYM' && peek().value === '^') {
+            consume(); // '^'
+            const exponent = parseFactor(); // right-associative, allows 2^-x
+            return (x, a) => {
+              const b = base(x, a);
+              const ex = exponent(x, a);
+              if (b < 0) return NaN; // Real-valued continuous exponential branch
+              return Math.pow(b, ex);
+            };
+          }
+          return base;
+        }
+
+        function parsePrimary() {
+          const tok = peek();
+          if (!tok) throw new Error('Unexpected end of expression');
+
+          if (tok.type === 'NUMBER') {
+            consume();
+            const v = tok.value;
+            return () => v;
+          }
+
+          if (tok.type === 'IDENT') {
+            consume();
+            const name = tok.value.toLowerCase();
+
+            // Check if function call
+            if (peek() && peek().type === 'SYM' && peek().value === '(') {
+              consume(); // '('
+              const args = [];
+              if (!(peek() && peek().type === 'SYM' && peek().value === ')')) {
+                args.push(parseExpr());
+                while (peek() && peek().type === 'SYM' && peek().value === ',') {
+                  consume(); // ','
+                  args.push(parseExpr());
+                }
+              }
+              if (!peek() || peek().type !== 'SYM' || peek().value !== ')') {
+                throw new Error(`Missing closing ')' for ${name}()`);
+              }
+              consume(); // ')'
+
+              return buildFunction(name, args);
+            }
+
+            // Variable or Constant
+            if (name === 'x') return (x) => x;
+            if (name === 'a') return (x, a) => a;
+            if (name === 'e') return () => Math.E;
+            if (name === 'pi') return () => Math.PI;
+
+            throw new Error(`Unknown identifier '${tok.value}'`);
+          }
+
+          if (tok.type === 'SYM' && tok.value === '(') {
+            consume(); // '('
+            const inner = parseExpr();
+            if (!peek() || peek().type !== 'SYM' || peek().value !== ')') {
+              throw new Error("Unclosed parenthesis '('");
+            }
+            consume(); // ')'
+            return inner;
+          }
+
+          throw new Error(`Unexpected token '${tok.value}'`);
+        }
+
+        function buildFunction(name, args) {
+          switch (name) {
+            case 'exp':
+              if (args.length !== 1) throw new Error('exp(x) takes 1 argument');
+              return (x, a) => Math.exp(args[0](x, a));
+            case 'ln':
+              if (args.length !== 1) throw new Error('ln(x) takes 1 argument');
+              return (x, a) => {
+                const v = args[0](x, a);
+                return v > 0 ? Math.log(v) : NaN;
+              };
+            case 'log':
+              if (args.length === 1) {
+                return (x, a) => {
+                  const v = args[0](x, a);
+                  return v > 0 ? Math.log(v) : NaN;
+                };
+              } else if (args.length === 2) {
+                return (x, a) => {
+                  const v = args[0](x, a);
+                  const base = args[1](x, a);
+                  if (v <= 0 || base <= 0 || Math.abs(base - 1) < 1e-12) return NaN;
+                  return Math.log(v) / Math.log(base);
+                };
+              }
+              throw new Error('log(x, [base]) takes 1 or 2 arguments');
+            case 'log10':
+              if (args.length !== 1) throw new Error('log10(x) takes 1 argument');
+              return (x, a) => {
+                const v = args[0](x, a);
+                return v > 0 ? Math.log10(v) : NaN;
+              };
+            case 'log2':
+              if (args.length !== 1) throw new Error('log2(x) takes 1 argument');
+              return (x, a) => {
+                const v = args[0](x, a);
+                return v > 0 ? Math.log2(v) : NaN;
+              };
+            case 'sqrt':
+              if (args.length !== 1) throw new Error('sqrt(x) takes 1 argument');
+              return (x, a) => {
+                const v = args[0](x, a);
+                return v >= 0 ? Math.sqrt(v) : NaN;
+              };
+            case 'cbrt':
+              if (args.length !== 1) throw new Error('cbrt(x) takes 1 argument');
+              return (x, a) => Math.cbrt(args[0](x, a));
+            case 'abs':
+              if (args.length !== 1) throw new Error('abs(x) takes 1 argument');
+              return (x, a) => Math.abs(args[0](x, a));
+            case 'sin':
+              if (args.length !== 1) throw new Error('sin(x) takes 1 argument');
+              return (x, a) => Math.sin(args[0](x, a));
+            case 'cos':
+              if (args.length !== 1) throw new Error('cos(x) takes 1 argument');
+              return (x, a) => Math.cos(args[0](x, a));
+            case 'tan':
+              if (args.length !== 1) throw new Error('tan(x) takes 1 argument');
+              return (x, a) => Math.tan(args[0](x, a));
+            case 'pow':
+              if (args.length !== 2) throw new Error('pow(x, y) takes 2 arguments');
+              return (x, a) => Math.pow(args[0](x, a), args[1](x, a));
+            default:
+              throw new Error(`Unsupported function '${name}()'`);
+          }
+        }
+
+        const fn = parseExpr();
+        if (pos < tokens.length) {
+          throw new Error(`Unexpected token '${tokens[pos].value}'`);
+        }
+        return fn;
+      }
+    }
+
+    /*************************************************************************
+     * 2. NUMERICAL INTERSECTION SOLVER (ROOTS + TANGENCY DETECTION)
+     *    Detects both sign-change crossings and tangential touch points
+     *    where f(x) - g(x) reaches a local extremum of 0 without crossing.
+     *************************************************************************/
+    class IntersectionSolver {
+      static findIntersections(f, g, paramA, viewXMin, viewXMax) {
+        const h = (x) => f(x, paramA) - g(x, paramA);
+
+        // Build a comprehensive multi-scale sample grid:
+        // 1. Dense logarithmic clustering near 0+ (crucial for 0 < a < e^-e where log is super steep)
+        // 2. Dense uniform grid across the visible viewport
+        // 3. Wide sweep across [-20, 45]
+        const sampleSet = new Set();
+
+        // Near zero positive cluster: 10^-7 to 2.0
+        for (let exp = -7; exp <= 0.3; exp += 0.015) {
+          sampleSet.add(Math.pow(10, exp));
+        }
+
+        // Visible viewport high-density samples (1600 points)
+        const span = Math.max(0.1, viewXMax - viewXMin);
+        const N_VIEW = 1600;
+        for (let i = 0; i <= N_VIEW; i++) {
+          sampleSet.add(viewXMin + (i / N_VIEW) * span);
+        }
+
+        // Global domain sweep [-20, 45] (1500 points)
+        const G_MIN = Math.min(-20, viewXMin);
+        const G_MAX = Math.max(45, viewXMax);
+        const N_GLOB = 1500;
+        for (let i = 0; i <= N_GLOB; i++) {
+          sampleSet.add(G_MIN + (i / N_GLOB) * (G_MAX - G_MIN));
+        }
+
+        const xs = Array.from(sampleSet).sort((a, b) => a - b);
+        const hs = xs.map((x) => h(x));
+
+        const rawRoots = [];
+
+        // Pass 1: Sign-Change Brackets -> Bisection + Secant Hybrid
+        for (let i = 0; i < xs.length - 1; i++) {
+          const x1 = xs[i];
+          const x2 = xs[i + 1];
+          const h1 = hs[i];
+          const h2 = hs[i + 1];
+
+          if (!Number.isFinite(h1) || !Number.isFinite(h2)) continue;
+
+          if (Math.abs(h1) < 1e-13) {
+            rawRoots.push({ x: x1, isTangent: false });
+            continue;
+          }
+
+          if (h1 * h2 < 0) {
+            const rootX = IntersectionSolver.bisectRoot(h, x1, x2, h1, h2);
+            if (rootX !== null) {
+              rawRoots.push({ x: rootX, isTangent: false });
+            }
+          }
+        }
+
+        // Pass 2: Local Extrema of |h(x)| -> Golden Section Search for Tangential Roots
+        // (e.g., when a = e^(1/e) ≈ 1.44466786, h(x) >= 0 everywhere and touches 0 at x = e)
+        for (let i = 1; i < xs.length - 1; i++) {
+          const hPrev = Math.abs(hs[i - 1]);
+          const hCurr = Math.abs(hs[i]);
+          const hNext = Math.abs(hs[i + 1]);
+
+          if (!Number.isFinite(hPrev) || !Number.isFinite(hCurr) || !Number.isFinite(hNext)) continue;
+
+          // Local minimum of |h(x)| that is already fairly close to 0
+          if (hCurr <= hPrev && hCurr <= hNext && hCurr < 0.08) {
+            const minX = IntersectionSolver.goldenSectionMinAbs(h, xs[i - 1], xs[i + 1]);
+            const minVal = Math.abs(h(minX));
+            // Accept as tangential touch if |f(x) - g(x)| < 2e-3
+            if (minVal < 2e-3) {
+              // Check if h changes sign around minX; if not, it's a true tangent!
+              const delta = Math.max(1e-5, Math.abs(minX) * 1e-4);
+              const leftH = h(minX - delta);
+              const rightH = h(minX + delta);
+              const isTangent = (leftH * rightH >= 0) || minVal > 1e-7;
+              rawRoots.push({ x: minX, isTangent });
+            }
+          }
+        }
+
+        // Deduplicate & sort roots
+        rawRoots.sort((a, b) => a.x - b.x);
+        const merged = [];
+
+        for (const r of rawRoots) {
+          const yF = f(r.x, paramA);
+          const yG = g(r.x, paramA);
+          if (!Number.isFinite(yF) || !Number.isFinite(yG)) continue;
+          const err = Math.abs(yF - yG);
+          if (err > 2.5e-3) continue; // Discard asymptote false-positives
+
+          const y = 0.5 * (yF + yG);
+
+          if (merged.length === 0) {
+            merged.push({ x: r.x, y, err, isTangent: r.isTangent });
+          } else {
+            const prev = merged[merged.length - 1];
+            // Merge roots that are very close (e.g. near-tangent double roots within 1.5e-3)
+            if (Math.abs(r.x - prev.x) < 1.5e-3) {
+              if (err < prev.err) {
+                prev.x = r.x;
+                prev.y = y;
+                prev.err = err;
+              }
+            } else {
+              merged.push({ x: r.x, y, err, isTangent: r.isTangent });
+            }
+          }
+        }
+
+        return merged;
+      }
+
+      static bisectRoot(h, a, b, ha, hb) {
+        let left = a;
+        let right = b;
+        let fLeft = ha;
+        let fRight = hb;
+
+        for (let iter = 0; iter < 65; iter++) {
+          const mid = 0.5 * (left + right);
+          const fMid = h(mid);
+          if (!Number.isFinite(fMid)) return null;
+          if (Math.abs(fMid) < 1e-14 || Math.abs(right - left) < 1e-13) {
+            return mid;
+          }
+          if (fLeft * fMid <= 0) {
+            right = mid;
+            fRight = fMid;
+          } else {
+            left = mid;
+            fLeft = fMid;
+          }
+        }
+
+        const finalX = 0.5 * (left + right);
+        // Verify continuity (reject vertical asymptotes like 1/x)
+        if (Math.abs(h(finalX)) < 1e-3) {
+          return finalX;
+        }
+        return null;
+      }
+
+      static goldenSectionMinAbs(h, a, b) {
+        const phi = (Math.sqrt(5) - 1) / 2; // ~0.6180339887
+        let x1 = b - phi * (b - a);
+        let x2 = a + phi * (b - a);
+        let f1 = Math.abs(h(x1));
+        let f2 = Math.abs(h(x2));
+
+        for (let iter = 0; iter < 60; iter++) {
+          if (Math.abs(b - a) < 1e-12) break;
+          if (f1 < f2) {
+            b = x2;
+            x2 = x1;
+            f2 = f1;
+            x1 = b - phi * (b - a);
+            f1 = Math.abs(h(x1));
+          } else {
+            a = x1;
+            x1 = x2;
+            f1 = f2;
+            x2 = a + phi * (b - a);
+            f2 = Math.abs(h(x2));
+          }
+        }
+        return 0.5 * (a + b);
+      }
+    }
+
+    /*************************************************************************
+     * 3. APPLICATION STATE & INTERACTIVE GRAPH CONTROLLER
+     *************************************************************************/
+    const CRIT_UPPER = Math.pow(Math.E, 1 / Math.E); // e^(1/e) ≈ 1.444667861009766
+    const CRIT_LOWER = Math.pow(Math.E, -Math.E);    // e^(-e)  ≈ 0.0659880358453125
+
+    const state = {
+      exprFx: 'a^x',
+      exprGx: 'log(x, a)',
+      fnFx: null,
+      fnGx: null,
+      paramA: 1.35,
+      showFx: true,
+      showGx: true,
+      showSymmetry: true,
+      showDiffShade: false,
+
+      // Viewport bounds in mathematical coordinates
+      xMin: -3.5,
+      xMax: 11.5,
+      yMin: -3.5,
+      yMax: 9.5,
+
+      // Detected intersection points
+      intersections: [],
+      selectedRootIndex: null,
+      hoveredRootIndex: null,
+
+      // Mouse interaction state
+      isDragging: false,
+      dragStartX: 0,
+      dragStartY: 0,
+      mouseMathX: null,
+      mouseMathY: null,
+      activeInputEl: null
+    };
+
+    // DOM Elements
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const inputFx = document.getElementById('inputFx');
+    const inputGx = document.getElementById('inputGx');
+    const badgeFxStatus = document.getElementById('badgeFxStatus');
+    const badgeGxStatus = document.getElementById('badgeGxStatus');
+    const errFx = document.getElementById('errFx');
+    const errGx = document.getElementById('errGx');
+    const chkShowFx = document.getElementById('chkShowFx');
+    const chkShowGx = document.getElementById('chkShowGx');
+    const chkSymmetryLine = document.getElementById('chkSymmetryLine');
+    const chkDiffShade = document.getElementById('chkDiffShade');
+    const inputParamA = document.getElementById('inputParamA');
+    const sliderParamA = document.getElementById('sliderParamA');
+    const intersectionsContainer = document.getElementById('intersectionsContainer');
+    const badgeRootCount = document.getElementById('badgeRootCount');
+    const legendFx = document.getElementById('legendFx');
+    const legendGx = document.getElementById('legendGx');
+    const hoverHud = document.getElementById('hoverHud');
+    const hudX = document.getElementById('hudX');
+    const hudFx = document.getElementById('hudFx');
+    const hudGx = document.getElementById('hudGx');
+    const hudDiff = document.getElementById('hudDiff');
+
+    state.activeInputEl = inputFx;
+    inputFx.addEventListener('focus', () => { state.activeInputEl = inputFx; });
+    inputGx.addEventListener('focus', () => { state.activeInputEl = inputGx; });
+
+    // Compile Equations & Update Status Badges
+    function compileEquations() {
+      state.exprFx = inputFx.value.trim();
+      state.exprGx = inputGx.value.trim();
+
+      // Compile f(x)
+      try {
+        state.fnFx = MathParser.compile(state.exprFx);
+        badgeFxStatus.textContent = 'VALID';
+        badgeFxStatus.className = 'px-1.5 py-0.5 text-[10px] font-mono rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+        errFx.classList.add('hidden');
+        legendFx.textContent = `f(x) = ${state.exprFx}`;
+      } catch (e) {
+        state.fnFx = null;
+        badgeFxStatus.textContent = 'ERR';
+        badgeFxStatus.className = 'px-1.5 py-0.5 text-[10px] font-mono rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20';
+        errFx.textContent = e.message;
+        errFx.classList.remove('hidden');
+      }
+
+      // Compile g(x)
+      try {
+        state.fnGx = MathParser.compile(state.exprGx);
+        badgeGxStatus.textContent = 'VALID';
+        badgeGxStatus.className = 'px-1.5 py-0.5 text-[10px] font-mono rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+        errGx.classList.add('hidden');
+        legendGx.textContent = `g(x) = ${state.exprGx}`;
+      } catch (e) {
+        state.fnGx = null;
+        badgeGxStatus.textContent = 'ERR';
+        badgeGxStatus.className = 'px-1.5 py-0.5 text-[10px] font-mono rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20';
+        errGx.textContent = e.message;
+        errGx.classList.remove('hidden');
+      }
+
+      updateRegimeBanner();
+      solveAndRender();
+    }
+
+    function updateRegimeBanner() {
+      const a = state.paramA;
+      const dot = document.getElementById('regimeDot');
+      const title = document.getElementById('regimeTitle');
+      const math = document.getElementById('regimeMath');
+
+      if (Math.abs(a - CRIT_UPPER) < 0.0008) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping';
+        title.textContent = 'Critical Upper Tangency (1 Point)';
+        math.textContent = 'a = e^(1/e) ≈ 1.44467';
+      } else if (Math.abs(a - CRIT_LOWER) < 0.0005) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-pink-500 animate-ping';
+        title.textContent = 'Critical Lower Bifurcation (1 Point)';
+        math.textContent = 'a = e^(-e) ≈ 0.06599';
+      } else if (Math.abs(a - 1) < 1e-4) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
+        title.textContent = 'Singular Base (log₁(x) undefined)';
+        math.textContent = 'a = 1.0000';
+      } else if (a > 0 && a < CRIT_LOWER) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-purple-500';
+        title.textContent = 'Three Intersections Regime';
+        math.textContent = '0 < a < e^(-e)';
+      } else if (a > CRIT_LOWER && a < 1) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-cyan-500';
+        title.textContent = 'Single Crossing Regime';
+        math.textContent = 'e^(-e) < a < 1';
+      } else if (a > 1 && a < CRIT_UPPER) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-indigo-500';
+        title.textContent = 'Two Intersections Regime';
+        math.textContent = '1 < a < e^(1/e)';
+      } else {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+        title.textContent = 'Zero Intersections Regime';
+        math.textContent = 'a > e^(1/e)';
+      }
+    }
+
+    function solveAndRender() {
+      if (state.fnFx && state.fnGx) {
+        state.intersections = IntersectionSolver.findIntersections(
+          state.fnFx,
+          state.fnGx,
+          state.paramA,
+          state.xMin,
+          state.xMax
+        );
+      } else {
+        state.intersections = [];
+      }
+
+      renderIntersectionsList();
+      drawGraph();
+    }
+
+    function renderIntersectionsList() {
+      const roots = state.intersections;
+      badgeRootCount.textContent = `${roots.length} ${roots.length === 1 ? 'Point' : 'Points'}`;
+
+      if (roots.length === 0) {
+        intersectionsContainer.innerHTML = `
+          <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-dashed border-slate-200 dark:border-slate-800 text-center">
+            <p class="text-xs font-medium text-slate-600 dark:text-slate-300">No Real Intersections Found</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">The curves f(x) and g(x) do not cross in the real plane for these parameters.</p>
+          </div>
+        `;
+        return;
+      }
+
+      intersectionsContainer.innerHTML = roots
+        .map((pt, idx) => {
+          const onDiagonal = Math.abs(pt.x - pt.y) < 1e-3;
+          const tagText = pt.isTangent
+            ? 'Tangent Touch'
+            : onDiagonal
+            ? 'On y = x'
+            : 'Off-Diagonal';
+          const tagClass = pt.isTangent
+            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+            : onDiagonal
+            ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30'
+            : 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30';
+
+          return `
+            <div
+              data-root-idx="${idx}"
+              class="root-row cursor-pointer p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 hover:bg-amber-500/10 border border-slate-200 dark:border-slate-800 hover:border-amber-500/50 transition flex items-center justify-between"
+            >
+              <div class="flex items-center gap-2.5">
+                <span class="w-6 h-6 rounded-lg bg-amber-500 text-slate-950 font-mono font-bold text-xs flex items-center justify-center shadow-sm">
+                  P${idx + 1}
+                </span>
+                <div>
+                  <div class="font-mono text-xs font-semibold text-slate-800 dark:text-slate-100">
+                    (${pt.x.toFixed(5)}, ${pt.y.toFixed(5)})
+                  </div>
+                  <div class="text-[10px] font-mono text-slate-400">
+                    |f(x)-g(x)| ≈ ${pt.err.toExponential(1)}
+                  </div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 text-[10px] font-medium rounded-full border ${tagClass}">
+                ${tagText}
+              </span>
+            </div>
+          `;
+        })
+        .join('');
+
+      // Attach hover and click listeners to root cards
+      document.querySelectorAll('.root-row').forEach((row) => {
+        const idx = parseInt(row.getAttribute('data-root-idx'), 10);
+        row.addEventListener('mouseenter', () => {
+          state.hoveredRootIndex = idx;
+          drawGraph();
+        });
+        row.addEventListener('mouseleave', () => {
+          state.hoveredRootIndex = null;
+          drawGraph();
+        });
+        row.addEventListener('click', () => {
+          const pt = state.intersections[idx];
+          if (pt) centerCameraOn(pt.x, pt.y);
+        });
+      });
+    }
+
+    /*************************************************************************
+     * 4. HIGH-DPI HTML5 CANVAS COORDINATE GRAPH RENDERER
+     *************************************************************************/
+    function resizeCanvas() {
+      const container = document.getElementById('canvasContainer');
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Adjust Y range to preserve square 1:1 mathematical aspect ratio
+      // (Essential so y = x is at a true 45-degree angle!)
+      const width = rect.width;
+      const height = rect.height;
+      const xSpan = state.xMax - state.xMin;
+      const yCenter = 0.5 * (state.yMin + state.yMax);
+      const desiredYSpan = xSpan * (height / Math.max(1, width));
+      state.yMin = yCenter - 0.5 * desiredYSpan;
+      state.yMax = yCenter + 0.5 * desiredYSpan;
+
+      drawGraph();
+    }
+
+    function mathToScreenX(x, width) {
+      return ((x - state.xMin) / (state.xMax - state.xMin)) * width;
+    }
+    function mathToScreenY(y, height) {
+      return height - ((y - state.yMin) / (state.yMax - state.yMin)) * height;
+    }
+    function screenToMathX(px, width) {
+      return state.xMin + (px / width) * (state.xMax - state.xMin);
+    }
+    function screenToMathY(py, height) {
+      return state.yMin + ((height - py) / height) * (state.yMax - state.yMin);
+    }
+
+    function computeNiceGridStep(span, targetLines = 10) {
+      const rawStep = span / targetLines;
+      const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+      const residual = rawStep / mag;
+      if (residual > 5) return 10 * mag;
+      if (residual > 2) return 5 * mag;
+      if (residual > 1) return 2 * mag;
+      return mag;
+    }
+
+    function drawGraph() {
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (w === 0 || h === 0) return;
+
+      const isDark = document.documentElement.classList.contains('dark');
+
+      // 1. Background Fill
+      ctx.fillStyle = isDark ? '#090d16' : '#f8fafc';
+      ctx.fillRect(0, 0, w, h);
+
+      // 2. Coordinate Grid
+      const xSpan = state.xMax - state.xMin;
+      const step = computeNiceGridStep(xSpan, Math.max(6, Math.floor(w / 90)));
+      const subStep = step / 5;
+
+      // Minor Grid Lines
+      ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.05)' : 'rgba(15, 23, 42, 0.04)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const firstSubX = Math.floor(state.xMin / subStep) * subStep;
+      for (let x = firstSubX; x <= state.xMax; x += subStep) {
+        const sx = mathToScreenX(x, w);
+        ctx.moveTo(sx, 0);
+        ctx.lineTo(sx, h);
+      }
+      const firstSubY = Math.floor(state.yMin / subStep) * subStep;
+      for (let y = firstSubY; y <= state.yMax; y += subStep) {
+        const sy = mathToScreenY(y, h);
+        ctx.moveTo(0, sy);
+        ctx.lineTo(w, sy);
+      }
+      ctx.stroke();
+
+      // Major Grid Lines & Tick Labels
+      ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.13)' : 'rgba(15, 23, 42, 0.1)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+
+      const firstX = Math.floor(state.xMin / step) * step;
+      for (let x = firstX; x <= state.xMax; x += step) {
+        const sx = mathToScreenX(x, w);
+        ctx.moveTo(sx, 0);
+        ctx.lineTo(sx, h);
+      }
+      const firstY = Math.floor(state.yMin / step) * step;
+      for (let y = firstY; y <= state.yMax; y += step) {
+        const sy = mathToScreenY(y, h);
+        ctx.moveTo(0, sy);
+        ctx.lineTo(w, sy);
+      }
+      ctx.stroke();
+
+      // 3. Coordinate Axes (x = 0 and y = 0)
+      const axisX0 = mathToScreenX(0, w);
+      const axisY0 = mathToScreenY(0, h);
+
+      ctx.strokeStyle = isDark ? 'rgba(226, 232, 240, 0.35)' : 'rgba(15, 23, 42, 0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(axisX0, 0);
+      ctx.lineTo(axisX0, h);
+      ctx.moveTo(0, axisY0);
+      ctx.lineTo(w, axisY0);
+      ctx.stroke();
+
+      // Tick Numbers
+      ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.75)' : 'rgba(71, 85, 105, 0.85)';
+      ctx.font = '11px "JetBrains Mono", monospace';
+      const decimals = step < 0.01 ? 3 : step < 0.1 ? 2 : step < 1 ? 1 : 0;
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      const labelYPos = Math.min(Math.max(axisY0 + 6, 6), h - 18);
+      for (let x = firstX; x <= state.xMax; x += step) {
+        if (Math.abs(x) < 1e-9) continue;
+        const sx = mathToScreenX(x, w);
+        if (sx < 24 || sx > w - 24) continue;
+        ctx.fillText(x.toFixed(decimals), sx, labelYPos);
+      }
+
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      const labelXPos = Math.min(Math.max(axisX0 - 8, 38), w - 8);
+      for (let y = firstY; y <= state.yMax; y += step) {
+        if (Math.abs(y) < 1e-9) continue;
+        const sy = mathToScreenY(y, h);
+        if (sy < 15 || sy > h - 15) continue;
+        ctx.fillText(y.toFixed(decimals), labelXPos, sy);
+      }
+
+      // 4. Optional Difference Shading |f(x) - g(x)|
+      if (state.showDiffShade && state.fnFx && state.fnGx) {
+        ctx.fillStyle = isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.10)';
+        ctx.beginPath();
+        let started = false;
+        const ptsG = [];
+        for (let px = 0; px <= w; px += 2) {
+          const x = screenToMathX(px, w);
+          const yf = state.fnFx(x, state.paramA);
+          const yg = state.fnGx(x, state.paramA);
+          if (Number.isFinite(yf) && Number.isFinite(yg) && Math.abs(yf) < 1e4 && Math.abs(yg) < 1e4) {
+            const syf = Math.max(-100, Math.min(h + 100, mathToScreenY(yf, h)));
+            const syg = Math.max(-100, Math.min(h + 100, mathToScreenY(yg, h)));
+            if (!started) {
+              ctx.moveTo(px, syf);
+              started = true;
+            } else {
+              ctx.lineTo(px, syf);
+            }
+            ptsG.push([px, syg]);
+          } else if (started) {
+            for (let k = ptsG.length - 1; k >= 0; k--) {
+              ctx.lineTo(ptsG[k][0], ptsG[k][1]);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ptsG.length = 0;
+            started = false;
+          }
+        }
+        if (started && ptsG.length > 0) {
+          for (let k = ptsG.length - 1; k >= 0; k--) {
+            ctx.lineTo(ptsG[k][0], ptsG[k][1]);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
+      // 5. Optional Symmetry Line y = x
+      if (state.showSymmetry) {
+        ctx.save();
+        ctx.strokeStyle = isDark ? 'rgba(168, 85, 247, 0.55)' : 'rgba(147, 51, 234, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        const xStart = state.xMin;
+        const xEnd = state.xMax;
+        ctx.moveTo(mathToScreenX(xStart, w), mathToScreenY(xStart, h));
+        ctx.lineTo(mathToScreenX(xEnd, w), mathToScreenY(xEnd, h));
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 6. Plot Exponential Function f(x) and Logarithmic Function g(x)
+      if (state.showFx && state.fnFx) {
+        plotContinuousCurve(state.fnFx, '#f43f5e', w, h);
+      }
+      if (state.showGx && state.fnGx) {
+        plotContinuousCurve(state.fnGx, '#06b6d4', w, h);
+      }
+
+      // 7. Interactive Hover Crosshair & Vertical Distance Segment
+      if (state.mouseMathX !== null && !state.isDragging) {
+        const mx = state.mouseMathX;
+        const sx = mathToScreenX(mx, w);
+
+        // Vertical guide line
+        ctx.save();
+        ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.25)' : 'rgba(71, 85, 105, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(sx, 0);
+        ctx.lineTo(sx, h);
+        ctx.stroke();
+
+        const yf = state.fnFx ? state.fnFx(mx, state.paramA) : NaN;
+        const yg = state.fnGx ? state.fnGx(mx, state.paramA) : NaN;
+
+        if (Number.isFinite(yf) && Number.isFinite(yg)) {
+          const syf = mathToScreenY(yf, h);
+          const syg = mathToScreenY(yg, h);
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.65)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(sx, syf);
+          ctx.lineTo(sx, syg);
+          ctx.stroke();
+        }
+
+        if (Number.isFinite(yf) && state.showFx) {
+          const syf = mathToScreenY(yf, h);
+          ctx.fillStyle = '#f43f5e';
+          ctx.beginPath();
+          ctx.arc(sx, syf, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        if (Number.isFinite(yg) && state.showGx) {
+          const syg = mathToScreenY(yg, h);
+          ctx.fillStyle = '#06b6d4';
+          ctx.beginPath();
+          ctx.arc(sx, syg, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // 8. Draw Glowing Intersection Markers & Labels
+      state.intersections.forEach((pt, idx) => {
+        const sx = mathToScreenX(pt.x, w);
+        const sy = mathToScreenY(pt.y, h);
+        if (sx < -40 || sx > w + 40 || sy < -40 || sy > h + 40) return;
+
+        const isHovered = state.hoveredRootIndex === idx;
+        const baseRadius = isHovered ? 8 : 6;
+
+        // Drop dashed projection lines to axes on hover
+        if (isHovered) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx, axisY0);
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(axisX0, sy);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Outer pulse halo
+        ctx.beginPath();
+        ctx.fillStyle = pt.isTangent ? 'rgba(245, 158, 11, 0.30)' : 'rgba(245, 158, 11, 0.22)';
+        ctx.arc(sx, sy, baseRadius + 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Core intersection dot
+        ctx.beginPath();
+        ctx.fillStyle = '#f59e0b';
+        ctx.arc(sx, sy, baseRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = isDark ? '#090d16' : '#ffffff';
+        ctx.stroke();
+
+        // Coordinate Label Badge
+        const label = `P${idx + 1} (${pt.x.toFixed(3)}, ${pt.y.toFixed(3)})`;
+        ctx.font = '600 11px "JetBrains Mono", monospace';
+        const textWidth = ctx.measureText(label).width;
+        const boxW = textWidth + 14;
+        const boxH = 22;
+
+        // Stagger label position slightly if multiple points are close
+        const offsetX = sx + 12 + boxW > w ? -(boxW + 12) : 12;
+        const offsetY = idx % 2 === 0 ? -26 : 8;
+        const bx = sx + offsetX;
+        const by = sy + offsetY;
+
+        ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.94)';
+        ctx.strokeStyle = isHovered ? '#f59e0b' : 'rgba(245, 158, 11, 0.55)';
+        ctx.lineWidth = isHovered ? 2 : 1.2;
+
+        ctx.beginPath();
+        ctx.roundRect(bx, by, boxW, boxH, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isDark ? '#fbbf24' : '#b45309';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, bx + 7, by + boxH / 2);
+      });
+    }
+
+    function plotContinuousCurve(fn, color, w, h) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.6;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      ctx.beginPath();
+      let penDown = false;
+      let prevSy = 0;
+
+      // High-resolution horizontal pixel sampling (every 1 px)
+      // plus sub-pixel sampling near domain boundaries (such as x -> 0+ for logarithms)
+      const stepPx = 1;
+      for (let px = 0; px <= w; px += stepPx) {
+        const x = screenToMathX(px, w);
+        const y = fn(x, state.paramA);
+
+        if (Number.isFinite(y)) {
+          const sy = mathToScreenY(y, h);
+          // Avoid vertical asymptote lines spanning across canvas
+          if (penDown && Math.abs(sy - prevSy) > h * 1.5) {
+            ctx.stroke();
+            ctx.beginPath();
+            penDown = false;
+          }
+
+          if (sy >= -h && sy <= 2 * h) {
+            if (!penDown) {
+              ctx.moveTo(px, sy);
+              penDown = true;
+            } else {
+              ctx.lineTo(px, sy);
+            }
+            prevSy = sy;
+          } else {
+            penDown = false;
+          }
+        } else {
+          if (penDown) {
+            ctx.stroke();
+            ctx.beginPath();
+            penDown = false;
+          }
+        }
+      }
+      if (penDown) ctx.stroke();
+      ctx.restore();
+    }
+
+    /*************************************************************************
+     * 5. CAMERA NAVIGATION, ZOOM, PAN & PRESETS
+     *************************************************************************/
+    function setViewport(xMin, xMax, yCenter = null) {
+      state.xMin = xMin;
+      state.xMax = xMax;
+      const rect = canvas.getBoundingClientRect();
+      const aspect = rect.height / Math.max(1, rect.width);
+      const ySpan = (xMax - xMin) * aspect;
+      const yc = yCenter !== null ? yCenter : 0.5 * (xMin + xMax) * 0.6;
+      state.yMin = yc - 0.5 * ySpan;
+      state.yMax = yc + 0.5 * ySpan;
+      solveAndRender();
+    }
+
+    function centerCameraOn(cx, cy, span = 6) {
+      setViewport(cx - span / 2, cx + span / 2, cy);
+    }
+
+    function frameDetectedIntersections() {
+      if (state.intersections.length === 0) {
+        setViewport(-3.5, 11.5, 3.0);
+        return;
+      }
+      if (state.intersections.length === 1) {
+        const pt = state.intersections[0];
+        centerCameraOn(pt.x, pt.y, 6.5);
+        return;
+      }
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const pt of state.intersections) {
+        minX = Math.min(minX, pt.x);
+        maxX = Math.max(maxX, pt.x);
+        minY = Math.min(minY, pt.y);
+        maxY = Math.max(maxY, pt.y);
+      }
+      const pad = Math.max(1.5, (maxX - minX) * 0.65);
+      setViewport(minX - pad, maxX + pad, 0.5 * (minY + maxY));
+    }
+
+    function zoomAtPoint(factor, screenX, screenY) {
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      const mx = screenToMathX(screenX, w);
+      const my = screenToMathY(screenY, h);
+
+      const newXMin = mx - (mx - state.xMin) * factor;
+      const newXMax = mx + (state.xMax - mx) * factor;
+      const newYMin = my - (my - state.yMin) * factor;
+      const newYMax = my + (state.yMax - my) * factor;
+
+      if (newXMax - newXMin < 0.02 || newXMax - newXMin > 400) return;
+
+      state.xMin = newXMin;
+      state.xMax = newXMax;
+      state.yMin = newYMin;
+      state.yMax = newYMax;
+      solveAndRender();
+    }
+
+    // Mouse Pan & Hover Events
+    canvas.addEventListener('mousedown', (e) => {
+      state.isDragging = true;
+      state.dragStartX = e.clientX;
+      state.dragStartY = e.clientY;
+      canvas.classList.replace('cursor-crosshair', 'cursor-grabbing');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+
+      if (state.isDragging) {
+        const dxPx = e.clientX - state.dragStartX;
+        const dyPx = e.clientY - state.dragStartY;
+        state.dragStartX = e.clientX;
+        state.dragStartY = e.clientY;
+
+        const xSpan = state.xMax - state.xMin;
+        const ySpan = state.yMax - state.yMin;
+        const dxMath = (dxPx / rect.width) * xSpan;
+        const dyMath = (dyPx / rect.height) * ySpan;
+
+        state.xMin -= dxMath;
+        state.xMax -= dxMath;
+        state.yMin += dyMath;
+        state.yMax += dyMath;
+        drawGraph();
+        return;
+      }
+
+      // Check if inside canvas for HUD probe
+      if (px >= 0 && px <= rect.width && py >= 0 && py <= rect.height) {
+        const mx = screenToMathX(px, rect.width);
+        const my = screenToMathY(py, rect.height);
+        state.mouseMathX = mx;
+        state.mouseMathY = my;
+
+        // Check proximity to intersection markers
+        state.hoveredRootIndex = null;
+        state.intersections.forEach((pt, idx) => {
+          const sx = mathToScreenX(pt.x, rect.width);
+          const sy = mathToScreenY(pt.y, rect.height);
+          if (Math.hypot(px - sx, py - sy) < 14) {
+            state.hoveredRootIndex = idx;
+          }
+        });
+
+        // Update HUD
+        hoverHud.classList.remove('hidden');
+        hudX.textContent = `x = ${mx.toFixed(4)}`;
+        const yf = state.fnFx ? state.fnFx(mx, state.paramA) : NaN;
+        const yg = state.fnGx ? state.fnGx(mx, state.paramA) : NaN;
+        hudFx.textContent = Number.isFinite(yf) ? yf.toFixed(4) : 'undefined';
+        hudGx.textContent = Number.isFinite(yg) ? yg.toFixed(4) : 'undefined';
+        hudDiff.textContent = Number.isFinite(yf) && Number.isFinite(yg)
+          ? Math.abs(yf - yg).toFixed(4)
+          : '—';
+
+        drawGraph();
+      } else {
+        state.mouseMathX = null;
+        hoverHud.classList.add('hidden');
+        drawGraph();
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (state.isDragging) {
+        state.isDragging = false;
+        canvas.classList.replace('cursor-grabbing', 'cursor-crosshair');
+        solveAndRender();
+      }
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const factor = e.deltaY < 0 ? 0.86 : 1.16;
+      zoomAtPoint(factor, px, py);
+    }, { passive: false });
+
+    // Touch Support for Mobile/Tablet Pan
+    let touchStartX = 0;
+    let touchStartY = 0;
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        state.isDragging = true;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (state.isDragging && e.touches.length === 1) {
+        const rect = canvas.getBoundingClientRect();
+        const dxPx = e.touches[0].clientX - touchStartX;
+        const dyPx = e.touches[0].clientY - touchStartY;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+
+        const xSpan = state.xMax - state.xMin;
+        const ySpan = state.yMax - state.yMin;
+        state.xMin -= (dxPx / rect.width) * xSpan;
+        state.xMax -= (dxPx / rect.width) * xSpan;
+        state.yMin += (dyPx / rect.height) * ySpan;
+        state.yMax += (dyPx / rect.height) * ySpan;
+        drawGraph();
+      }
+    }, { passive: true });
+
+    canvas.addEventListener('touchend', () => {
+      state.isDragging = false;
+      solveAndRender();
+    });
+
+    /*************************************************************************
+     * 6. UI CONTROLS & EVENT BINDINGS
+     *************************************************************************/
+    function setParamA(val, updateEquationsToStandard = false) {
+      const clamped = Math.max(0.0005, Math.min(10, parseFloat(val) || 1.35));
+      state.paramA = clamped;
+      inputParamA.value = clamped.toFixed(5);
+      sliderParamA.value = Math.min(3, Math.max(0.01, clamped));
+      if (updateEquationsToStandard) {
+        inputFx.value = 'a^x';
+        inputGx.value = 'log(x, a)';
+      }
+      compileEquations();
+    }
+
+    inputFx.addEventListener('input', compileEquations);
+    inputGx.addEventListener('input', compileEquations);
+
+    sliderParamA.addEventListener('input', (e) => {
+      setParamA(e.target.value);
+    });
+
+    inputParamA.addEventListener('change', (e) => {
+      setParamA(e.target.value);
+    });
+
+    document.getElementById('btnStepDown').addEventListener('click', () => {
+      setParamA(state.paramA - 0.001);
+    });
+    document.getElementById('btnStepUp').addEventListener('click', () => {
+      setParamA(state.paramA + 0.001);
+    });
+
+    // Critical value labels below slider
+    document.getElementById('lblCritUpper').addEventListener('click', () => {
+      setParamA(CRIT_UPPER, true);
+      setViewport(-1.5, 7.5, 2.8);
+    });
+    document.getElementById('lblCritLower').addEventListener('click', () => {
+      setParamA(CRIT_LOWER, true);
+      setViewport(-0.3, 1.8, 0.45);
+    });
+    document.getElementById('lblBaseOne').addEventListener('click', () => {
+      setParamA(1.0);
+    });
+
+    document.getElementById('btnResetStandard').addEventListener('click', () => {
+      inputFx.value = 'a^x';
+      inputGx.value = 'log(x, a)';
+      compileEquations();
+    });
+
+    // Checkboxes
+    chkShowFx.addEventListener('change', (e) => {
+      state.showFx = e.target.checked;
+      drawGraph();
+    });
+    chkShowGx.addEventListener('change', (e) => {
+      state.showGx = e.target.checked;
+      drawGraph();
+    });
+    chkSymmetryLine.addEventListener('change', (e) => {
+      state.showSymmetry = e.target.checked;
+      drawGraph();
+    });
+    chkDiffShade.addEventListener('change', (e) => {
+      state.showDiffShade = e.target.checked;
+      drawGraph();
+    });
+
+    // Zoom & View Buttons
+    document.getElementById('btnZoomIn').addEventListener('click', () => {
+      const rect = canvas.getBoundingClientRect();
+      zoomAtPoint(0.75, rect.width / 2, rect.height / 2);
+    });
+    document.getElementById('btnZoomOut').addEventListener('click', () => {
+      const rect = canvas.getBoundingClientRect();
+      zoomAtPoint(1.33, rect.width / 2, rect.height / 2);
+    });
+    document.getElementById('btnResetView').addEventListener('click', () => {
+      setViewport(-3.5, 11.5, 3.2);
+    });
+    document.getElementById('btnFocusRoots').addEventListener('click', frameDetectedIntersections);
+
+    // Quick Token Insert Buttons
+    document.querySelectorAll('.token-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const token = btn.getAttribute('data-insert');
+        const target = state.activeInputEl || inputFx;
+        target.value = token;
+        target.focus();
+        compileEquations();
+      });
+    });
+
+    // Preset Scenario Buttons
+    document.querySelectorAll('.preset-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const preset = btn.getAttribute('data-preset');
+        if (preset === 'tangent') {
+          inputFx.value = 'a^x';
+          inputGx.value = 'log(x, a)';
+          setParamA(CRIT_UPPER);
+          setViewport(-1.5, 7.5, 2.7);
+        } else if (preset === 'two') {
+          inputFx.value = 'a^x';
+          inputGx.value = 'log(x, a)';
+          setParamA(1.35);
+          setViewport(-2.5, 10.5, 3.5);
+        } else if (preset === 'three') {
+          inputFx.value = 'a^x';
+          inputGx.value = 'log(x, a)';
+          setParamA(0.04);
+          setViewport(-0.25, 1.55, 0.48);
+        } else if (preset === 'lower_crit') {
+          inputFx.value = 'a^x';
+          inputGx.value = 'log(x, a)';
+          setParamA(CRIT_LOWER);
+          setViewport(-0.25, 1.55, 0.45);
+        } else if (preset === 'shifted') {
+          inputFx.value = '2^x - 3';
+          inputGx.value = 'ln(x) + 2';
+          compileEquations();
+          setViewport(-2.5, 6.5, 1.5);
+        } else if (preset === 'none') {
+          inputFx.value = 'a^x';
+          inputGx.value = 'log(x, a)';
+          setParamA(2.0);
+          setViewport(-3.5, 7.5, 2.0);
+        }
+      });
+    });
+
+    // Bottom Regime Cards
+    document.querySelectorAll('.regime-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        const jumpA = parseFloat(card.getAttribute('data-jump-a'));
+        setParamA(jumpA, true);
+        if (jumpA < 0.2) {
+          setViewport(-0.25, 1.65, 0.48);
+        } else if (jumpA < 1) {
+          setViewport(-1.5, 4.5, 1.0);
+        } else {
+          setViewport(-2.0, 9.5, 3.2);
+        }
+      });
+    });
+
+    // Theme Toggle
+    document.getElementById('btnThemeToggle').addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      drawGraph();
+    });
+
+    // Syntax Guide Modal
+    const syntaxModal = document.getElementById('syntaxModal');
+    document.getElementById('btnSyntaxModal').addEventListener('click', () => {
+      syntaxModal.classList.remove('hidden');
+      syntaxModal.classList.add('flex');
+    });
+    const closeSyntax = () => {
+      syntaxModal.classList.add('hidden');
+      syntaxModal.classList.remove('flex');
+    };
+    document.getElementById('btnCloseSyntax').addEventListener('click', closeSyntax);
+    document.getElementById('btnCloseSyntaxBottom').addEventListener('click', closeSyntax);
+    syntaxModal.addEventListener('click', (e) => {
+      if (e.target === syntaxModal) closeSyntax();
+    });
+
+    // Window Load & Resize Initialization
+    window.addEventListener('resize', resizeCanvas);
+    window.onload = function () {
+      resizeCanvas();
+      compileEquations();
+    };
+  </script>
+</body>
+</html>
