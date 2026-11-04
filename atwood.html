@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atwood's Machine: An Interactive Physics Textbook</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#181c2f; --panel2:#222641; --ink:#e8ecf7; --muted:#9aa3c0;
+    --accent:#5b8cff; --accent2:#39d98a; --warn:#ffb84d; --danger:#ff5c6c;
+    --border:#2c3252; --shadow:0 10px 30px rgba(0,0,0,.35);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #1b2450 0%, transparent 60%), var(--bg);
+    color:var(--ink); line-height:1.6;
+  }
+  header.top{position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);background:rgba(15,18,32,.82);border-bottom:1px solid var(--border);}
+  .top-inner{max-width:1100px;margin:0 auto;padding:.7rem 1.2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  .brand{font-weight:800;letter-spacing:.4px;font-size:1.05rem}
+  .brand span{color:var(--accent)}
+  nav{margin-left:auto;display:flex;gap:.4rem;flex-wrap:wrap}
+  nav a{color:var(--muted);text-decoration:none;font-size:.9rem;padding:.35rem .7rem;border-radius:999px;border:1px solid transparent;transition:.2s;}
+  nav a:hover{color:var(--ink);background:var(--panel2);border-color:var(--border)}
+  main{max-width:1100px;margin:0 auto;padding:1rem 1.2rem 5rem}
+  .hero{margin:2rem 0 1rem;padding:2.2rem 1.6rem;background:linear-gradient(135deg, rgba(91,140,255,.16), rgba(57,217,138,.08));border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+  .hero::after{content:"a";position:absolute;right:.1em;top:-.5em;font-size:16rem;font-weight:900;font-style:italic;color:rgba(255,255,255,.03);pointer-events:none;user-select:none;}
+  .hero h1{margin:0 0 .3rem;font-size:2.3rem;letter-spacing:-.5px}
+  .hero p{margin:.4rem 0 0;color:var(--muted);max-width:60ch}
+  .tagline{display:inline-block;font-size:.75rem;text-transform:uppercase;letter-spacing:2px;color:var(--accent);font-weight:700;margin-bottom:.4rem}
+  section{margin-top:3rem;scroll-margin-top:5rem}
+  h2.section-title{display:flex;align-items:center;gap:.7rem;font-size:1.6rem;margin:0 0 .4rem;}
+  h2.section-title .num{display:inline-grid;place-items:center;width:2rem;height:2rem;flex:0 0 auto;background:var(--accent);color:#071022;font-weight:800;border-radius:10px;font-size:1rem;}
+  .lead{color:var(--muted);margin:.2rem 0 1.4rem}
+  h3{font-size:1.2rem;margin:1.6rem 0 .4rem}
+  h4{font-size:1rem;margin:1.2rem 0 .3rem;color:var(--accent2)}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:1.3rem 1.4rem;box-shadow:var(--shadow);margin-bottom:1.2rem;}
+  .stat-vs{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+  .stat-vs > div{padding:1.3rem 1.4rem}
+  .stat-vs > div:first-child{background:rgba(91,140,255,.08);border-right:1px solid var(--border)}
+  .stat-vs > div:last-child{background:rgba(57,217,138,.07)}
+  .stat-vs h4{margin-top:0;font-size:1.15rem}
+  .stat-vs ul{margin:.5rem 0 0;padding-left:1.2rem}
+  .stat-vs li{margin:.35rem 0}
+  @media (max-width:680px){.stat-vs{grid-template-columns:1fr}.stat-vs > div:first-child{border-right:none;border-bottom:1px solid var(--border)}}
+  .formula{font-family:var(--mono);background:linear-gradient(180deg,#12162a,#0d1020);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:.8rem 1rem;margin:.8rem 0;font-size:1.02rem;overflow-x:auto;}
+  .formula .hl{color:var(--accent2)}
+  .formula .var{color:var(--warn);font-style:italic}
+  .formula .lbl{display:block;color:var(--muted);font-size:.8rem;font-family:inherit;margin-top:.4rem}
+  code{font-family:var(--mono);background:var(--panel2);padding:.1rem .35rem;border-radius:5px;font-size:.92em}
+  .key{color:var(--accent2);font-weight:700}
+  .warnbox{border-left:4px solid var(--warn);background:rgba(255,184,77,.08);padding:.8rem 1rem;border-radius:10px;margin:.9rem 0;}
+  .warnbox strong{color:var(--warn)}
+  .example{border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:1.2rem;background:var(--panel)}
+  .example-head{display:flex;align-items:center;gap:.8rem;padding:.9rem 1.2rem;background:var(--panel2);cursor:pointer;user-select:none;}
+  .example-head .badge{background:var(--accent);color:#071022;font-weight:800;font-size:.75rem;padding:.15rem .5rem;border-radius:6px;letter-spacing:.5px;}
+  .example-head h4{margin:0;flex:1;color:var(--ink);font-size:1.02rem}
+  .example-head .chev{color:var(--muted);transition:transform .25s}
+  .example.open .example-head .chev{transform:rotate(90deg)}
+  .example-body{max-height:0;overflow:hidden;transition:max-height .35s ease;padding:0 1.3rem;}
+  .example.open .example-body{max-height:2600px;padding:1.1rem 1.3rem 1.3rem}
+  .step{margin:.7rem 0;padding-left:1.1rem;border-left:2px solid var(--border)}
+  .step .n{display:inline-block;background:var(--panel2);border:1px solid var(--border);color:var(--accent2);border-radius:6px;padding:0 .45rem;font-size:.8rem;font-weight:700;margin-right:.4rem;}
+  .answer{background:rgba(57,217,138,.1);border:1px solid rgba(57,217,138,.35);border-radius:10px;padding:.6rem .9rem;margin-top:.8rem;font-weight:600;}
+  .answer .hl{color:var(--accent2)}
+  .sim-wrap{display:grid;grid-template-columns:1.4fr 1fr;gap:1.2rem;}
+  @media (max-width:900px){.sim-wrap{grid-template-columns:1fr}}
+  .stage{background:#0a0d18;border:1px solid var(--border);border-radius:16px;overflow:hidden;position:relative;box-shadow:var(--shadow);min-height:420px;}
+  canvas{display:block;width:100%;height:auto}
+  .readout{position:absolute;top:.7rem;left:.7rem;background:rgba(10,13,24,.82);border:1px solid var(--border);border-radius:12px;padding:.55rem .8rem;font-family:var(--mono);font-size:.78rem;line-height:1.55;pointer-events:none;backdrop-filter:blur(4px);}
+  .readout .state{font-weight:800;letter-spacing:.5px}
+  .readout .state.up{color:var(--accent2)}
+  .readout .state.balance{color:var(--warn)}
+  .controls{display:flex;flex-direction:column;gap:.9rem}
+  .control{margin:0}
+  .control label{display:flex;justify-content:space-between;font-size:.86rem;color:var(--muted);margin-bottom:.25rem}
+  .control label b{color:var(--ink);font-family:var(--mono);font-weight:600}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:5px;background:linear-gradient(90deg,var(--accent) 0%,var(--accent) var(--pct,50%),#2b3053 var(--pct,50%),#2b3053 100%);outline:none;cursor:pointer;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer;}
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--accent);cursor:pointer;}
+  .btn-row{display:flex;gap:.6rem;margin-top:.3rem;flex-wrap:wrap}
+  button{font:inherit;font-size:.88rem;font-weight:600;cursor:pointer;padding:.55rem 1rem;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--ink);transition:.18s;}
+  button:hover{background:#2c3255;border-color:#3a4270}
+  button.primary{background:var(--accent);color:#071022;border-color:transparent}
+  button.primary:hover{filter:brightness(1.08)}
+  button.danger{background:rgba(255,92,108,.14);border-color:rgba(255,92,108,.4);color:#ff9aa5}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.4rem}
+  .metric{background:#0d1020;border:1px solid var(--border);border-radius:10px;padding:.55rem .7rem;}
+  .metric .k{font-size:.68rem;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .metric .v{font-family:var(--mono);font-size:1.05rem;font-weight:700;margin-top:.1rem}
+  .metric .v.g{color:var(--accent2)} .metric .v.o{color:var(--warn)} .metric .v.r{color:var(--danger)} .metric .v.b{color:var(--accent)}
+  .status-bar{margin-top:.8rem;padding:.7rem .9rem;border-radius:10px;font-weight:700;text-align:center;border:1px solid var(--border);transition:background .2s,color .2s;}
+  .status-bar.up{background:rgba(57,217,138,.1);color:var(--accent2);border-color:rgba(57,217,138,.35)}
+  .status-bar.balance{background:rgba(255,184,77,.12);color:var(--warn);border-color:rgba(255,184,77,.4)}
+  .status-bar small{display:block;font-weight:500;color:var(--muted);font-size:.78rem;margin-top:.2rem}
+  .hint{font-size:.82rem;color:var(--muted);margin-top:.6rem}
+  .chips{display:flex;flex-wrap:wrap;gap:.4rem;margin:.5rem 0}
+  .chip{font-size:.78rem;padding:.28rem .65rem;border-radius:999px;background:var(--panel2);border:1px solid var(--border);cursor:pointer;transition:.15s;color:var(--muted);}
+  .chip:hover{color:var(--ink);border-color:var(--accent)}
+  .legend{display:flex;gap:1rem;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-top:.6rem}
+  .legend span{display:inline-flex;align-items:center;gap:.35rem}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .dot.a{background:var(--accent)} .dot.t{background:var(--accent2)} .dot.h{background:var(--warn)}
+  footer{text-align:center;color:var(--muted);font-size:.82rem;padding:2rem 1rem;border-top:1px solid var(--border);margin-top:3rem}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">Atwood<span>.</span>an interactive textbook</div>
+    <nav>
+      <a href="#theory">1 · Theory</a>
+      <a href="#examples">2 · Worked Examples</a>
+      <a href="#sim">3 · Interactive Lab</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <div class="hero">
+    <span class="tagline">Chapter · Forces &amp; Motion</span>
+    <h1>Atwood's Machine: A Pulley &amp; Two Masses</h1>
+    <p>Two masses hang from a light string over a frictionless pulley. Why does the heavier side fall?
+       How fast does the system accelerate, and how long does it take to cover a given distance?
+       This chapter derives the motion from scratch and lets you experiment with the masses yourself.</p>
+  </div>
+
+  <!-- ================= SECTION 1: THEORY ================= -->
+  <section id="theory">
+    <h2 class="section-title"><span class="num">1</span> Theory &amp; Derivation</h2>
+    <p class="lead">The setup, the assumptions, and the step-by-step derivation of the acceleration.</p>
+
+    <div class="card">
+      <h3>What is an Atwood's machine?</h3>
+      <p>An <strong>Atwood's machine</strong> is a simple device consisting of two masses,
+        <span class="var">m</span><sub>1</sub> and <span class="var">m</span><sub>2</sub>, connected by a
+        <strong>light, inextensible string</strong> that passes over a <strong>pulley</strong>. Gravity pulls each
+        mass downward with a force equal to its weight, but the string tension couples the two motions together.</p>
+      <p>Because the string cannot stretch, the two masses are <strong>kinematically linked</strong>: when one mass
+        moves up by a distance <span class="var">h</span>, the other moves down by exactly the same distance
+        <span class="var">h</span>, with the same speed and the same magnitude of acceleration.</p>
+
+      <div class="warnbox">
+        <strong>The key assumptions in this chapter:</strong>
+        <ul style="margin:.4rem 0 0">
+          <li>The pulley is <strong>massless and frictionless</strong> — it has <strong>no moment of inertia</strong>.</li>
+          <li>The string is <strong>massless and inextensible</strong> (the tension is the same on both sides).</li>
+          <li>No air resistance or friction in the bearings.</li>
+        </ul>
+        These make the analysis clean: the only thing that matters is the size of the masses.
+      </div>
+
+      <p class="hint">Fun fact: the Atwood machine was invented by the Reverend George Atwood in 1784 as a laboratory
+        experiment to verify Newton's second law. By choosing masses that differ only slightly, the acceleration can be
+        made small enough to time with a clockwork pendulum.</p>
+    </div>
+
+    <div class="card">
+      <h3>Setting up Newton's second law</h3>
+      <p>Assume <span class="var">m</span><sub>1</sub> &gt; <span class="var">m</span><sub>2</sub>, so that
+        <span class="var">m</span><sub>1</sub> accelerates <strong>downward</strong> and
+        <span class="var">m</span><sub>2</sub> accelerates <strong>upward</strong>. Let the common magnitude of their
+        acceleration be <span class="var">a</span>, and let the tension in the string be
+        <span class="var">T</span>.</p>
+
+      <p>Apply <span class="key">ΣF = ma</span> to each mass, taking the direction of motion as positive for each:</p>
+
+      <div class="formula">
+        <span class="var">m</span><sub>1</sub> <span class="var">g</span> − <span class="var">T</span>
+        = <span class="var">m</span><sub>1</sub> <span class="var">a</span>
+        <span class="lbl">For the heavier mass m₁, moving down: weight − tension = net downward force</span>
+      </div>
+      <div class="formula">
+        <span class="var">T</span> − <span class="var">m</span><sub>2</sub> <span class="var">g</span>
+        = <span class="var">m</span><sub>2</sub> <span class="var">a</span>
+        <span class="lbl">For the lighter mass m₂, moving up: tension − weight = net upward force</span>
+      </div>
+
+      <p>These are two equations in two unknowns (<span class="var">T</span> and <span class="var">a</span>).
+        Adding them eliminates <span class="var">T</span>.</p>
+    </div>
+
+    <div class="card">
+      <h3>Solving for the acceleration</h3>
+      <p>Add the two equations above:</p>
+      <div class="formula">
+        ( <span class="var">m</span><sub>1</sub><span class="var">g</span> − <span class="var">T</span> )
+        + ( <span class="var">T</span> − <span class="var">m</span><sub>2</sub><span class="var">g</span> )
+        = <span class="var">m</span><sub>1</sub><span class="var">a</span> + <span class="var">m</span><sub>2</sub><span class="var">a</span>
+      </div>
+      <p>The tension cancels, leaving:</p>
+      <div class="formula">
+        ( <span class="var">m</span><sub>1</sub> − <span class="var">m</span><sub>2</sub> ) <span class="var">g</span>
+        = ( <span class="var">m</span><sub>1</sub> + <span class="var">m</span><sub>2</sub> ) <span class="var">a</span>
+      </div>
+      <p>Therefore the acceleration of the system is:</p>
+      <div class="formula">
+        <span class="hl">a</span> = <span class="var">g</span> ·
+        ( <span class="var">m</span><sub>1</sub> − <span class="var">m</span><sub>2</sub> )
+        / ( <span class="var">m</span><sub>1</sub> + <span class="var">m</span><sub>2</sub> )
+        <span class="lbl">Acceleration of an Atwood machine (ideal, massless pulley)</span>
+      </div>
+      <p>Notice that <span class="var">g</span> is multiplied by a number between 0 and 1, so
+        <span class="var">a</span> is always <strong>less than g</strong>. If the masses are equal, the numerator is zero
+        and the system stays in <strong>balance</strong> (a = 0).</p>
+    </div>
+
+    <div class="card">
+      <h3>Solving for the tension</h3>
+      <p>Substitute the acceleration back into either equation. Using the second one:</p>
+      <div class="formula">
+        <span class="var">T</span> = <span class="var">m</span><sub>2</sub>( <span class="var">g</span> + <span class="var">a</span> )
+        = 2 <span class="var">m</span><sub>1</sub> <span class="var">m</span><sub>2</sub> <span class="var">g</span>
+        / ( <span class="var">m</span><sub>1</sub> + <span class="var">m</span><sub>2</sub> )
+        <span class="lbl">Tension in the string (same on both sides for a massless pulley)</span>
+      </div>
+      <p>The tension is always <strong>between</strong> the two weights:
+        <span class="var">m</span><sub>2</sub><span class="var">g</span> &lt; <span class="var">T</span> &lt;
+        <span class="var">m</span><sub>1</sub><span class="var">g</span>. It is <em>greater</em> than the lighter
+        weight (so it can pull it up) and <em>less</em> than the heavier weight (so that one can fall).</p>
+    </div>
+
+    <div class="card">
+      <h3>Kinematics: distance, time and speed</h3>
+      <p>Once we know the constant acceleration <span class="var">a</span>, the motion is described by the standard
+        uniform-acceleration equations. Starting from rest, the distance moved after time
+        <span class="var">t</span> is:</p>
+      <div class="formula">
+        <span class="var">h</span> = ½ <span class="var">a</span> <span class="var">t</span>²
+        &nbsp;&nbsp;⟹&nbsp;&nbsp;
+        <span class="hl">t</span> = √( 2<span class="var">h</span> / <span class="var">a</span> )
+        <span class="lbl">Time to move a distance h from rest</span>
+      </div>
+      <p>The speed after falling a distance <span class="var">h</span> is:</p>
+      <div class="formula">
+        <span class="var">v</span> = √( 2<span class="var">a</span><span class="var">h</span> )
+        = <span class="var">a</span> <span class="var">t</span>
+        <span class="lbl">Speed of the system after moving a distance h</span>
+      </div>
+      <p class="hint">These two results power the interactive lab in Section 3: you choose
+        <span class="var">m</span><sub>1</sub>, <span class="var">m</span><sub>2</sub> and
+        <span class="var">h</span>, and it reports <span class="var">a</span> and the time
+        <span class="var">t</span>.</p>
+    </div>
+
+    <h3>Special cases worth remembering</h3>
+    <div class="stat-vs">
+      <div>
+        <h4 style="color:var(--accent)">Equal masses (m₁ = m₂)</h4>
+        <ul>
+          <li>Numerator is zero → <code>a = 0</code>.</li>
+          <li>The system is in <strong>balance</strong> and does not move.</li>
+          <li>Tension equals each weight: <code>T = mg</code>.</li>
+        </ul>
+      </div>
+      <div>
+        <h4 style="color:var(--accent2)">One side negligible (m₂ → 0)</h4>
+        <ul>
+          <li><code>a → g · m₁/m₁ = g</code>.</li>
+          <li>The heavy mass <strong>free-falls</strong>.</li>
+          <li>Tension → 0 (nothing pulls back).</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="warnbox" style="margin-top:1.2rem">
+      <strong>Direction of the answer:</strong> In this chapter the sign of <span class="var">a</span> just tells you
+      which way the system moves. If <span class="var">m</span><sub>1</sub> &gt; <span class="var">m</span><sub>2</sub>,
+      <span class="var">m</span><sub>1</sub> goes down and <span class="var">m</span><sub>2</sub> goes up. Swap the masses
+      and everything reverses, but the <em>magnitude</em> of the acceleration is unchanged.
+    </div>
+  </section>
+
+  <!-- ================= SECTION 2: WORKED EXAMPLES ================= -->
+  <section id="examples">
+    <h2 class="section-title"><span class="num">2</span> Worked Examples</h2>
+    <p class="lead">Click a problem to expand the full worked solution. Take g = 9.8 m/s².</p>
+
+    <div class="example open" id="ex1">
+      <div class="example-head" onclick="toggleExample('ex1')">
+        <span class="badge">EXAMPLE 1</span>
+        <h4>Acceleration and tension of a basic Atwood machine</h4>
+        <span class="chev">▶</span>
+      </div>
+      <div class="example-body">
+        <p>Masses of <strong>5 kg</strong> and <strong>3 kg</strong> hang from a light string over a frictionless pulley.
+          Find the acceleration of the system and the tension in the string.</p>
+        <div class="step"><span class="n">Step 1</span> Identify the masses: m₁ = 5 kg (heavier, falls), m₂ = 3 kg (lighter, rises).</div>
+        <div class="step"><span class="n">Step 2</span> Use the acceleration formula:<br>
+          a = g(m₁ − m₂)/(m₁ + m₂) = 9.8 × (5 − 3)/(5 + 3) = 9.8 × 2/8 = <strong>2.45 m/s²</strong>.</div>
+        <div class="step"><span class="n">Step 3</span> Find the tension with T = m₂(g + a):<br>
+          T = 3 × (9.8 + 2.45) = 3 × 12.25 = <strong>36.75 N</strong>.</div>
+        <div class="step"><span class="n">Step 4</span> Check: T should lie between the weights (3×9.8 = 29.4 N and 5×9.8 = 49 N). 36.75 N ✓</div>
+        <div class="answer">Answer: a = <span class="hl">2.45 m/s²</span> (5 kg down, 3 kg up); T = <span class="hl">36.75 N</span>.</div>
+      </div>
+    </div>
+
+    <div class="example" id="ex2">
+      <div class="example-head" onclick="toggleExample('ex2')">
+        <span class="badge">EXAMPLE 2</span>
+        <h4>How long to fall a distance h?</h4>
+        <span class="chev">▶</span>
+      </div>
+      <div class="example-body">
+        <p>For the same machine (m₁ = 5 kg, m₂ = 3 kg), the heavier mass is held and then released from rest.
+          How long does it take to fall <strong>1.0 m</strong>? What is its speed at that point?</p>
+        <div class="step"><span class="n">Step 1</span> From Example 1, a = 2.45 m/s².</div>
+        <div class="step"><span class="n">Step 2</span> Use h = ½at² solved for t: t = √(2h/a) = √(2×1.0/2.45) = √(0.816) = <strong>0.904 s</strong>.</div>
+        <div class="step"><span class="n">Step 3</span> Speed after 1 m: v = √(2ah) = √(2 × 2.45 × 1.0) = √4.9 = <strong>2.21 m/s</strong>.</div>
+        <div class="answer">Answer: t ≈ <span class="hl">0.90 s</span>; speed ≈ <span class="hl">2.21 m/s</span>.</div>
+      </div>
+    </div>
+
+    <div class="example" id="ex3">
+      <div class="example-head" onclick="toggleExample('ex3')">
+        <span class="badge">EXAMPLE 3</span>
+        <h4>Designing a small acceleration</h4>
+        <span class="chev">▶</span>
+      </div>
+      <div class="example-body">
+        <p>To time the motion comfortably in a lab, we want an acceleration of about
+          <strong>0.50 m/s²</strong> using total mass <strong>m₁ + m₂ = 10 kg</strong>.
+          What masses should we use?</p>
+        <div class="step"><span class="n">Step 1</span> Write a = g·Δm/Σm with Σm = 10 kg:<br>
+          0.50 = 9.8 × (m₁ − m₂)/10.</div>
+        <div class="step"><span class="n">Step 2</span> Solve for the mass difference:<br>
+          m₁ − m₂ = 0.50 × 10 / 9.8 = <strong>0.51 kg</strong>.</div>
+        <div class="step"><span class="n">Step 3</span> With m₁ + m₂ = 10 and m₁ − m₂ = 0.51:<br>
+          m₁ = (10 + 0.51)/2 = 5.26 kg, m₂ = (10 − 0.51)/2 = 4.74 kg.</div>
+        <div class="answer">Answer: m₁ ≈ <span class="hl">5.26 kg</span>, m₂ ≈ <span class="hl">4.74 kg</span> (a mass difference of only ~0.5 kg).</div>
+      </div>
+    </div>
+
+    <div class="example" id="ex4">
+      <div class="example-head" onclick="toggleExample('ex4')">
+        <span class="badge">EXAMPLE 4</span>
+        <h4>Working backwards: finding an unknown mass</h4>
+        <span class="chev">▶</span>
+      </div>
+      <div class="example-body">
+        <p>One mass is <strong>6 kg</strong>. When released, the system accelerates at
+          <strong>1.40 m/s²</strong>. Assuming the 6 kg mass is the heavier one, find the other mass and the tension.</p>
+        <div class="step"><span class="n">Step 1</span> Rearrange a = g(m₁ − m₂)/(m₁ + m₂) with m₁ = 6:<br>
+          1.40 = 9.8(6 − m₂)/(6 + m₂).</div>
+        <div class="step"><span class="n">Step 2</span> Multiply through: 1.40(6 + m₂) = 9.8(6 − m₂).</div>
+        <div class="step"><span class="n">Step 3</span> Expand: 8.4 + 1.40m₂ = 58.8 − 9.8m₂ → 11.2m₂ = 50.4 → m₂ = <strong>4.5 kg</strong>.</div>
+        <div class="step"><span class="n">Step 4</span> Tension: T = m₂(g + a) = 4.5 × (9.8 + 1.40) = 4.5 × 11.2 = <strong>50.4 N</strong>.</div>
+        <div class="answer">Answer: m₂ = <span class="hl">4.5 kg</span>, T = <span class="hl">50.4 N</span>.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SECTION 3: INTERACTIVE LAB ================= -->
+  <section id="sim">
+    <h2 class="section-title"><span class="num">3</span> Interactive Lab</h2>
+    <p class="lead">Set the mass on each side and the distance <span class="var">h</span> to be travelled.
+      The machine solves for the acceleration, the tension, and the time (and speed) to cover that distance.
+      Press <strong>Release</strong> to watch it move.</p>
+
+    <div class="sim-wrap">
+      <div class="stage">
+        <canvas id="stage" width="760" height="460"></canvas>
+        <div class="readout" id="readout">
+          <div>STATE: <span class="state balance" id="roState">—</span></div>
+          <div>a = <span id="roA">0.00</span> m/s²</div>
+          <div>t = <span id="roT">0.00</span> s</div>
+          <div>v = <span id="roV">0.00</span> m/s</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control">
+          <label>Left mass m₁ <b><span id="vM1">5.0</span> kg</b></label>
+          <input type="range" id="m1" min="0.5" max="20" step="0.1" value="5">
+        </div>
+        <div class="control">
+          <label>Right mass m₂ <b><span id="vM2">3.0</span> kg</b></label>
+          <input type="range" id="m2" min="0.5" max="20" step="0.1" value="3">
+        </div>
+        <div class="control">
+          <label>Distance h <b><span id="vH">1.00</span> m</b></label>
+          <input type="range" id="h" min="0.2" max="3" step="0.05" value="1">
+        </div>
+        <div class="control">
+          <label>Gravity g <b><span id="vG">9.8</span> m/s²</b></label>
+          <input type="range" id="grav" min="1.6" max="24" step="0.1" value="9.8">
+        </div>
+
+        <div class="btn-row">
+          <button class="primary" id="btnRelease" onclick="release()">Release</button>
+          <button id="btnPause" onclick="togglePause()">Pause</button>
+          <button class="danger" id="btnReset" onclick="resetSim()">Reset</button>
+        </div>
+
+        <div class="chips">
+          <span class="chip" onclick="preset('balance')">Balanced</span>
+          <span class="chip" onclick="preset('classic')">5 vs 3 kg</span>
+          <span class="chip" onclick="preset('gentle')">Gentle (near-equal)</span>
+          <span class="chip" onclick="preset('fall')">Almost free-fall</span>
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><div class="k">Acceleration a</div><div class="v g" id="mA">0.00 m/s²</div></div>
+          <div class="metric"><div class="k">Tension T</div><div class="v o" id="mT">0.0 N</div></div>
+          <div class="metric"><div class="k">Time for h, t</div><div class="v g" id="mTime">0.00 s</div></div>
+          <div class="metric"><div class="k">Speed at h, v</div><div class="v g" id="mSpeed">0.00 m/s</div></div>
+          <div class="metric"><div class="k">Weight m₁g</div><div class="v b" id="mW1">49.0 N</div></div>
+          <div class="metric"><div class="k">Weight m₂g</div><div class="v b" id="mW2">29.4 N</div></div>
+          <div class="metric"><div class="k">Distance travelled</div><div class="v" id="mDist">0.00 m</div></div>
+          <div class="metric"><div class="k">Elapsed time</div><div class="v" id="mElapsed">0.00 s</div></div>
+        </div>
+
+        <div class="status-bar balance" id="statusBar">Balanced — masses equal<small>Pick different masses to set the system in motion</small></div>
+
+        <div class="legend">
+          <span><i class="dot a"></i> Acceleration a</span>
+          <span><i class="dot t"></i> Tension T</span>
+          <span><i class="dot h"></i> Distance h</span>
+        </div>
+        <div class="hint">Tip: press Release to let the system run. If m₁ = m₂ it stays balanced and t is undefined (a = 0).</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>Atwood's Machine · Interactive Physics Textbook · Built as a standalone HTML file</footer>
+
+<script>
+/* ============================================================
+   Section 2: collapsible worked examples
+   ============================================================ */
+function toggleExample(id){
+  document.getElementById(id).classList.toggle('open');
+}
+
+/* ============================================================
+   Section 3: interactive Atwood machine simulator
+   ============================================================ */
+(function(){
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const el = {
+    m1: document.getElementById('m1'),
+    m2: document.getElementById('m2'),
+    h:  document.getElementById('h'),
+    grav: document.getElementById('grav'),
+    vM1: document.getElementById('vM1'),
+    vM2: document.getElementById('vM2'),
+    vH:  document.getElementById('vH'),
+    vG:  document.getElementById('vG'),
+    mA:  document.getElementById('mA'),
+    mT:  document.getElementById('mT'),
+    mTime: document.getElementById('mTime'),
+    mSpeed: document.getElementById('mSpeed'),
+    mW1: document.getElementById('mW1'),
+    mW2: document.getElementById('mW2'),
+    mDist: document.getElementById('mDist'),
+    mElapsed: document.getElementById('mElapsed'),
+    status: document.getElementById('statusBar'),
+    roState: document.getElementById('roState'),
+    roA: document.getElementById('roA'),
+    roT: document.getElementById('roT'),
+    roV: document.getElementById('roV'),
+    pause: document.getElementById('btnPause')
+  };
+
+  // ---- Geometry (pixels) ----
+  const PIVOT_X = W/2;
+  const PIVOT_Y = 70;
+  const PULLEY_R = 44;
+  const START_DROP = 150;      // px from pulley centre to block top at rest
+  const MAX_TRAVEL = 200;      // px of vertical travel available for the animation
+  const PX_PER_M = 60;         // nominal world scale (visual), capped so it fits
+
+  // ---- Simulation state ----
+  // disp = displacement of m1 downward (positive => m1 down, m2 up)
+  const state = { running:false, paused:false, t:0, disp:0, v:0, done:false };
+
+  function params(){
+    return {
+      m1: parseFloat(el.m1.value),
+      m2: parseFloat(el.m2.value),
+      h:  parseFloat(el.h.value),
+      g:  parseFloat(el.grav.value)
+    };
+  }
+
+  function physics(){
+    const p = params();
+    const sum = p.m1 + p.m2;
+    const diff = p.m1 - p.m2;
+    const a = (sum > 1e-9) ? p.g * diff / sum : 0;      // signed: + => m1 down
+    const aMag = Math.abs(a);
+    const T = 2 * p.m1 * p.m2 * p.g / sum;              // tension
+    const t = (aMag > 1e-9) ? Math.sqrt(2 * p.h / aMag) : Infinity;
+    const v = Math.sqrt(2 * aMag * p.h);
+    return {p, a, aMag, T, t, v, balanced: aMag < 1e-9};
+  }
+
+  // ---- Rendering helpers ----
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function drawArrow(x1,y1,x2,y2,color,label,opts){
+    opts = opts || {};
+    const headLen = 11;
+    if(Math.abs(x2-x1) < 0.3 && Math.abs(y2-y1) < 0.3) return;
+    const ang = Math.atan2(y2-y1, x2-x1);
+    ctx.strokeStyle = color; ctx.fillStyle = color;
+    ctx.lineWidth = opts.width || 3.5;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2 - headLen*Math.cos(ang - Math.PI/7), y2 - headLen*Math.sin(ang - Math.PI/7));
+    ctx.lineTo(x2 - headLen*Math.cos(ang + Math.PI/7), y2 - headLen*Math.sin(ang + Math.PI/7));
+    ctx.closePath(); ctx.fill();
+    if(label){
+      ctx.font = '600 12px ui-monospace, monospace';
+      ctx.fillStyle = color; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(label, (x1+x2)/2 + (opts.lx||0), (y1+y2)/2 + (opts.ly||0));
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const bg = ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#0b1020'); bg.addColorStop(1,'#0a0d18');
+    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+    // grid
+    ctx.strokeStyle = 'rgba(90,110,180,.08)'; ctx.lineWidth = 1;
+    for(let x=0;x<W;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for(let y=0;y<H;y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    const ph = physics();
+    const p = ph.p;
+
+    // ceiling support
+    ctx.fillStyle = '#1b2340';
+    ctx.fillRect(PIVOT_X-140, PIVOT_Y-22, 280, 14);
+    ctx.strokeStyle = '#2c3252'; ctx.lineWidth = 2;
+    ctx.strokeRect(PIVOT_X-140, PIVOT_Y-22, 280, 14);
+
+    // pulley
+    const grad = ctx.createRadialGradient(PIVOT_X-12, PIVOT_Y-12, 6, PIVOT_X, PIVOT_Y, PULLEY_R);
+    grad.addColorStop(0,'#4a5a90'); grad.addColorStop(1,'#222a48');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(PIVOT_X, PIVOT_Y, PULLEY_R, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#5b8cff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(PIVOT_X, PIVOT_Y, PULLEY_R, 0, Math.PI*2); ctx.stroke();
+    // hub
+    ctx.fillStyle = '#0e1428';
+    ctx.beginPath(); ctx.arc(PIVOT_X, PIVOT_Y, 9, 0, Math.PI*2); ctx.fill();
+    // spin marker
+    const spin = state.disp / (Math.PI*2*0.15) * Math.PI*2;
+    ctx.strokeStyle = 'rgba(91,140,255,.7)'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(PIVOT_X, PIVOT_Y);
+    ctx.lineTo(PIVOT_X + PULLEY_R*0.8*Math.cos(spin-Math.PI/2), PIVOT_Y + PULLEY_R*0.8*Math.sin(spin-Math.PI/2));
+    ctx.stroke();
+
+    // Dynamic pixel scale so that BOTH sides stay on screen at full travel.
+    // m1 moves down by `off`, m2 moves up by `off`; choose scale accordingly.
+    const sizeFor = (m)=> Math.round(28 + Math.min(36, m*2.6));
+    const s1 = sizeFor(p.m1), s2 = sizeFor(p.m2);
+    const pulleyBottom = PIVOT_Y + PULLEY_R;
+    // constrain the rising block so its top never reaches the pulley
+    const riseRoom  = (PIVOT_Y + START_DROP) - (pulleyBottom + 8);   // px available to rise
+    // constrain the falling block so its bottom never leaves the canvas
+    const fallRoom  = (H - 18) - (PIVOT_Y + START_DROP) - Math.max(s1, s2);
+    const maxOff    = Math.max(10, Math.min(riseRoom, fallRoom));
+    const pxPerM    = Math.min(PX_PER_M, maxOff / Math.max(p.h, 0.001));
+    const off       = state.disp * pxPerM;    // px m1 moved down
+
+    const leftX = PIVOT_X - PULLEY_R;     // string tangent x
+    const rightX = PIVOT_X + PULLEY_R;
+    const topY = PIVOT_Y;
+    const m1Y = topY + START_DROP + off;  // left block top
+    const m2Y = topY + START_DROP - off;  // right block top
+
+    // strings
+    ctx.strokeStyle = '#c7d0ea'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(leftX, topY); ctx.lineTo(leftX, m1Y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(rightX, topY); ctx.lineTo(rightX, m2Y); ctx.stroke();
+    ctx.beginPath(); ctx.arc(PIVOT_X, PIVOT_Y, PULLEY_R, Math.PI, 2*Math.PI); ctx.stroke();
+
+    function drawBlock(cx, y, size, mass, color){
+      const g2 = ctx.createLinearGradient(cx-size, y, cx-size, y+size);
+      g2.addColorStop(0, color[0]); g2.addColorStop(1, color[1]);
+      ctx.fillStyle = g2;
+      roundRect(cx - size/2, y, size, size, 8); ctx.fill();
+      ctx.strokeStyle = color[2]; ctx.lineWidth = 2.5;
+      roundRect(cx - size/2, y, size, size, 8); ctx.stroke();
+      ctx.fillStyle = '#e8ecf7';
+      ctx.font = '700 13px ui-monospace, monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(mass.toFixed(1), cx, y + size/2 - 6);
+      ctx.font = '600 9px ui-monospace, monospace';
+      ctx.fillStyle = '#9aa3c0';
+      ctx.fillText('kg', cx, y + size/2 + 9);
+    }
+
+    drawBlock(leftX,  m1Y, s1, p.m1, ['#3a4a80','#26305a','#5b8cff']);  // m1 near left tangent
+    drawBlock(rightX, m2Y, s2, p.m2, ['#2e6a4e','#1d4634','#39d98a']);  // m2 near right tangent
+
+    // labels
+    ctx.font = '700 12px ui-monospace, monospace';
+    ctx.fillStyle = '#5b8cff'; ctx.textAlign='center';
+    ctx.fillText('m₁', leftX, m1Y + s1 + 16);
+    ctx.fillStyle = '#39d98a';
+    ctx.fillText('m₂', rightX, m2Y + s2 + 16);
+
+    // vectors when unbalanced
+    if(!ph.balanced){
+      const dir = Math.sign(ph.a);        // + => m1 down
+      if(state.running && !state.paused){
+        const aLen = 26 + Math.min(60, ph.aMag*22);
+        const ayC = m1Y + s1/2;
+        drawArrow(leftX, ayC, leftX, ayC + dir*aLen, '#5b8cff', 'a', {lx: dir>0?18:-18, ly:0});
+        const byC = m2Y + s2/2;
+        drawArrow(rightX, byC, rightX, byC - dir*aLen, '#39d98a', 'a', {lx: dir>0?-18:18, ly:0});
+      }
+      // h bracket on the falling side
+      const fallingLeft = dir >= 0;
+      const bracketX = fallingLeft ? leftX - 60 : rightX + 60;
+      const startY = PIVOT_Y + START_DROP;
+      const endY = startY + p.h * pxPerM;
+      ctx.strokeStyle = '#ffb84d'; ctx.lineWidth = 2; ctx.setLineDash([5,4]);
+      ctx.beginPath(); ctx.moveTo(bracketX, startY); ctx.lineTo(bracketX, endY); ctx.stroke();
+      ctx.setLineDash([]);
+      drawArrow(bracketX, startY, bracketX, startY+8, '#ffb84d','',{width:2});
+      drawArrow(bracketX, endY, bracketX, endY-8, '#ffb84d','',{width:2});
+      ctx.fillStyle='#ffb84d'; ctx.font='600 12px ui-monospace, monospace';
+      ctx.textAlign = fallingLeft ? 'right' : 'left'; ctx.textBaseline='middle';
+      ctx.fillText('h = ' + p.h.toFixed(2) + ' m', bracketX + (fallingLeft?-8:8), (startY+endY)/2);
+    } else {
+      ctx.fillStyle = '#ffb84d'; ctx.font = '600 13px ui-monospace, monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('balanced: a = 0', PIVOT_X, H - 24);
+    }
+
+    // progress footer
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.font = '600 12px ui-monospace, monospace';
+    ctx.fillStyle = '#6b779e';
+    ctx.fillText('t = ' + state.t.toFixed(2) + ' s   |   travelled ' + Math.abs(state.disp).toFixed(2) + ' m', 16, H - 16);
+  }
+
+  // ---- Simulation step ----
+  function stepPhysics(dt){
+    if(!state.running || state.paused) return;
+    const ph = physics();
+    if(ph.balanced){ state.v = 0; return; }
+    const dir = Math.sign(ph.a);
+    state.t += dt;
+    state.v += ph.aMag * dt;
+    let newDisp = state.disp + dir * state.v * dt;
+    if(Math.abs(newDisp) >= ph.p.h){
+      state.disp = dir * ph.p.h;
+      state.v = ph.v;
+      state.running = false;
+      state.done = true;
+      return;
+    }
+    state.disp = newDisp;
+  }
+
+  // ---- UI ----
+  function fmt(x, d){ return isFinite(x) ? x.toFixed(d) : '∞'; }
+
+  function updateUI(){
+    const ph = physics();
+    const p = ph.p;
+
+    el.vM1.textContent = p.m1.toFixed(1);
+    el.vM2.textContent = p.m2.toFixed(1);
+    el.vH.textContent  = p.h.toFixed(2);
+    el.vG.textContent  = p.g.toFixed(1);
+
+    el.mA.textContent = ph.aMag.toFixed(2) + ' m/s²';
+    el.mT.textContent = fmt(ph.T, 1) + ' N';
+    el.mTime.textContent = ph.balanced ? '∞' : ph.t.toFixed(2) + ' s';
+    el.mSpeed.textContent = ph.balanced ? '0.00 m/s' : ph.v.toFixed(2) + ' m/s';
+    el.mW1.textContent = (p.m1*p.g).toFixed(1) + ' N';
+    el.mW2.textContent = (p.m2*p.g).toFixed(1) + ' N';
+    el.mDist.textContent = Math.abs(state.disp).toFixed(2) + ' m';
+    el.mElapsed.textContent = state.t.toFixed(2) + ' s';
+
+    el.roA.textContent = ph.aMag.toFixed(2);
+    el.roT.textContent = ph.balanced ? '∞' : ph.t.toFixed(2);
+    el.roV.textContent = state.v.toFixed(2);
+
+    if(ph.balanced){
+      el.roState.textContent = 'BALANCED';
+      el.roState.className = 'state balance';
+      el.status.className = 'status-bar balance';
+      el.status.innerHTML = 'Balanced — equal masses<small>a = 0, the system does not move.</small>';
+    } else {
+      const dirText = p.m1 > p.m2 ? 'm₁ falls, m₂ rises' : 'm₂ falls, m₁ rises';
+      el.roState.textContent = 'MOTION';
+      el.roState.className = 'state up';
+      el.status.className = 'status-bar up';
+      el.status.innerHTML = 'Accelerating — ' + dirText +
+        '<small>a = ' + ph.aMag.toFixed(2) + ' m/s², T = ' + ph.T.toFixed(1) +
+        ' N, t(h) = ' + ph.t.toFixed(2) + ' s</small>';
+    }
+
+    [el.m1, el.m2, el.h, el.grav].forEach(s=>{
+      const pct = (s.value - s.min) / (s.max - s.min) * 100;
+      s.style.setProperty('--pct', pct + '%');
+    });
+  }
+
+  // ---- Buttons ----
+  window.release = function(){
+    const ph = physics();
+    if(ph.balanced) return;
+    if(state.done) resetSim();
+    state.running = true;
+    state.paused = false;
+    el.pause.textContent = 'Pause';
+  };
+  window.togglePause = function(){
+    if(state.done){ resetSim(); return; }
+    state.paused = !state.paused;
+    el.pause.textContent = state.paused ? 'Resume' : 'Pause';
+  };
+  window.resetSim = function(){
+    state.running = false; state.paused = false;
+    state.t = 0; state.disp = 0; state.v = 0; state.done = false;
+    el.pause.textContent = 'Pause';
+    updateUI();
+  };
+
+  window.preset = function(which){
+    switch(which){
+      case 'balance': el.m1.value = 4;   el.m2.value = 4;   break;
+      case 'classic': el.m1.value = 5;   el.m2.value = 3;   break;
+      case 'gentle':  el.m1.value = 5.2; el.m2.value = 4.8; break;
+      case 'fall':    el.m1.value = 12;  el.m2.value = 1;   break;
+    }
+    resetSim();
+  };
+
+  [el.m1, el.m2, el.h, el.grav].forEach(s=>{
+    s.addEventListener('input', ()=>{
+      state.running = false; state.t = 0; state.disp = 0; state.v = 0; state.done = false;
+      el.pause.textContent = 'Pause';
+      updateUI();
+    });
+  });
+
+  // ---- animation loop ----
+  let last = performance.now();
+  function loop(now){
+    let dt = (now - last)/1000;
+    last = now;
+    if(dt > 0.05) dt = 0.05;
+    stepPhysics(dt);
+    draw();
+    updateUI();
+    requestAnimationFrame(loop);
+  }
+
+  updateUI();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
