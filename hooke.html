@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hooke's Law: An Interactive Lab</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#181c2f; --panel2:#222641; --ink:#e8ecf7; --muted:#9aa3c0;
+    --accent:#5b8cff; --accent2:#39d98a; --warn:#ffb84d; --danger:#ff5c6c;
+    --border:#2c3252; --shadow:0 10px 30px rgba(0,0,0,.35);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #1b2450 0%, transparent 60%), var(--bg);
+    color:var(--ink); line-height:1.6;
+  }
+  header.top{position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);background:rgba(15,18,32,.82);border-bottom:1px solid var(--border);}
+  .top-inner{max-width:1100px;margin:0 auto;padding:.7rem 1.2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+  .brand{font-weight:800;letter-spacing:.4px;font-size:1.05rem}
+  .brand span{color:var(--accent)}
+  nav{margin-left:auto;display:flex;gap:.4rem;flex-wrap:wrap}
+  nav a{color:var(--muted);text-decoration:none;font-size:.9rem;padding:.35rem .7rem;border-radius:999px;border:1px solid transparent;transition:.2s;}
+  nav a:hover{color:var(--ink);background:var(--panel2);border-color:var(--border)}
+  main{max-width:1100px;margin:0 auto;padding:1rem 1.2rem 5rem}
+  .hero{margin:2rem 0 1rem;padding:2.2rem 1.6rem;background:linear-gradient(135deg, rgba(91,140,255,.16), rgba(57,217,138,.08));border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+  .hero::after{content:"k";position:absolute;right:0em;top:-.35em;font-size:16rem;font-weight:900;font-style:italic;color:rgba(255,255,255,.03);pointer-events:none;user-select:none;}
+  .hero h1{margin:0 0 .3rem;font-size:2.3rem;letter-spacing:-.5px}
+  .hero p{margin:.4rem 0 0;color:var(--muted);max-width:62ch}
+  .tagline{display:inline-block;font-size:.75rem;text-transform:uppercase;letter-spacing:2px;color:var(--accent);font-weight:700;margin-bottom:.4rem}
+  section{margin-top:3rem;scroll-margin-top:5rem}
+  h2.section-title{display:flex;align-items:center;gap:.7rem;font-size:1.6rem;margin:0 0 .4rem;}
+  h2.section-title .num{display:inline-grid;place-items:center;width:2rem;height:2rem;flex:0 0 auto;background:var(--accent);color:#071022;font-weight:800;border-radius:10px;font-size:1rem;}
+  .lead{color:var(--muted);margin:.2rem 0 1.4rem}
+  h3{font-size:1.2rem;margin:1.6rem 0 .4rem}
+  h4{font-size:1rem;margin:1.2rem 0 .3rem;color:var(--accent2)}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:1.3rem 1.4rem;box-shadow:var(--shadow);margin-bottom:1.2rem;}
+  .formula{font-family:var(--mono);background:linear-gradient(180deg,#12162a,#0d1020);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:.8rem 1rem;margin:.8rem 0;font-size:1.02rem;overflow-x:auto;}
+  .formula .hl{color:var(--accent2)}
+  .formula .var{color:var(--warn);font-style:italic}
+  .formula .lbl{display:block;color:var(--muted);font-size:.8rem;font-family:inherit;margin-top:.4rem}
+  code{font-family:var(--mono);background:var(--panel2);padding:.1rem .35rem;border-radius:5px;font-size:.92em}
+  .key{color:var(--accent2);font-weight:700}
+  .warnbox{border-left:4px solid var(--warn);background:rgba(255,184,77,.08);padding:.8rem 1rem;border-radius:10px;margin:.9rem 0;}
+  .warnbox strong{color:var(--warn)}
+  .sim-wrap{display:grid;grid-template-columns:1.55fr 1fr;gap:1.2rem;}
+  @media (max-width:900px){.sim-wrap{grid-template-columns:1fr}}
+  .stage{background:#0a0d18;border:1px solid var(--border);border-radius:16px;overflow:hidden;position:relative;box-shadow:var(--shadow);min-height:420px;}
+  canvas{display:block;width:100%;height:auto}
+  .readout{position:absolute;top:.7rem;left:.7rem;background:rgba(10,13,24,.82);border:1px solid var(--border);border-radius:12px;padding:.55rem .8rem;font-family:var(--mono);font-size:.78rem;line-height:1.55;pointer-events:none;backdrop-filter:blur(4px);}
+  .controls{display:flex;flex-direction:column;gap:.9rem}
+  .metric-set{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.4rem}
+  .metric{background:#0d1020;border:1px solid var(--border);border-radius:10px;padding:.55rem .7rem;}
+  .metric .k{font-size:.68rem;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .metric .v{font-family:var(--mono);font-size:1.02rem;font-weight:700;margin-top:.1rem}
+  .metric .v.g{color:var(--accent2)} .metric .v.o{color:var(--warn)} .metric .v.r{color:var(--danger)} .metric .v.b{color:var(--accent)}
+  .btn-row{display:flex;gap:.6rem;margin-top:.3rem;flex-wrap:wrap}
+  button{font:inherit;font-size:.88rem;font-weight:600;cursor:pointer;padding:.55rem 1rem;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--ink);transition:.18s;}
+  button:hover{background:#2c3255;border-color:#3a4270}
+  button.primary{background:var(--accent);color:#071022;border-color:transparent}
+  button.primary:hover{filter:brightness(1.08)}
+  button.danger{background:rgba(255,92,108,.14);border-color:rgba(255,92,108,.4);color:#ff9aa5}
+  .weights-title{font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:.2rem 0 0;}
+  .weights{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.2rem}
+  .wbtn{border:1px solid var(--border);background:#0d1020;border-radius:10px;padding:.5rem .3rem;cursor:pointer;text-align:center;transition:.15s;user-select:none}
+  .wbtn:hover{border-color:var(--accent)}
+  .wbtn .w{font-family:var(--mono);font-weight:800;font-size:1rem;color:var(--accent2)}
+  .wbtn .m{font-size:.66rem;color:var(--muted);font-family:var(--mono)}
+  .wbtn.on{background:rgba(91,140,255,.18);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .wbtn.on .w{color:#fff}
+  .status-bar{margin-top:.8rem;padding:.7rem .9rem;border-radius:10px;font-weight:700;text-align:center;border:1px solid var(--border);transition:background .2s,color .2s;}
+  .status-bar.strong{background:rgba(57,217,138,.1);color:var(--accent2);border-color:rgba(57,217,138,.35)}
+  .status-bar.weak{background:rgba(255,184,77,.12);color:var(--warn);border-color:rgba(255,184,77,.4)}
+  .status-bar small{display:block;font-weight:500;color:var(--muted);font-size:.78rem;margin-top:.2rem}
+  .hint{font-size:.82rem;color:var(--muted);margin-top:.6rem}
+  .legend{display:flex;gap:1rem;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-top:.6rem}
+  .legend span{display:inline-flex;align-items:center;gap:.35rem}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .dot.a{background:var(--accent)} .dot.t{background:var(--accent2)} .dot.h{background:var(--warn)} .dot.f{background:var(--danger)}
+  table{width:100%;border-collapse:collapse;margin:.6rem 0;font-size:.9rem}
+  th,td{padding:.45rem .6rem;border-bottom:1px solid var(--border);text-align:center}
+  th{color:var(--muted);font-weight:600;font-size:.76rem;text-transform:uppercase;letter-spacing:.5px}
+  td{font-family:var(--mono)}
+  td.wt{color:var(--accent2);font-weight:700}
+  .table-wrap{overflow-x:auto}
+  .empty-note{color:var(--muted);font-style:italic;text-align:center;padding:1rem;font-family:inherit}
+  footer{text-align:center;color:var(--muted);font-size:.82rem;padding:2rem 1rem;border-top:1px solid var(--border);margin-top:3rem}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">Hooke's Law<span>.</span>an interactive lab</div>
+    <nav>
+      <a href="#theory">1 &middot; Theory</a>
+      <a href="#lab">2 &middot; The Lab</a>
+      <a href="#analysis">3 &middot; Your Data</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <div class="hero">
+    <span class="tagline">Lab Investigation &middot; Elasticity</span>
+    <h1>Hooke's Law</h1>
+    <p>Every spring has its own stiffness, expressed by its <strong>spring constant <em>k</em></strong>.
+       In this lab you are given a mystery spring &mdash; you don't know its <em>k</em>. Hang different weights from
+       it, measure how far it stretches, and work out <em>k</em> for yourself. The spring is a little
+       <strong>non-linear</strong>, so be careful: real springs only follow Hooke's law <em>approximately</em>.</p>
+  </div>
+
+  <!-- ================= SECTION 1: THEORY ================= -->
+  <section id="theory">
+    <h2 class="section-title"><span class="num">1</span> Theory</h2>
+    <p class="lead">A short reminder of what Hooke's law says and how to get the spring constant from measurements.</p>
+
+    <div class="card">
+      <h3>The law</h3>
+      <p>For a spring pulled within its elastic limit, the <strong>extension</strong> is
+        <strong>proportional to the force</strong> applied:</p>
+      <div class="formula">
+        <span class="hl">F</span> = <span class="var">k</span> &middot; <span class="var">e</span>
+        <span class="lbl">Hooke's law: F is the force (N), k the spring constant (N/m), e the extension (m)</span>
+      </div>
+      <p>Rearranged, the spring constant is the force per unit extension:</p>
+      <div class="formula">
+        <span class="var">k</span> = <span class="hl">F</span> / <span class="var">e</span>
+        <span class="lbl">Units: newtons per metre (N/m). A stiff spring has a large k.</span>
+      </div>
+      <p>The force is the weight of the hanging masses: <code>F = W = m&middot;g</code>, so the extension
+        grows in proportion to the mass. If you plot <strong>F on the y-axis against extension e on the x-axis</strong>,
+        Hooke's law predicts a <strong>straight line through the origin</strong>, and the <strong>gradient is k</strong>.</p>
+    </div>
+
+    <div class="card">
+      <h3>Measuring extension correctly</h3>
+      <ul>
+        <li><strong>Extension = new length &minus; original length</strong>:
+            <code>e = L &minus; L&#8320;</code>. Always subtract the original length, because the spring already has
+            some length with no load. This is the "change in length" you measure in this lab.</li>
+        <li>Hang the weights gently and wait for the spring to come to rest before reading the pointer.</li>
+        <li>Take every reading against the same pointer, and read to the smallest division (here, millimetres).</li>
+        <li>Repeat and average if you can.</li>
+      </ul>
+      <div class="warnbox">
+        <strong>Real springs aren't perfectly linear.</strong> Hooke's law is an idealisation. In practice the force
+        is not exactly proportional to the extension: the spring gets a little stiffer (or softer) as it stretches. On a
+        force&ndash;extension graph this shows up as a line that <em>curves slightly</em>. The ratio <code>F/e</code>
+        therefore drifts a little as you add weight &mdash; you should average your values (or find the best-fit
+        gradient) rather than trust a single point.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>How this lab works</h3>
+      <p>You have <strong>one spring of unknown, randomly chosen stiffness</strong> (its true <em>k</em> lies somewhere
+        between <strong>5 and 50 N/m</strong>) and a <strong>slightly non-linear</strong> force&ndash;extension response.
+        You also have <strong>a small selection of weights</strong> to choose from. There is a ruler fixed beside the
+        spring. The <strong>New spring</strong> button swaps in a fresh spring with a different stiffness at any time.
+        The plan:</p>
+      <ol>
+        <li>Read the spring's <strong>original length</strong> with no weights on it.</li>
+        <li>Hang one weight, let it settle, and read the new length &mdash; take <strong>e = L &minus; L&#8320;</strong>.</li>
+        <li>Repeat for each weight, recording force and extension.</li>
+        <li>Tabulate F vs e and find the <strong>gradient = k</strong>. Compare values to see the non-linearity.</li>
+      </ol>
+      <p class="hint">You can choose whichever weights you like and re-run the experiment as often as you like &mdash; but
+        the spring itself is the same every time, so your estimate of <em>k</em> should agree across different loads
+        (to within the non-linearity).</p>
+    </div>
+  </section>
+
+  <!-- ================= SECTION 2: THE LAB ================= -->
+  <section id="lab">
+    <h2 class="section-title"><span class="num">2</span> The Lab</h2>
+    <p class="lead">The spring hangs from a clamp; a ruler runs down the side (readings in cm, to 0.1 cm).
+      Pick a weight from the tray, hang it on the hanger, let it settle, and read the pointer against the ruler.
+      Press <strong>Record</strong> to add the force and extension to your data table below.</p>
+
+    <div class="sim-wrap">
+      <div class="stage">
+        <canvas id="stage" width="760" height="480"></canvas>
+        <div class="readout">
+          <div>length L = <span id="roL">0.0</span> cm</div>
+          <div>extension e = <span id="roE">0.0</span> cm</div>
+          <div>hanging: <span id="roW">none</span></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="weights-title">Available weights</div>
+        <div class="weights" id="weightTray"></div>
+
+        <div class="btn-row">
+          <button class="primary" onclick="settle()">Let it settle</button>
+          <button onclick="recordReading()">Record</button>
+        </div>
+        <div class="btn-row">
+          <button onclick="removeWeight()">Remove weight</button>
+          <button onclick="newSpring()">New spring</button>
+          <button class="danger" onclick="clearData()">Clear data</button>
+        </div>
+
+        <div class="metric-set">
+          <div class="metric"><div class="k">Original length L&#8320;</div><div class="v b" id="mL0">&mdash;</div></div>
+          <div class="metric"><div class="k">Current length L</div><div class="v b" id="mL">&mdash;</div></div>
+          <div class="metric"><div class="k">Force F = mg</div><div class="v g" id="mF">0.00 N</div></div>
+          <div class="metric"><div class="k">Extension e = L&minus;L&#8320;</div><div class="v o" id="mE">0.00 cm</div></div>
+        </div>
+
+        <div class="status-bar strong" id="status">Spring is unloaded
+          <small>Click a weight to hang it, then "Let it settle".</small></div>
+
+        <div class="legend">
+          <span><i class="dot a"></i> Spring</span>
+          <span><i class="dot t"></i> Weight</span>
+          <span><i class="dot h"></i> Pointer / ruler</span>
+        </div>
+        <div class="hint">Measurements use g = 9.8 m/s&sup2;. Within one spring, only the load changes &mdash; press
+          <strong>New spring</strong> any time to start again with a different stiffness.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SECTION 3: ANALYSIS ================= -->
+  <section id="analysis">
+    <h2 class="section-title"><span class="num">3</span> Your Data &amp; Analysis</h2>
+    <p class="lead">Each recorded reading appears here. The last column shows the <code>k = F/e</code> worked out from
+      that single reading &mdash; notice it drifts a little because the spring is non-linear. The best estimate of the
+      spring constant comes from the <strong>graph gradient</strong> (below the table).</p>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Load (kg)</th>
+              <th>Force F (N)</th>
+              <th>Extension e (cm)</th>
+              <th>e (m)</th>
+              <th>k = F/e (N/m)</th>
+            </tr>
+          </thead>
+          <tbody id="dataBody">
+            <tr><td colspan="6" class="empty-note">No readings yet &mdash; go to the lab and record some.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button onclick="deleteLast()">Delete last reading</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Force vs extension graph</h3>
+      <p>Your recorded points are plotted with a best-fit straight line through the origin. The line's gradient is
+        your best estimate of the spring constant. The dashed curve tracks the real (non-linear) spring, showing how
+        it bends away from Hooke's straight line.</p>
+      <div class="stage" style="min-height:0;background:#0a0d18;border-radius:12px">
+        <canvas id="graph" width="760" height="380"></canvas>
+      </div>
+      <div class="metric-set" style="margin-top:.8rem">
+        <div class="metric"><div class="k">Best-fit k (gradient)</div><div class="v g" id="mKbest">&mdash;</div></div>
+        <div class="metric"><div class="k">Mean of single-reading k</div><div class="v o" id="mKmean">&mdash;</div></div>
+      </div>
+      <p class="hint" id="kComment">Record at least two different loads to estimate k.</p>
+    </div>
+
+    <div class="card">
+      <h3>Questions to think about</h3>
+      <ul>
+        <li>Does the value of <code>k = F/e</code> stay constant as you add more weight, or does it drift? What does
+          that tell you about how linear this spring is?</li>
+        <li>Why do we measure <strong>extension from the original length</strong> rather than just the length?</li>
+        <li>What would the force&ndash;extension graph look like for a <em>stiffer</em> spring (larger k)?</li>
+        <li>The spring constant is a property of the <em>spring</em>, not the load. Does your data support that?</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer>Hooke's Law &middot; Interactive Physics Lab &middot; Built as a standalone HTML file</footer>
+
+<script>
+/* ============================================================
+   Hooke's Law Lab
+   ============================================================ */
+const g = 9.8;   // m/s^2
+
+/* ---- Random spring: stiffness 5..50 N/m with a slight cubic non-linearity ---- */
+function makeSpring(){
+  const kTrue = 5 + Math.random() * 45;           // 5..50 N/m
+  const nlMag = 0.05 + Math.random() * 0.09;      // subtle
+  const nlSign = Math.random() < 0.5 ? 1 : -1;
+  const kNL = nlSign * nlMag * kTrue * 4;         // N/m^3
+  const L0 = 0.14 + Math.random() * 0.04;         // 14..18 cm
+  return { kTrue, kNL, L0 };
+}
+let spring = makeSpring();
+
+/* ---- Weight options (kg) ---- */
+const WEIGHTS = [0.10, 0.20, 0.50, 1.00, 1.50, 2.00];
+
+function forceFromExtension(e){
+  if(e <= 0) return 0;
+  return spring.kTrue * e + spring.kNL * e * e * e;
+}
+function extensionFromForce(F){
+  if(F <= 0) return 0;
+  let e = F / spring.kTrue;
+  for(let i=0;i<60;i++){
+    const f  = spring.kTrue*e + spring.kNL*e*e*e - F;
+    const fp = spring.kTrue + 3*spring.kNL*e*e;
+    const de = f / fp;
+    e -= de;
+    if(e < 0) e = 0;
+    if(Math.abs(de) < 1e-13) break;
+  }
+  return Math.max(0, e);
+}
+
+/* ---- Lab state ---- */
+const lab = {
+  hangingMass: 0,
+  displayE: 0,
+  targetE: 0,
+  settled: true,
+  osc: 0,
+  oscPhase: 0,
+  readings: []
+};
+
+/* ---- Canvas geometry ---- */
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const CLAMP_Y   = 64;
+const PX_PER_M  = 650;
+const PX_PER_CM = PX_PER_M / 100;
+const SPRING_X  = W * 0.40;
+const RULER_X   = W * 0.70;
+const RULER_TOP_Y = 150;          // canvas y of the ruler's 0 cm tick
+
+function bottomYForLength(lenM){ return CLAMP_Y + lenM * PX_PER_M; }
+
+/* ---- Weight tray ---- */
+const tray = document.getElementById('weightTray');
+WEIGHTS.forEach((mass)=>{
+  const b = document.createElement('div');
+  b.className = 'wbtn';
+  b.dataset.mass = mass;
+  b.innerHTML = '<div class="w">'+(mass*1000).toFixed(0)+' g</div>'+
+                '<div class="m">'+(mass*g).toFixed(2)+' N</div>';
+  b.addEventListener('click', ()=> chooseWeight(mass));
+  tray.appendChild(b);
+});
+function highlightTray(){
+  [...tray.children].forEach(c=>{
+    const m = parseFloat(c.dataset.mass);
+    c.classList.toggle('on', lab.hangingMass > 0 && Math.abs(m - lab.hangingMass) < 1e-9);
+  });
+}
+
+/* ---- Interactions ---- */
+function chooseWeight(mass){
+  lab.hangingMass = mass;
+  lab.targetE = extensionFromForce(mass * g);
+  lab.settled = false;
+  lab.osc = 0.010;
+  lab.oscPhase = 0;
+  highlightTray();
+  updateStatus();
+}
+function removeWeight(){
+  lab.hangingMass = 0;
+  lab.targetE = 0;
+  lab.settled = false;
+  lab.osc = 0.010;
+  lab.oscPhase = 0;
+  highlightTray();
+  updateStatus();
+}
+function settle(){
+  lab.targetE = extensionFromForce(lab.hangingMass * g);
+  lab.osc = 0;
+  lab.displayE = lab.targetE;
+  lab.settled = true;
+  updateStatus();
+}
+function updateStatus(){
+  const el = document.getElementById('status');
+  if(lab.hangingMass <= 0){
+    el.className = 'status-bar strong';
+    el.innerHTML = 'Spring is unloaded<small>Click a weight to hang it, then "Let it settle".</small>';
+  } else if(!lab.settled){
+    el.className = 'status-bar weak';
+    el.innerHTML = 'Loading&hellip; letting the weight settle<small>Wait for the oscillations to die down, then read.</small>';
+  } else {
+    el.className = 'status-bar strong';
+    el.innerHTML = 'Settled &mdash; ready to read<small>Read the pointer against the ruler, then press Record.</small>';
+  }
+}
+
+/* ---- Recording ---- */
+function recordReading(){
+  if(lab.hangingMass <= 0){ flashStatus('Hang a weight first'); return; }
+  if(!lab.settled){ flashStatus('Let the spring settle first'); return; }
+  const F = lab.hangingMass * g;
+  const eCm = Math.round(lab.targetE * 100 * 10) / 10;   // nearest mm
+  lab.readings.push({ mass: lab.hangingMass, force: F, ext: eCm });
+  renderTable();
+  renderGraph();
+  updateStatus();
+}
+function flashStatus(msg){
+  const el = document.getElementById('status');
+  const prevClass = el.className, prevHTML = el.innerHTML;
+  el.className = 'status-bar weak';
+  el.innerHTML = msg + '<small>Adjust and try again.</small>';
+  clearTimeout(flashStatus._t);
+  flashStatus._t = setTimeout(()=>{ el.className = prevClass; el.innerHTML = prevHTML; updateStatus(); }, 1500);
+}
+function deleteLast(){ lab.readings.pop(); renderTable(); renderGraph(); }
+function clearData(){ lab.readings = []; renderTable(); renderGraph(); }
+
+/* Generate a brand-new spring (new k, new non-linearity, possibly new L0).
+   The spring has changed, so any previous readings no longer apply — clear
+   them, drop any hanging weight, and reset the display to unloaded. */
+function newSpring(){
+  spring = makeSpring();
+  lab.hangingMass = 0;
+  lab.displayE = 0;
+  lab.targetE = 0;
+  lab.settled = true;
+  lab.osc = 0;
+  lab.oscPhase = 0;
+  lab.readings = [];
+  highlightTray();
+  renderTable();
+  renderGraph();
+  updateStatus();
+  flashStatus('New spring fitted');
+}
+
+function renderTable(){
+  const body = document.getElementById('dataBody');
+  if(lab.readings.length === 0){
+    body.innerHTML = '<tr><td colspan="6" class="empty-note">No readings yet &mdash; go to the lab and record some.</td></tr>';
+    return;
+  }
+  let html = '';
+  lab.readings.forEach((r, i)=>{
+    const k = r.force / (r.ext/100);
+    html += '<tr>'+
+      '<td>'+(i+1)+'</td>'+
+      '<td>'+r.mass.toFixed(2)+'</td>'+
+      '<td class="wt">'+r.force.toFixed(2)+'</td>'+
+      '<td>'+r.ext.toFixed(1)+'</td>'+
+      '<td>'+(r.ext/100).toFixed(4)+'</td>'+
+      '<td>'+(isFinite(k) && r.ext>0 ? k.toFixed(2) : '\u2014')+'</td>'+
+    '</tr>';
+  });
+  body.innerHTML = html;
+}
+
+/* ---- Animation (diagram) ---- */
+let lastT = performance.now();
+
+function animateExtension(dt){
+  if(lab.settled){
+    lab.displayE += (lab.targetE - lab.displayE) * 0.22;
+    if(Math.abs(lab.targetE - lab.displayE) < 1e-5) lab.displayE = lab.targetE;
+    return;
+  }
+  lab.displayE += (lab.targetE - lab.displayE) * 0.10;
+  lab.osc *= 0.93;
+  lab.oscPhase += dt * 18;
+  if(Math.abs(lab.targetE - lab.displayE) < 0.0012 && lab.osc < 0.0008){
+    lab.displayE = lab.targetE;
+    lab.osc = 0;
+    lab.settled = true;
+    updateStatus();
+  }
+}
+
+function drawLab(){
+  const eShown = lab.displayE + (lab.settled ? 0 : lab.osc * Math.sin(lab.oscPhase));
+  const lenM = spring.L0 + Math.max(0, eShown);
+  const bottomY = bottomYForLength(lenM);
+
+  ctx.clearRect(0,0,W,H);
+  const bg = ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#0b1020'); bg.addColorStop(1,'#0a0d18');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = 'rgba(150,170,230,.16)';
+  for(let i=0;i<70;i++){
+    const sx=(i*113.7)%W, sy=(i*61.3)%H;
+    ctx.beginPath(); ctx.arc(sx,sy,(i%3)*0.5+0.3,0,Math.PI*2); ctx.fill();
+  }
+
+  // Retort stand
+  ctx.strokeStyle = '#3a4270'; ctx.lineWidth = 9; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(SPRING_X - 150, CLAMP_Y - 26); ctx.lineTo(SPRING_X + 8, CLAMP_Y - 26); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(SPRING_X - 150, CLAMP_Y - 26); ctx.lineTo(SPRING_X - 150, H - 26); ctx.stroke();
+  ctx.fillStyle = '#2c3252';
+  ctx.fillRect(SPRING_X - 22, CLAMP_Y - 40, 44, 30);
+  ctx.fillStyle = '#4361a8';
+  ctx.fillRect(SPRING_X - 10, CLAMP_Y - 38, 20, 8);
+
+  // Ruler
+  const rulerTop = RULER_TOP_Y;
+  const rulerBottom = H - 30;
+  ctx.fillStyle = 'rgba(255,255,255,.05)';
+  ctx.fillRect(RULER_X - 26, rulerTop, 52, rulerBottom - rulerTop);
+  ctx.strokeStyle = '#3a4270'; ctx.lineWidth = 2;
+  ctx.strokeRect(RULER_X - 26, rulerTop, 52, rulerBottom - rulerTop);
+  ctx.strokeStyle = '#5a6cae'; ctx.fillStyle = '#9aa3c0';
+  ctx.font = '600 10px ui-monospace, monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  for(let cm=0; cm<=26; cm++){
+    const y = rulerTop + cm * PX_PER_CM;
+    if(y > rulerBottom) break;
+    const major = (cm % 5 === 0);
+    const len = major ? 22 : 12;
+    ctx.lineWidth = major ? 1.6 : 1;
+    ctx.beginPath(); ctx.moveTo(RULER_X - 26, y); ctx.lineTo(RULER_X - 26 + len, y); ctx.stroke();
+    if(major) ctx.fillText(cm, RULER_X - 8, y);
+  }
+
+  // Spring (zig-zag / helix) from CLAMP_Y to bottomY
+  const coils = 12;
+  const amp = 20;
+  const topY = CLAMP_Y;
+  const springLen = bottomY - topY;
+  ctx.strokeStyle = '#7ea6ff'; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath();
+  for(let i=0;i<=coils*2;i++){
+    const t = i/(coils*2);
+    const y = topY + t*springLen;
+    const x = SPRING_X + (i===0 || i===coils*2 ? 0 : (i%2===0 ? amp : -amp));
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  // glow
+  ctx.strokeStyle = 'rgba(91,140,255,.30)'; ctx.lineWidth = 10;
+  ctx.beginPath();
+  for(let i=0;i<=coils*2;i++){
+    const t = i/(coils*2);
+    const y = topY + t*springLen;
+    const x = SPRING_X + (i===0 || i===coils*2 ? 0 : (i%2===0 ? amp : -amp));
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // Pointer: extend a horizontal line to the ruler
+  ctx.strokeStyle = '#ffb84d'; ctx.lineWidth = 2.5; ctx.setLineDash([7,5]);
+  ctx.beginPath(); ctx.moveTo(SPRING_X + 26, bottomY); ctx.lineTo(RULER_X - 26, bottomY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#ffb84d';
+  ctx.beginPath();
+  ctx.moveTo(RULER_X - 26, bottomY);
+  ctx.lineTo(RULER_X - 38, bottomY - 6);
+  ctx.lineTo(RULER_X - 38, bottomY + 6);
+  ctx.closePath(); ctx.fill();
+
+  // Hanger + weight (if any)
+  if(lab.hangingMass > 0){
+    const scaleW = 40 + Math.min(30, lab.hangingMass * 22);
+    const scaleH = 26 + Math.min(26, lab.hangingMass * 14);
+    const wy = bottomY + 14;
+    // hanger bar
+    ctx.strokeStyle = '#8aa0d8'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(SPRING_X, bottomY); ctx.lineTo(SPRING_X, wy); ctx.stroke();
+    // weight block
+    const wg = ctx.createLinearGradient(SPRING_X - scaleW/2, wy, SPRING_X + scaleW/2, wy + scaleH);
+    wg.addColorStop(0,'#63e6a7'); wg.addColorStop(1,'#1d7a4f');
+    ctx.fillStyle = wg;
+    roundRect(SPRING_X - scaleW/2, wy, scaleW, scaleH, 8);
+    ctx.fill();
+    ctx.strokeStyle = '#39d98a'; ctx.lineWidth = 2;
+    roundRect(SPRING_X - scaleW/2, wy, scaleW, scaleH, 8);
+    ctx.stroke();
+    ctx.fillStyle = '#06281a';
+    ctx.font = '700 13px ui-monospace, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText((lab.hangingMass*1000).toFixed(0) + ' g', SPRING_X, wy + scaleH/2);
+    // weight arrow (down)
+    const arrowLen = 20 + Math.min(60, lab.hangingMass * g * 6);
+    const axX = SPRING_X + scaleW/2 + 26;
+    const ayY = wy + scaleH/2;
+    ctx.strokeStyle = '#ff5c6c'; ctx.fillStyle = '#ff5c6c'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(axX, ayY - arrowLen/2); ctx.lineTo(axX, ayY + arrowLen/2); ctx.stroke();
+    const hy = ayY + arrowLen/2;
+    ctx.beginPath(); ctx.moveTo(axX, hy); ctx.lineTo(axX-6, hy-10); ctx.lineTo(axX+6, hy-10); ctx.closePath(); ctx.fill();
+    ctx.font = '600 11px ui-monospace, monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillStyle = '#ff9aa5';
+    ctx.fillText('W = ' + (lab.hangingMass*g).toFixed(2) + ' N', axX + 12, ayY);
+  }
+
+  // Original length marker (dashed) at the unloaded bottom position
+  const origBottom = bottomYForLength(spring.L0);
+  ctx.strokeStyle = 'rgba(154,163,192,.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,6]);
+  ctx.beginPath(); ctx.moveTo(SPRING_X - 30, origBottom); ctx.lineTo(RULER_X - 26, origBottom); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#9aa3c0'; ctx.font = '600 10px ui-monospace, monospace';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+  ctx.fillText('L\u2080', SPRING_X - 34, origBottom - 2);
+
+  // Extension indicator between origBottom and bottomY
+  if(Math.abs(bottomY - origBottom) > 6){
+    const ex = SPRING_X - 60;
+    ctx.strokeStyle = '#39d98a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ex, origBottom); ctx.lineTo(ex, bottomY); ctx.stroke();
+    [origBottom, bottomY].forEach(yy=>{
+      ctx.beginPath(); ctx.moveTo(ex-5, yy); ctx.lineTo(ex+5, yy); ctx.stroke();
+    });
+    ctx.fillStyle = '#39d98a'; ctx.font = '600 11px ui-monospace, monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('e = ' + ((bottomY-origBottom)/PX_PER_CM).toFixed(1) + ' cm', ex - 2, (origBottom+bottomY)/2);
+  }
+}
+
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+/* ---- Readouts / metrics ---- */
+function updateReadouts(){
+  const eShown = lab.displayE + (lab.settled ? 0 : lab.osc * Math.sin(lab.oscPhase));
+  const lenCm = (spring.L0 + Math.max(0, eShown)) * 100;
+  const extCm = Math.max(0, eShown) * 100;
+
+  document.getElementById('roL').textContent = lenCm.toFixed(1);
+  document.getElementById('roE').textContent = extCm.toFixed(1);
+  document.getElementById('roW').textContent = lab.hangingMass > 0 ? (lab.hangingMass*1000).toFixed(0) + ' g' : 'none';
+
+  document.getElementById('mL0').textContent = (spring.L0*100).toFixed(1) + ' cm';
+  document.getElementById('mL').textContent  = lenCm.toFixed(1) + ' cm';
+  document.getElementById('mF').textContent  = (lab.hangingMass*g).toFixed(2) + ' N';
+  document.getElementById('mE').textContent  = extCm.toFixed(1) + ' cm';
+}
+
+/* ============================================================
+   Graph
+   ============================================================ */
+const gc = document.getElementById('graph');
+const gctx = gc.getContext('2d');
+const GW = gc.width, GH = gc.height;
+const gPad = { l: 64, r: 24, t: 24, b: 48 };
+const plotW = GW - gPad.l - gPad.r;
+const plotH = GH - gPad.t - gPad.b;
+
+function renderGraph(){
+  gctx.clearRect(0,0,GW,GH);
+  const bg = gctx.createLinearGradient(0,0,0,GH);
+  bg.addColorStop(0,'#0b1020'); bg.addColorStop(1,'#0a0d18');
+  gctx.fillStyle = bg; gctx.fillRect(0,0,GW,GH);
+
+  // Determine axis maximums from the data + a little headroom
+  let maxE = 0.05;     // metres
+  let maxF = 5;        // newtons
+  lab.readings.forEach(r=>{
+    maxE = Math.max(maxE, r.ext/100);
+    maxF = Math.max(maxF, r.force);
+  });
+  // Also allow space for the curve up to the heaviest weight
+  const heaviest = Math.max(...WEIGHTS);
+  const eMaxPhys = extensionFromForce(heaviest*g);
+  maxE = Math.max(maxE, eMaxPhys) * 1.15;
+  maxF = Math.max(maxF, heaviest*g) * 1.15;
+
+  const x0 = gPad.l, y0 = gPad.t, x1 = gPad.l + plotW, y1 = gPad.t + plotH;
+  const mapX = e => x0 + (e/maxE)*plotW;
+  const mapY = F => y1 - (F/maxF)*plotH;
+
+  // Grid
+  gctx.strokeStyle = 'rgba(90,110,180,.14)'; gctx.lineWidth = 1;
+  for(let i=0;i<=5;i++){
+    const gx = x0 + (i/5)*plotW;
+    gctx.beginPath(); gctx.moveTo(gx,y0); gctx.lineTo(gx,y1); gctx.stroke();
+    const gy = y0 + (i/5)*plotH;
+    gctx.beginPath(); gctx.moveTo(x0,gy); gctx.lineTo(x1,gy); gctx.stroke();
+  }
+
+  // Axes
+  gctx.strokeStyle = '#3a4270'; gctx.lineWidth = 2;
+  gctx.beginPath(); gctx.moveTo(x0,y0); gctx.lineTo(x0,y1); gctx.lineTo(x1,y1); gctx.stroke();
+
+  // Axis labels
+  gctx.fillStyle = '#9aa3c0'; gctx.font = '600 12px ui-monospace, monospace';
+  gctx.textAlign = 'center'; gctx.textBaseline = 'top';
+  gctx.fillText('extension e (m)', (x0+x1)/2, y1 + 24);
+  gctx.save();
+  gctx.translate(16, (y0+y1)/2); gctx.rotate(-Math.PI/2);
+  gctx.textAlign = 'center'; gctx.textBaseline = 'bottom';
+  gctx.fillText('force F (N)', 0, 0);
+  gctx.restore();
+
+  // Tick labels
+  gctx.fillStyle = '#9aa3c0'; gctx.font = '600 10px ui-monospace, monospace';
+  gctx.textAlign = 'center'; gctx.textBaseline = 'top';
+  for(let i=0;i<=5;i++){
+    const ev = (i/5)*maxE;
+    gctx.fillText(ev.toFixed(2), mapX(ev), y1 + 5);
+  }
+  gctx.textAlign = 'right'; gctx.textBaseline = 'middle';
+  for(let i=0;i<=5;i++){
+    const fv = (i/5)*maxF;
+    gctx.fillText(fv.toFixed(1), x0 - 8, mapY(fv));
+  }
+
+  // Dashed curve = true (non-linear) response
+  gctx.strokeStyle = 'rgba(255,184,77,.8)'; gctx.lineWidth = 2; gctx.setLineDash([6,5]);
+  gctx.beginPath();
+  const steps = 80;
+  for(let i=0;i<=steps;i++){
+    const e = (i/steps)*maxE;
+    const F = forceFromExtension(e);
+    const px = mapX(e), py = mapY(Math.min(F, maxF));
+    if(i===0) gctx.moveTo(px,py); else gctx.lineTo(px,py);
+  }
+  gctx.stroke();
+  gctx.setLineDash([]);
+
+  // Best-fit straight line through origin: k = sum(F*e)/sum(e^2)
+  let num = 0, den = 0;
+  lab.readings.forEach(r=>{
+    const e = r.ext/100;
+    num += r.force * e;
+    den += e*e;
+  });
+  const kBest = den > 0 ? num/den : null;
+  if(kBest !== null && isFinite(kBest)){
+    gctx.strokeStyle = '#5b8cff'; gctx.lineWidth = 3;
+    gctx.beginPath();
+    gctx.moveTo(mapX(0), mapY(0));
+    const eEnd = Math.min(maxE, maxF/kBest);
+    gctx.lineTo(mapX(eEnd), mapY(kBest*eEnd));
+    gctx.stroke();
+  }
+
+  // Data points
+  lab.readings.forEach(r=>{
+    const px = mapX(r.ext/100), py = mapY(r.force);
+    gctx.fillStyle = '#39d98a';
+    gctx.beginPath(); gctx.arc(px, py, 6, 0, Math.PI*2); gctx.fill();
+    gctx.strokeStyle = '#06281a'; gctx.lineWidth = 2;
+    gctx.beginPath(); gctx.arc(px, py, 6, 0, Math.PI*2); gctx.stroke();
+  });
+
+  // Legend
+  gctx.textAlign = 'left'; gctx.textBaseline = 'middle'; gctx.font = '600 11px ui-monospace, monospace';
+  let lx = x0 + 12, ly = y0 + 14;
+  gctx.strokeStyle = '#5b8cff'; gctx.lineWidth = 3;
+  gctx.beginPath(); gctx.moveTo(lx, ly); gctx.lineTo(lx+20, ly); gctx.stroke();
+  gctx.fillStyle = '#9aa3c0'; gctx.fillText('best-fit (Hooke)', lx+26, ly);
+  ly += 18;
+  gctx.strokeStyle = 'rgba(255,184,77,.9)'; gctx.setLineDash([6,5]);
+  gctx.beginPath(); gctx.moveTo(lx, ly); gctx.lineTo(lx+20, ly); gctx.stroke(); gctx.setLineDash([]);
+  gctx.fillStyle = '#9aa3c0'; gctx.fillText('true (non-linear)', lx+26, ly);
+  ly += 18;
+  gctx.fillStyle = '#39d98a'; gctx.beginPath(); gctx.arc(lx+10, ly, 5, 0, Math.PI*2); gctx.fill();
+  gctx.fillStyle = '#9aa3c0'; gctx.fillText('your readings', lx+26, ly);
+
+  // Update numeric summaries
+  const kBestEl = document.getElementById('mKbest');
+  const kMeanEl = document.getElementById('mKmean');
+  const commentEl = document.getElementById('kComment');
+
+  kBestEl.textContent = (kBest !== null && isFinite(kBest)) ? kBest.toFixed(2) + ' N/m' : '\u2014';
+
+  const ks = lab.readings.filter(r=>r.ext>0).map(r=> r.force/(r.ext/100));
+  if(ks.length > 0){
+    const mean = ks.reduce((a,b)=>a+b,0)/ks.length;
+    kMeanEl.textContent = mean.toFixed(2) + ' N/m';
+    if(ks.length >= 2){
+      const spread = Math.max(...ks) - Math.min(...ks);
+      const pct = (spread/mean)*100;
+      commentEl.innerHTML = 'Your single-reading values differ by about ' + pct.toFixed(1) +
+        '% &mdash; that spread (small as it is) is the non-linearity showing up. The best-fit gradient is the most ' +
+        'reliable single estimate of k.';
+    } else {
+      commentEl.textContent = 'Record another, different load so the best-fit gradient has two points to work with.';
+    }
+  } else {
+    kMeanEl.textContent = '\u2014';
+    commentEl.textContent = 'Record at least two different loads to estimate k.';
+  }
+}
+
+/* ============================================================
+   Main loop
+   ============================================================ */
+function loop(now){
+  let dt = (now - lastT)/1000; lastT = now;
+  if(dt > 0.05) dt = 0.05;
+  animateExtension(dt);
+  drawLab();
+  updateReadouts();
+  requestAnimationFrame(loop);
+}
+
+/* ---- init ---- */
+highlightTray();
+updateStatus();
+renderTable();
+renderGraph();
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
