@@ -1,0 +1,2386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Crystal Planet — Dragon Survival Adventure</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; background: #070913; color: #f1f5f9;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .font-display { font-family: 'Cinzel', Georgia, serif; }
+
+    /* Custom Scrollbar for Dragon Sanctuary */
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.35); border-radius: 999px; }
+
+    /* Subtle animated starfield / crystal shimmer background for sanctuary */
+    .sanctuary-bg {
+      background:
+        radial-gradient(circle at 18% 20%, rgba(168, 85, 247, 0.16), transparent 45%),
+        radial-gradient(circle at 82% 22%, rgba(56, 189, 248, 0.15), transparent 45%),
+        radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.14), transparent 50%),
+        linear-gradient(180deg, #070a14 0%, #0d1326 55%, #070913 100%);
+    }
+
+    .dragon-card {
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .dragon-card:hover { transform: translateY(-3px); }
+    .dragon-card.selected {
+      transform: translateY(-4px);
+      box-shadow: 0 0 28px -4px var(--glow-color, rgba(168, 85, 247, 0.55));
+    }
+
+    .kbd {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 1.5rem; height: 1.4rem; padding: 0 0.35rem;
+      font-size: 0.7rem; font-weight: 700; line-height: 1;
+      border-radius: 0.3rem;
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow: 0 2px 0 rgba(15, 23, 42, 0.85);
+      color: #e2e8f0;
+    }
+
+    #gameCanvas {
+      display: block; width: 100%; height: 100%;
+      cursor: crosshair; touch-action: none;
+    }
+
+    .hud-glass {
+      background: rgba(9, 13, 28, 0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 12px rgba(250, 204, 21, 0.4); }
+      50% { box-shadow: 0 0 24px rgba(250, 204, 21, 0.85); }
+    }
+    .ability-ready { animation: pulseGlow 1.8s infinite ease-in-out; }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== SCREEN 1: HALL OF DRAGON DIAGRAMS ==================== -->
+  <div id="sanctuaryScreen" class="sanctuary-bg fixed inset-0 z-30 flex flex-col overflow-y-auto custom-scroll">
+    <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 sm:py-7 flex-1 flex flex-col">
+      <!-- Header -->
+      <header class="text-center mb-5">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-400/30 text-indigo-200 text-xs font-semibold tracking-wider uppercase mb-2">
+          <span>Hall of Crystal Dragon Diagrams</span>
+        </div>
+        <h1 class="font-display text-3xl sm:text-5xl font-extrabold tracking-wide bg-gradient-to-r from-cyan-300 via-purple-300 to-rose-300 bg-clip-text text-transparent">
+          CRYSTAL PLANET
+        </h1>
+        <p class="text-slate-300 text-xs sm:text-sm max-w-2xl mx-auto mt-1.5">
+          Study the five crystal dragon diagrams below, choose your dragon &amp; eye color, and spawn in your crystal biome. Eat 5 cows or pigs to unlock your dragon power, craft armor from 5 broken crystals, grow huge, and escape the hunters!
+        </p>
+      </header>
+
+      <!-- Dragon Diagram Cards Grid -->
+      <div id="dragonGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 mb-5">
+        <!-- Populated dynamically by JS -->
+      </div>
+
+      <!-- Selected Dragon Action Bar + Controls Preview -->
+      <div class="hud-glass rounded-2xl p-4 sm:p-5 mt-auto flex flex-col lg:flex-row items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2 text-xs text-slate-300">
+          <span class="flex items-center gap-1.5"><span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span> Move</span>
+          <span class="flex items-center gap-1.5"><span class="kbd">Left Click</span> Break Things</span>
+          <span class="flex items-center gap-1.5"><span class="kbd">Right Click</span> Eat Cow/Pig &amp; Power</span>
+          <span class="flex items-center gap-1.5"><span class="kbd">E</span> Inventory / Armor</span>
+          <span class="flex items-center gap-1.5"><span class="kbd">G</span> Glow Scales</span>
+          <span class="flex items-center gap-1.5"><span class="kbd">Space</span> Dragon Ability</span>
+        </div>
+
+        <div class="flex items-center gap-3 w-full lg:w-auto justify-center">
+          <div id="selectedSummary" class="text-right hidden sm:block">
+            <div class="text-xs text-slate-400">Selected Dragon</div>
+            <div id="selectedDragonLabel" class="font-display font-bold text-sm text-white">Black Opal Dragon</div>
+          </div>
+          <button id="startGameBtn" class="px-6 py-3 rounded-xl font-bold text-sm sm:text-base text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-purple-900/40 transition active:scale-95 cursor-pointer whitespace-nowrap">
+            Spawn in Biome →
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SCREEN 2: GAME VIEWPORT & HUD ==================== -->
+  <div id="gameContainer" class="fixed inset-0 hidden">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Top-Left HUD: Dragon Status, Health, Growth/XP, Livestock Counter -->
+    <div class="fixed top-3 left-3 z-10 flex flex-col gap-2 max-w-[270px] sm:max-w-[300px] pointer-events-none">
+      <div class="hud-glass rounded-xl p-2.5 sm:p-3 pointer-events-auto">
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+          <div class="flex items-center gap-2 min-w-0">
+            <span id="hudDragonDot" class="w-3.5 h-3.5 rounded-full shrink-0 border border-white/50"></span>
+            <span id="hudDragonName" class="font-display font-bold text-xs sm:text-sm truncate text-white">Dragon</span>
+          </div>
+          <span id="hudLevelBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 shrink-0">Lv 1 • Hatchling</span>
+        </div>
+
+        <!-- HP Bar -->
+        <div class="mb-1.5">
+          <div class="flex justify-between text-[10px] text-slate-300 mb-0.5">
+            <span>Health</span>
+            <span id="hudHpText">100 / 100</span>
+          </div>
+          <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+            <div id="hudHpBar" class="h-full bg-gradient-to-r from-rose-500 to-red-400 transition-all duration-150" style="width: 100%"></div>
+          </div>
+        </div>
+
+        <!-- Growth / XP Bar -->
+        <div class="mb-1.5">
+          <div class="flex justify-between text-[10px] text-slate-300 mb-0.5">
+            <span>Growth Size</span>
+            <span id="hudXpText">0 / 100 XP</span>
+          </div>
+          <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+            <div id="hudXpBar" class="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-150" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Livestock Eaten (5 to unlock ability) & Armor Status -->
+        <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-700/60 text-[11px]">
+          <div id="hudFoodStatus" class="flex items-center gap-1 text-amber-200 font-medium">
+            <span>🍖</span> <span id="hudFoodText">0 / 5 Eaten</span>
+          </div>
+          <div id="hudArmorStatus" class="flex items-center gap-1 text-slate-400 font-medium">
+            <span>🛡️</span> <span id="hudArmorText">No Armor</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Biome & Cave Indicator -->
+      <div class="hud-glass rounded-lg px-2.5 py-1.5 flex items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-1.5 truncate">
+          <span id="hudLocationIcon">🌍</span>
+          <span id="hudBiomeName" class="font-semibold text-slate-100 truncate">Ruby Biome</span>
+        </div>
+        <span id="hudCrystalsCount" class="text-[11px] font-bold text-cyan-300 shrink-0">💎 0</span>
+      </div>
+    </div>
+
+    <!-- Top-Right HUD: Minimap + Quick Controls -->
+    <div class="fixed top-3 right-3 z-10 flex flex-col items-end gap-2">
+      <div class="flex items-center gap-1.5">
+        <button id="btnSound" class="hud-glass px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-200 hover:bg-slate-800/90 transition cursor-pointer" title="Toggle Sound">🔊</button>
+        <button id="btnHelp" class="hud-glass px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-200 hover:bg-slate-800/90 transition cursor-pointer" title="Controls & Rules">?</button>
+        <button id="btnSanctuary" class="hud-glass px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-200 hover:bg-slate-800/90 transition cursor-pointer">Dragons</button>
+      </div>
+      <div class="hud-glass rounded-xl p-1.5 hidden sm:block">
+        <canvas id="minimapCanvas" width="136" height="136" class="rounded-lg block"></canvas>
+      </div>
+    </div>
+
+    <!-- Bottom Center: Toast / Action Prompt + Minecraft-style Hotbar -->
+    <div class="fixed bottom-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 w-full max-w-md px-3 pointer-events-none">
+      <!-- Dynamic Status / Cave / Trap Prompt -->
+      <div id="promptBanner" class="hidden hud-glass px-3.5 py-1.5 rounded-full text-xs font-semibold text-amber-200 border border-amber-400/40 shadow-lg pointer-events-auto cursor-pointer">
+        Press Enter or Click to Enter Cave
+      </div>
+
+      <!-- Toast Message -->
+      <div id="toastBanner" class="hidden px-3.5 py-1.5 rounded-lg bg-slate-900/90 border border-cyan-400/40 text-xs font-medium text-cyan-100 shadow-lg text-center"></div>
+
+      <!-- Action Hotbar (Clickable + Keyboard synced) -->
+      <div class="hud-glass rounded-xl p-1.5 flex items-center gap-1.5 pointer-events-auto">
+        <button id="btnActionAbility" class="flex flex-col items-center justify-center px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 transition cursor-pointer min-w-[74px]" title="Use Dragon Power (Space / Right-Click)">
+          <span class="text-sm leading-none" id="abilityIcon">🔒</span>
+          <span class="text-[10px] font-semibold mt-0.5 text-slate-200" id="abilityBtnLabel">0/5 Eat</span>
+        </button>
+        <button id="btnActionGlow" class="flex flex-col items-center justify-center px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 transition cursor-pointer min-w-[66px]" title="Toggle Glowing Scales (G)">
+          <span class="text-sm leading-none">✨</span>
+          <span class="text-[10px] font-semibold mt-0.5 text-slate-200">Glow [G]</span>
+        </button>
+        <button id="btnActionInv" class="flex flex-col items-center justify-center px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 transition cursor-pointer min-w-[72px]" title="Open Inventory & Armor (E)">
+          <span class="text-sm leading-none">🎒</span>
+          <span class="text-[10px] font-semibold mt-0.5 text-slate-200">Bag [E]</span>
+        </button>
+        <button id="btnActionCave" class="hidden flex-col items-center justify-center px-2.5 py-1.5 rounded-lg bg-indigo-700/80 hover:bg-indigo-600/80 border border-indigo-400/60 transition cursor-pointer min-w-[72px]" title="Enter / Exit Cave (C)">
+          <span class="text-sm leading-none">🕳️</span>
+          <span class="text-[10px] font-semibold mt-0.5 text-white" id="caveBtnLabel">Cave [C]</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile / Touch D-Pad (shown on touch devices or narrow viewports) -->
+    <div id="touchControls" class="fixed bottom-20 left-3 z-10 sm:hidden grid grid-cols-3 gap-1 w-28 h-28 opacity-80">
+      <div></div>
+      <button data-dir="up" class="hud-glass rounded-lg flex items-center justify-center text-sm font-bold active:bg-indigo-600/70">▲</button>
+      <div></div>
+      <button data-dir="left" class="hud-glass rounded-lg flex items-center justify-center text-sm font-bold active:bg-indigo-600/70">◀</button>
+      <button id="touchEatBtn" class="hud-glass rounded-lg flex items-center justify-center text-xs font-bold active:bg-amber-600/70">🍖</button>
+      <button data-dir="right" class="hud-glass rounded-lg flex items-center justify-center text-sm font-bold active:bg-indigo-600/70">▶</button>
+      <div></div>
+      <button data-dir="down" class="hud-glass rounded-lg flex items-center justify-center text-sm font-bold active:bg-indigo-600/70">▼</button>
+      <div></div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: INVENTORY & ARMOR (E KEY) ==================== -->
+  <div id="inventoryModal" class="hidden fixed inset-0 z-40 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="hud-glass rounded-2xl max-w-md w-full p-5 border border-slate-600/60 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="font-display text-xl font-bold text-white">Dragon Inventory</h2>
+          <p class="text-xs text-slate-400">Break 5 crystals or objects to forge Crystal Armor</p>
+        </div>
+        <button id="closeInvBtn" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold cursor-pointer">✕</button>
+      </div>
+
+      <!-- Collected Items Grid -->
+      <div class="grid grid-cols-3 gap-2.5 mb-4">
+        <div class="bg-slate-900/80 border border-slate-700/70 rounded-xl p-3 text-center">
+          <div class="text-2xl">💎</div>
+          <div id="invCrystalCount" class="text-lg font-bold text-cyan-300 mt-0.5">0</div>
+          <div class="text-[11px] text-slate-400">Crystal Shards</div>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-700/70 rounded-xl p-3 text-center">
+          <div class="text-2xl">🍖</div>
+          <div id="invFoodCount" class="text-lg font-bold text-amber-300 mt-0.5">0 / 5</div>
+          <div class="text-[11px] text-slate-400">Cows/Pigs Eaten</div>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-700/70 rounded-xl p-3 text-center">
+          <div class="text-2xl">🛡️</div>
+          <div id="invArmorCount" class="text-lg font-bold text-emerald-300 mt-0.5">0</div>
+          <div class="text-[11px] text-slate-400">Armor Sets</div>
+        </div>
+      </div>
+
+      <!-- Craft Armor Section -->
+      <div class="bg-slate-900/75 border border-indigo-500/30 rounded-xl p-3.5 mb-3">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="text-sm font-bold text-white">Forge Crystal Dragon Armor</div>
+            <div class="text-xs text-slate-400">Cost: 5 Crystal Shards • Cuts hunter &amp; trap damage by 60%</div>
+          </div>
+          <button id="craftArmorBtn" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white transition cursor-pointer shrink-0">
+            Craft (5 💎)
+          </button>
+        </div>
+      </div>
+
+      <!-- Equip Armor Slot -->
+      <div class="bg-slate-900/75 border border-emerald-500/30 rounded-xl p-3.5 flex items-center justify-between gap-3">
+        <div>
+          <div class="text-sm font-bold text-white">Armor Slot</div>
+          <div id="invArmorSlotDesc" class="text-xs text-slate-400">No armor equipped yet</div>
+        </div>
+        <button id="toggleEquipArmorBtn" class="px-3.5 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white transition cursor-pointer shrink-0">
+          Equip
+        </button>
+      </div>
+
+      <div class="mt-4 text-center text-[11px] text-slate-400">
+        Press <span class="kbd">E</span> or <span class="kbd">Esc</span> to return to Crystal Planet
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: HELP / CONTROLS ==================== -->
+  <div id="helpModal" class="hidden fixed inset-0 z-40 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="hud-glass rounded-2xl max-w-lg w-full p-5 border border-slate-600/60 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-display text-xl font-bold text-white">How to Play Crystal Planet</h2>
+        <button id="closeHelpBtn" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold cursor-pointer">✕</button>
+      </div>
+      <ul class="space-y-2 text-xs sm:text-sm text-slate-300">
+        <li><strong class="text-white">Move:</strong> Use <span class="kbd">W</span> <span class="kbd">A</span> <span class="kbd">S</span> <span class="kbd">D</span> (or Arrow keys) and aim with the mouse.</li>
+        <li><strong class="text-white">Break Things:</strong> <span class="kbd">Left Click</span> trees, rocks, crystals, or hunter traps to break them and collect shards.</li>
+        <li><strong class="text-white">Eat Cows &amp; Pigs:</strong> <span class="kbd">Right Click</span> on a cow or pig when nearby to eat it. Eat <strong>5</strong> to unlock your dragon's lightning or opal-transform power!</li>
+        <li><strong class="text-white">Dragon Power:</strong> Once unlocked, press <span class="kbd">Space</span> or <span class="kbd">Right Click</span> on objects/hunters to shoot crystal lightning or turn things into your dragon's crystal.</li>
+        <li><strong class="text-white">Armor &amp; Inventory:</strong> Press <span class="kbd">E</span> to open your inventory. Combine <strong>5 items</strong> to craft armor, then equip it!</li>
+        <li><strong class="text-white">Glowing Scales:</strong> Press <span class="kbd">G</span> to make your scales glow — super useful inside dark Crystal Caves!</li>
+        <li><strong class="text-white">Goal:</strong> Explore all 5 crystal biomes &amp; caves, villages, and plains; grow to <strong>Level 5 (Elder Dragon)</strong> while escaping hunters and their traps!</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: GAME OVER / VICTORY ==================== -->
+  <div id="endModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="hud-glass rounded-2xl max-w-md w-full p-6 text-center border border-slate-600/60 shadow-2xl">
+      <div id="endIcon" class="text-5xl mb-2">👑</div>
+      <h2 id="endTitle" class="font-display text-2xl font-extrabold text-white mb-2">Elder Dragon!</h2>
+      <p id="endDesc" class="text-sm text-slate-300 mb-5"></p>
+      <div class="flex flex-wrap justify-center gap-2.5">
+        <button id="endContinueBtn" class="hidden px-4 py-2.5 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer">Keep Exploring</button>
+        <button id="endRetryBtn" class="px-4 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer">Play Again</button>
+        <button id="endSanctuaryBtn" class="px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-700 hover:bg-slate-600 text-white cursor-pointer">Dragon Diagrams</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    'use strict';
+
+    // ==================== 1. DRAGON DEFINITIONS ====================
+    const DRAGONS = {
+      black_opal: {
+        id: 'black_opal',
+        name: 'Black Opal Dragon',
+        shortName: 'Black Opal',
+        biomeId: 'black_opal',
+        biomeName: 'Black Opal Biome',
+        bodyPrimary: '#1a1b26',
+        bodySecondary: '#2d314d',
+        wingColor: '#242942',
+        bellyColor: '#3b2b4a',
+        crystalColor: '#22d3ee',
+        crystalAccent: '#ec4899',
+        glowColor: '#ff5ea8',
+        eyeOptions: [
+          { id: 'pink', label: 'Pink Eyes', hex: '#ff5ea8' }
+        ],
+        abilityName: 'Opalize Touch',
+        abilityDesc: 'Turns trees, rocks, mobs & terrain into gleaming Black Opal.',
+        abilityType: 'opal_wave',
+        boltColor: '#ff5ea8',
+        boltGlow: '#22d3ee',
+        caveFeature: 'Darker shimmering water & hanging black opals'
+      },
+      emerald: {
+        id: 'emerald',
+        name: 'Emerald Dragon',
+        shortName: 'Emerald',
+        biomeId: 'emerald',
+        biomeName: 'Emerald Biome',
+        bodyPrimary: '#059669',
+        bodySecondary: '#10b981',
+        wingColor: '#047857',
+        bellyColor: '#6ee7b7',
+        crystalColor: '#34d399',
+        crystalAccent: '#a7f3d0',
+        glowColor: '#10b981',
+        eyeOptions: [
+          { id: 'blue', label: 'Blue Eyes', hex: '#38bdf8' },
+          { id: 'amber', label: 'Golden Amber', hex: '#f59e0b' }
+        ],
+        abilityName: 'Green Lightning',
+        abilityDesc: 'Shoots green lightning bolts & turns things into Emerald.',
+        abilityType: 'lightning',
+        boltColor: '#4ade80',
+        boltGlow: '#10b981',
+        caveFeature: 'Flowing water & emeralds hanging from the ceiling'
+      },
+      ruby: {
+        id: 'ruby',
+        name: 'Ruby Dragon',
+        shortName: 'Ruby',
+        biomeId: 'ruby',
+        biomeName: 'Ruby Biome',
+        bodyPrimary: '#b91c1c',
+        bodySecondary: '#ef4444',
+        wingColor: '#991b1b',
+        bellyColor: '#fca5a5',
+        crystalColor: '#f43f5e',
+        crystalAccent: '#fda4af',
+        glowColor: '#f97316',
+        eyeOptions: [
+          { id: 'yellow', label: 'Yellow Eyes', hex: '#facc15' },
+          { id: 'orange', label: 'Orange Eyes', hex: '#fb923c' }
+        ],
+        abilityName: 'Orange Lightning',
+        abilityDesc: 'Shoots orange lightning bolts & turns things into Ruby.',
+        abilityType: 'lightning',
+        boltColor: '#fb923c',
+        boltGlow: '#f97316',
+        caveFeature: 'Glowing lava falls & rubies hanging from the ceiling'
+      },
+      sapphire: {
+        id: 'sapphire',
+        name: 'Sapphire Dragon',
+        shortName: 'Sapphire',
+        biomeId: 'sapphire',
+        biomeName: 'Sapphire Biome',
+        bodyPrimary: '#1d4ed8',
+        bodySecondary: '#3b82f6',
+        wingColor: '#1e3a8a',
+        bellyColor: '#93c5fd',
+        crystalColor: '#38bdf8',
+        crystalAccent: '#bae6fd',
+        glowColor: '#38bdf8',
+        eyeOptions: [
+          { id: 'light_purple', label: 'Light Purple', hex: '#d8b4fe' }
+        ],
+        abilityName: 'Blue Lightning',
+        abilityDesc: 'Shoots blue lightning bolts & turns things into Sapphire.',
+        abilityType: 'lightning',
+        boltColor: '#60a5fa',
+        boltGlow: '#38bdf8',
+        caveFeature: 'Glowing blue water & hanging sapphire spires'
+      },
+      amethyst: {
+        id: 'amethyst',
+        name: 'Amethyst Dragon',
+        shortName: 'Amethyst',
+        biomeId: 'amethyst',
+        biomeName: 'Amethyst Biome',
+        bodyPrimary: '#7e22ce',
+        bodySecondary: '#a855f7',
+        wingColor: '#581c87',
+        bellyColor: '#d8b4fe',
+        crystalColor: '#c084fc',
+        crystalAccent: '#e9d5ff',
+        glowColor: '#c084fc',
+        eyeOptions: [
+          { id: 'blue', label: 'Blue Eyes', hex: '#38bdf8' }
+        ],
+        abilityName: 'Purple Lightning',
+        abilityDesc: 'Shoots purple lightning bolts & turns things into Amethyst.',
+        abilityType: 'lightning',
+        boltColor: '#c084fc',
+        boltGlow: '#a855f7',
+        caveFeature: 'Streams of blue water & hanging amethyst geodes'
+      }
+    };
+
+    const BIOMES = {
+      ruby: {
+        id: 'ruby', name: 'Ruby Biome', ground: '#4a121b', groundAlt: '#5e1722',
+        leaf: '#e11d48', leafHi: '#fb7185', crystal: '#f43f5e',
+        caveFloor: '#2a0b10', caveLiquid: '#f97316', caveLiquidGlow: '#facc15',
+        caveName: 'Ruby Lava-Fall Cave', isCrystal: true,
+        spawnX: 520, spawnY: 520
+      },
+      sapphire: {
+        id: 'sapphire', name: 'Sapphire Biome', ground: '#0f2557', groundAlt: '#163375',
+        leaf: '#2563eb', leafHi: '#60a5fa', crystal: '#38bdf8',
+        caveFloor: '#091533', caveLiquid: '#38bdf8', caveLiquidGlow: '#7dd3fc',
+        caveName: 'Sapphire Glowing-Water Cave', isCrystal: true,
+        spawnX: 2680, spawnY: 520
+      },
+      amethyst: {
+        id: 'amethyst', name: 'Amethyst Biome', ground: '#2e104d', groundAlt: '#3e1669',
+        leaf: '#9333ea', leafHi: '#c084fc', crystal: '#a855f7',
+        caveFloor: '#1a092e', caveLiquid: '#3b82f6', caveLiquidGlow: '#93c5fd',
+        caveName: 'Amethyst Blue-Stream Cave', isCrystal: true,
+        spawnX: 520, spawnY: 2680
+      },
+      emerald: {
+        id: 'emerald', name: 'Emerald Biome', ground: '#0b3d2c', groundAlt: '#11523c',
+        leaf: '#10b981', leafHi: '#6ee7b7', crystal: '#34d399',
+        caveFloor: '#06241a', caveLiquid: '#0ea5e9', caveLiquidGlow: '#38bdf8',
+        caveName: 'Emerald Flowing-Water Cave', isCrystal: true,
+        spawnX: 2680, spawnY: 2680
+      },
+      black_opal: {
+        id: 'black_opal', name: 'Black Opal Biome', ground: '#11131f', groundAlt: '#1b1f33',
+        leaf: '#232842', leafHi: '#22d3ee', crystal: '#ec4899',
+        caveFloor: '#080912', caveLiquid: '#1e1b4b', caveLiquidGlow: '#4338ca',
+        caveName: 'Black Opal Dark-Water Cave', isCrystal: true,
+        spawnX: 1600, spawnY: 420
+      },
+      forest: {
+        id: 'forest', name: 'Whispering Forest', ground: '#1f4a27', groundAlt: '#265930',
+        leaf: '#15803d', leafHi: '#4ade80', crystal: '#94a3b8',
+        isCrystal: false
+      },
+      plains: {
+        id: 'plains', name: 'Sunlit Plains', ground: '#3d6b2c', groundAlt: '#487d34',
+        leaf: '#4d7c0f', leafHi: '#84cc16', crystal: '#cbd5e1',
+        isCrystal: false
+      }
+    };
+
+    const LEVEL_THRESHOLDS = [0, 80, 200, 380, 620];
+    const LEVEL_TITLES = ['Hatchling', 'Young Drake', 'Crystal Wyrm', 'Great Dragon', 'Elder Titan'];
+
+    // ==================== 2. SYNTHESIZED WEB AUDIO ====================
+    const Sound = {
+      ctx: null,
+      muted: false,
+      init() {
+        if (!this.ctx) {
+          try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (AC) this.ctx = new AC();
+          } catch (e) {}
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      },
+      play(type) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        if (type === 'break') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(140, now + 0.14);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.start(now); osc.stop(now + 0.15);
+        } else if (type === 'eat') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.linearRampToValueAtTime(360, now + 0.08);
+          osc.frequency.linearRampToValueAtTime(160, now + 0.2);
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.start(now); osc.stop(now + 0.22);
+        } else if (type === 'lightning') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(980, now);
+          osc.frequency.exponentialRampToValueAtTime(110, now + 0.26);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+          osc.start(now); osc.stop(now + 0.28);
+        } else if (type === 'opal') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(340, now);
+          osc.frequency.exponentialRampToValueAtTime(860, now + 0.25);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+          osc.start(now); osc.stop(now + 0.28);
+        } else if (type === 'glow') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523, now);
+          osc.frequency.exponentialRampToValueAtTime(1046, now + 0.22);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+          osc.start(now); osc.stop(now + 0.24);
+        } else if (type === 'armor') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(330, now);
+          osc.frequency.setValueAtTime(495, now + 0.08);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.start(now); osc.stop(now + 0.22);
+        } else if (type === 'hurt') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(170, now);
+          osc.frequency.exponentialRampToValueAtTime(65, now + 0.22);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+          osc.start(now); osc.stop(now + 0.24);
+        } else if (type === 'levelup') {
+          const notes = [440, 554, 659, 880];
+          notes.forEach((f, idx) => {
+            const o2 = this.ctx.createOscillator();
+            const g2 = this.ctx.createGain();
+            o2.type = 'triangle';
+            o2.connect(g2); g2.connect(this.ctx.destination);
+            const t = now + idx * 0.08;
+            o2.frequency.setValueAtTime(f, t);
+            g2.gain.setValueAtTime(0.14, t);
+            g2.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
+            o2.start(t); o2.stop(t + 0.25);
+          });
+        }
+      }
+    };
+
+    // ==================== 3. SANCTUARY DRAGON DIAGRAM BUILDER ====================
+    let selectedDragonId = 'black_opal';
+    const chosenEyes = {
+      black_opal: 'pink',
+      emerald: 'blue',
+      ruby: 'yellow',
+      sapphire: 'light_purple',
+      amethyst: 'blue'
+    };
+
+    function createDragonDiagramSVG(dragon, eyeHex) {
+      const isOpal = dragon.id === 'black_opal';
+      const opalDefs = isOpal ? `
+        <linearGradient id="opalGrad_${dragon.id}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#1a1c2e"/>
+          <stop offset="45%" stop-color="#2a2f52"/>
+          <stop offset="75%" stop-color="#1f3b4d"/>
+          <stop offset="100%" stop-color="#3b1d45"/>
+        </linearGradient>
+      ` : '';
+      const bodyFill = isOpal ? `url(#opalGrad_${dragon.id})` : dragon.bodyPrimary;
+
+      return `
+        <svg viewBox="0 0 220 145" class="w-full h-32 sm:h-36 drop-shadow-lg" aria-label="${dragon.name} Diagram">
+          <defs>
+            ${opalDefs}
+            <filter id="eyeGlow_${dragon.id}" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- Blueprint Grid Background -->
+          <rect x="4" y="4" width="212" height="137" rx="10" fill="rgba(15,23,42,0.72)" stroke="${dragon.crystalColor}" stroke-opacity="0.35" stroke-width="1"/>
+          <path d="M4 38 H216 M4 72 H216 M4 106 H216 M55 4 V141 M110 4 V141 M165 4 V141" stroke="rgba(148,163,184,0.08)" stroke-width="1"/>
+
+          <!-- Wings -->
+          <path d="M105 64 L66 20 L48 56 L78 68 Z" fill="${dragon.wingColor}" stroke="${dragon.crystalColor}" stroke-width="1.3"/>
+          <path d="M114 66 L154 22 L172 56 L136 70 Z" fill="${dragon.wingColor}" stroke="${dragon.crystalColor}" stroke-width="1.3"/>
+
+          <!-- Tail with Crystal Tip -->
+          <path d="M105 86 Q68 118 32 106 Q54 96 86 78 Z" fill="${bodyFill}" stroke="${dragon.bodySecondary}" stroke-width="1.2"/>
+          <polygon points="32,106 18,98 24,113" fill="${dragon.crystalColor}"/>
+
+          <!-- Dragon Body -->
+          <ellipse cx="112" cy="78" rx="30" ry="18" fill="${bodyFill}" stroke="${dragon.bodySecondary}" stroke-width="1.5"/>
+          <ellipse cx="114" cy="83" rx="20" ry="9" fill="${dragon.bellyColor}" opacity="0.45"/>
+
+          <!-- Back Crystal Spikes -->
+          <polygon points="94,61 99,50 104,61" fill="${dragon.crystalColor}"/>
+          <polygon points="106,59 112,47 118,59" fill="${dragon.crystalAccent}"/>
+          <polygon points="119,61 124,52 128,62" fill="${dragon.crystalColor}"/>
+
+          <!-- Neck & Head -->
+          <path d="M132 72 Q148 56 164 58 Q174 62 172 72 Q156 76 138 82 Z" fill="${bodyFill}" stroke="${dragon.bodySecondary}" stroke-width="1.4"/>
+          <!-- Horns -->
+          <polygon points="152,58 143,43 158,54" fill="${dragon.crystalColor}"/>
+          <polygon points="160,57 156,45 165,55" fill="${dragon.crystalAccent}"/>
+
+          <!-- Glowing Eye (Live-updates with eye choice!) -->
+          <circle cx="161" cy="64" r="4.2" fill="${eyeHex}" filter="url(#eyeGlow_${dragon.id})"/>
+          <circle cx="162" cy="64" r="1.4" fill="#0f172a"/>
+
+          <!-- Opal Rainbow Flecks if Black Opal -->
+          ${isOpal ? `
+            <circle cx="104" cy="76" r="2" fill="#22d3ee"/>
+            <circle cx="118" cy="74" r="2" fill="#ec4899"/>
+            <circle cx="112" cy="82" r="1.8" fill="#a855f7"/>
+            <circle cx="96" cy="81" r="1.6" fill="#34d399"/>
+          ` : ''}
+
+          <!-- Diagram Callout Lines -->
+          <line x1="164" y1="62" x2="188" y2="34" stroke="${eyeHex}" stroke-width="1" stroke-dasharray="2,2"/>
+          <text x="190" y="32" fill="${eyeHex}" font-size="8.5" font-weight="700" text-anchor="end">EYES</text>
+
+          <line x1="112" y1="49" x2="112" y2="21" stroke="${dragon.crystalColor}" stroke-width="1" stroke-dasharray="2,2"/>
+          <text x="112" y="17" fill="#cbd5e1" font-size="8" font-weight="600" text-anchor="middle">GLOW SCALES [G]</text>
+
+          <line x1="25" y1="106" x2="25" y2="128" stroke="${dragon.crystalColor}" stroke-width="1" stroke-dasharray="2,2"/>
+          <text x="28" y="133" fill="#94a3b8" font-size="7.5">${dragon.abilityName.toUpperCase()}</text>
+        </svg>
+      `;
+    }
+
+    function renderSanctuary() {
+      const grid = document.getElementById('dragonGrid');
+      grid.innerHTML = '';
+
+      Object.values(DRAGONS).forEach(d => {
+        const isSelected = d.id === selectedDragonId;
+        const currentEyeId = chosenEyes[d.id];
+        const eyeObj = d.eyeOptions.find(e => e.id === currentEyeId) || d.eyeOptions[0];
+
+        const card = document.createElement('div');
+        card.className = `dragon-card rounded-2xl p-3.5 cursor-pointer flex flex-col justify-between bg-slate-900/80 border-2 ${
+          isSelected ? 'selected border-white/80' : 'border-slate-700/60 hover:border-slate-500/80'
+        }`;
+        card.style.setProperty('--glow-color', d.glowColor);
+        card.dataset.dragonId = d.id;
+
+        const eyeSelectorHTML = d.eyeOptions.length > 1
+          ? `<div class="flex gap-1.5 mt-1.5">
+              ${d.eyeOptions.map(opt => `
+                <button type="button" data-eye-dragon="${d.id}" data-eye-id="${opt.id}"
+                  class="eye-btn flex-1 flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg text-[10px] font-semibold border transition cursor-pointer ${
+                    opt.id === currentEyeId
+                      ? 'bg-slate-800 border-white/70 text-white'
+                      : 'bg-slate-950/60 border-slate-700 text-slate-400 hover:text-slate-200'
+                  }">
+                  <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${opt.hex}"></span>
+                  <span class="truncate">${opt.label}</span>
+                </button>
+              `).join('')}
+            </div>`
+          : `<div class="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-300 bg-slate-950/50 rounded-lg px-2 py-1 border border-slate-800">
+              <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${eyeObj.hex}"></span>
+              <span>${eyeObj.label}</span>
+            </div>`;
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-1 mb-2">
+              <h3 class="font-display font-bold text-sm text-white truncate">${d.shortName}</h3>
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style="background:${d.crystalColor}22; color:${d.crystalAccent}; border:1px solid ${d.crystalColor}55">
+                ${d.biomeName.replace(' Biome', '')}
+              </span>
+            </div>
+            ${createDragonDiagramSVG(d, eyeObj.hex)}
+            ${eyeSelectorHTML}
+            <div class="mt-2.5 space-y-1 text-[11px]">
+              <div class="text-slate-200 font-semibold">⚡ ${d.abilityName}</div>
+              <p class="text-slate-400 leading-snug">${d.abilityDesc}</p>
+            </div>
+          </div>
+          <div class="mt-2.5 pt-2 border-t border-slate-800 text-[10px] text-slate-400">
+            <span class="text-slate-300 font-medium">Cave:</span> ${d.caveFeature}
+          </div>
+        `;
+
+        card.addEventListener('click', (e) => {
+          const eyeBtn = e.target.closest('.eye-btn');
+          if (eyeBtn) {
+            e.stopPropagation();
+            chosenEyes[eyeBtn.dataset.eyeDragon] = eyeBtn.dataset.eyeId;
+            selectedDragonId = eyeBtn.dataset.eyeDragon;
+            Sound.play('glow');
+            renderSanctuary();
+            return;
+          }
+          selectedDragonId = d.id;
+          Sound.play('break');
+          renderSanctuary();
+        });
+
+        grid.appendChild(card);
+      });
+
+      const active = DRAGONS[selectedDragonId];
+      const activeEye = active.eyeOptions.find(e => e.id === chosenEyes[active.id]) || active.eyeOptions[0];
+      document.getElementById('selectedDragonLabel').textContent = `${active.name} (${activeEye.label})`;
+    }
+
+    // ==================== 4. WORLD & GAME STATE ====================
+    const WORLD_SIZE = 3200;
+    const CAVE_SIZE = 1000;
+
+    let canvas, ctx, miniCanvas, miniCtx;
+    let rafId = null;
+    let lastTime = 0;
+
+    const keys = {};
+    const mouse = { x: 0, y: 0, worldX: 0, worldY: 0, leftDown: false };
+    let toastTimer = 0;
+
+    let game = null;
+
+    function getBiomeAt(x, y) {
+      // Black Opal Biome (Top Center)
+      if (Math.hypot(x - 1600, y - 420) < 470) return 'black_opal';
+      // 4 Corner Crystal Biomes
+      if (x < 1020 && y < 1020) return 'ruby';
+      if (x > 2180 && y < 1020) return 'sapphire';
+      if (x < 1020 && y > 2180) return 'amethyst';
+      if (x > 2180 && y > 2180) return 'emerald';
+      // Forests on West & East flanks
+      if (x < 1180 || x > 2020) return 'forest';
+      // Central Plains
+      return 'plains';
+    }
+
+    function rand(min, max) { return min + Math.random() * (max - min); }
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+    function buildWorld(dragonId) {
+      const dragonDef = DRAGONS[dragonId];
+      const eyeObj = dragonDef.eyeOptions.find(e => e.id === chosenEyes[dragonId]) || dragonDef.eyeOptions[0];
+      const spawnBiome = BIOMES[dragonDef.biomeId];
+
+      const objects = [];
+      const entities = [];
+      const traps = [];
+      const villages = [];
+      const hunterCamps = [];
+      const caves = [];
+      const convertedPatches = [];
+
+      // 1. Cave Entrances in each of the 5 Crystal Biomes
+      ['ruby', 'sapphire', 'amethyst', 'emerald', 'black_opal'].forEach(bId => {
+        const b = BIOMES[bId];
+        caves.push({
+          biomeId: bId,
+          x: b.spawnX + 140,
+          y: b.spawnY - 90,
+          radius: 42,
+          name: b.caveName
+        });
+      });
+
+      // 2. Villages in Plains & Forest edge
+      const villageCoords = [
+        { x: 1440, y: 1560, name: 'Sunbrook Village' },
+        { x: 1860, y: 1840, name: 'Crystalview Hamlet' }
+      ];
+      villageCoords.forEach(v => {
+        villages.push(v);
+        // Houses
+        const offsets = [[-85, -55], [75, -60], [-65, 65], [85, 55]];
+        offsets.forEach(([ox, oy]) => {
+          objects.push({
+            id: Math.random().toString(36).slice(2),
+            type: 'house',
+            x: v.x + ox, y: v.y + oy,
+            radius: 34, hp: 6, maxHp: 6,
+            biome: 'plains', convertedTo: null
+          });
+        });
+        // Villagers (humans)
+        for (let i = 0; i < 4; i++) {
+          entities.push({
+            id: Math.random().toString(36).slice(2),
+            type: 'human',
+            x: v.x + rand(-110, 110),
+            y: v.y + rand(-110, 110),
+            vx: 0, vy: 0,
+            radius: 13, hp: 3, maxHp: 3,
+            homeX: v.x, homeY: v.y,
+            aiTimer: rand(0.5, 2.5),
+            shirtColor: ['#3b82f6', '#eab308', '#ec4899', '#14b8a6'][i % 4]
+          });
+        }
+      });
+
+      // 3. Hunter Camps in Plains / Forests
+      const campCoords = [
+        { x: 1260, y: 1220 },
+        { x: 1940, y: 1250 },
+        { x: 1580, y: 2150 },
+        { x: 1050, y: 1750 },
+        { x: 2150, y: 1700 }
+      ];
+      campCoords.forEach(c => {
+        hunterCamps.push(c);
+        // Tents & campfire
+        objects.push({
+          id: Math.random().toString(36).slice(2),
+          type: 'tent', x: c.x - 42, y: c.y - 22,
+          radius: 26, hp: 3, maxHp: 3, biome: 'plains', convertedTo: null
+        });
+        objects.push({
+          id: Math.random().toString(36).slice(2),
+          type: 'tent', x: c.x + 44, y: c.y - 18,
+          radius: 26, hp: 3, maxHp: 3, biome: 'plains', convertedTo: null
+        });
+        // Hunters
+        for (let i = 0; i < 2; i++) {
+          entities.push({
+            id: Math.random().toString(36).slice(2),
+            type: 'hunter',
+            x: c.x + rand(-60, 60),
+            y: c.y + rand(-60, 60),
+            vx: 0, vy: 0,
+            radius: 15, hp: 5, maxHp: 5,
+            homeX: c.x, homeY: c.y,
+            state: 'patrol',
+            aiTimer: rand(0.5, 2),
+            trapCooldown: rand(2, 5),
+            attackCooldown: 0,
+            stunTimer: 0
+          });
+        }
+      });
+
+      // 4. Trees, Crystal Spires & Rocks across all biomes
+      for (let i = 0; i < 240; i++) {
+        const x = rand(100, WORLD_SIZE - 100);
+        const y = rand(100, WORLD_SIZE - 100);
+        // Keep spawn, caves, villages, camps somewhat clear
+        if (Math.hypot(x - spawnBiome.spawnX, y - spawnBiome.spawnY) < 110) continue;
+        if (caves.some(c => Math.hypot(x - c.x, y - c.y) < 95)) continue;
+        if (villages.some(v => Math.hypot(x - v.x, y - v.y) < 130)) continue;
+        if (hunterCamps.some(c => Math.hypot(x - c.x, y - c.y) < 95)) continue;
+
+        const bId = getBiomeAt(x, y);
+        const isCrystalBiome = BIOMES[bId].isCrystal;
+        const r = Math.random();
+        let type = 'tree';
+        if (isCrystalBiome && r < 0.42) type = 'crystal';
+        else if (!isCrystalBiome && r < 0.25) type = 'rock';
+
+        objects.push({
+          id: Math.random().toString(36).slice(2),
+          type, x, y,
+          radius: type === 'tree' ? rand(22, 30) : rand(16, 23),
+          hp: type === 'crystal' ? 2 : 3,
+          maxHp: type === 'crystal' ? 2 : 3,
+          biome: bId,
+          convertedTo: null
+        });
+      }
+
+      // 5. Cows & Pigs (Plenty in Plains, Forests, and a few wandering near crystal biome borders so players can find food!)
+      for (let i = 0; i < 34; i++) {
+        const isNearSpawn = i < 6;
+        const x = isNearSpawn ? clamp(spawnBiome.spawnX + rand(-340, 340), 120, WORLD_SIZE - 120) : rand(260, WORLD_SIZE - 260);
+        const y = isNearSpawn ? clamp(spawnBiome.spawnY + rand(-340, 340), 120, WORLD_SIZE - 120) : rand(260, WORLD_SIZE - 260);
+        entities.push({
+          id: Math.random().toString(36).slice(2),
+          type: i % 2 === 0 ? 'cow' : 'pig',
+          x, y, vx: 0, vy: 0,
+          radius: i % 2 === 0 ? 15 : 13,
+          hp: 2, maxHp: 2,
+          aiTimer: rand(0.5, 3),
+          facing: rand(0, Math.PI * 2)
+        });
+      }
+
+      // 6. Wild Mobs (Slimes / Goblins) in Forests & Plains
+      for (let i = 0; i < 14; i++) {
+        entities.push({
+          id: Math.random().toString(36).slice(2),
+          type: 'mob',
+          x: rand(650, WORLD_SIZE - 650),
+          y: rand(650, WORLD_SIZE - 650),
+          vx: 0, vy: 0,
+          radius: 14, hp: 3, maxHp: 3,
+          aiTimer: rand(0.5, 2),
+          convertedTo: null
+        });
+      }
+
+      // 7. Build Cave Layouts for all 5 Crystal Biomes
+      const caveData = {};
+      ['ruby', 'sapphire', 'amethyst', 'emerald', 'black_opal'].forEach(bId => {
+        const cObjects = [];
+        const ceilingCrystals = [];
+        // Cave floor crystal clusters
+        for (let i = 0; i < 24; i++) {
+          const cx = rand(110, CAVE_SIZE - 110);
+          const cy = rand(140, CAVE_SIZE - 150);
+          if (Math.hypot(cx - CAVE_SIZE / 2, cy - (CAVE_SIZE - 110)) < 110) continue;
+          cObjects.push({
+            id: Math.random().toString(36).slice(2),
+            type: 'crystal',
+            x: cx, y: cy,
+            radius: rand(16, 24),
+            hp: 2, maxHp: 2,
+            biome: bId,
+            convertedTo: null
+          });
+        }
+        // Crystals hanging from the ceiling!
+        for (let i = 0; i < 22; i++) {
+          ceilingCrystals.push({
+            x: rand(70, CAVE_SIZE - 70),
+            y: rand(70, CAVE_SIZE - 70),
+            size: rand(16, 30),
+            shimmerOffset: rand(0, Math.PI * 2)
+          });
+        }
+        caveData[bId] = {
+          objects: cObjects,
+          ceilingCrystals,
+          exitX: CAVE_SIZE / 2,
+          exitY: CAVE_SIZE - 75
+        };
+      });
+
+      return {
+        dragonDef,
+        eyeColor: eyeObj.hex,
+        eyeLabel: eyeObj.label,
+        inCave: null, // null = overworld, or biomeId when inside a crystal cave
+        overworldReturn: { x: spawnBiome.spawnX, y: spawnBiome.spawnY },
+        player: {
+          x: spawnBiome.spawnX,
+          y: spawnBiome.spawnY,
+          angle: 0,
+          hp: 100,
+          maxHp: 100,
+          xp: 0,
+          level: 1,
+          scale: 1.0,
+          eaten: 0,
+          abilityUnlocked: false,
+          abilityCooldown: 0,
+          glowing: false,
+          crystals: 0,
+          armorInventory: 0,
+          armorEquipped: false,
+          trappedTimer: 0,
+          hurtFlash: 0,
+          wingPhase: 0
+        },
+        objects,
+        entities,
+        traps,
+        villages,
+        hunterCamps,
+        caves,
+        caveData,
+        convertedPatches,
+        particles: [],
+        bolts: [],
+        floatingTexts: [],
+        paused: false,
+        gameOver: false,
+        victoryShown: false,
+        time: 0
+      };
+    }
+
+    // ==================== 5. GAMEPLAY ACTIONS ====================
+    function showToast(msg, duration = 2.6) {
+      const el = document.getElementById('toastBanner');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      toastTimer = duration;
+    }
+
+    function addFloatingText(x, y, text, color = '#ffffff') {
+      game.floatingTexts.push({ x, y, text, color, life: 1.1, maxLife: 1.1 });
+    }
+
+    function spawnParticles(x, y, color, count = 10, speed = 110) {
+      for (let i = 0; i < count; i++) {
+        const a = rand(0, Math.PI * 2);
+        const sp = rand(speed * 0.35, speed);
+        game.particles.push({
+          x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+          color, size: rand(2.5, 5.5), life: rand(0.3, 0.7), maxLife: 0.7
+        });
+      }
+    }
+
+    function gainXp(amount) {
+      const p = game.player;
+      p.xp += amount;
+      while (p.level < 5 && p.xp >= LEVEL_THRESHOLDS[p.level]) {
+        p.level++;
+        p.scale = 1 + (p.level - 1) * 0.24;
+        p.maxHp = 100 + (p.level - 1) * 25;
+        p.hp = p.maxHp;
+        Sound.play('levelup');
+        spawnParticles(p.x, p.y, game.dragonDef.crystalColor, 26, 170);
+        addFloatingText(p.x, p.y - 35, `LEVEL ${p.level}! GREW BIGGER!`, '#facc15');
+        showToast(`You grew into a Level ${p.level} ${LEVEL_TITLES[p.level - 1]}!`);
+
+        if (p.level === 5 && !game.victoryShown) {
+          game.victoryShown = true;
+          openEndModal(true);
+        }
+      }
+    }
+
+    function getActiveObjects() {
+      return game.inCave ? game.caveData[game.inCave].objects : game.objects;
+    }
+
+    function handleLeftClickBreak(wx, wy) {
+      if (!game || game.paused || game.gameOver) return;
+      const p = game.player;
+      const reach = 125 * p.scale;
+
+      // First check if trapped — left-click breaks free!
+      if (p.trappedTimer > 0) {
+        p.trappedTimer = Math.max(0, p.trappedTimer - 0.85);
+        Sound.play('break');
+        spawnParticles(p.x, p.y, '#cbd5e1', 8, 90);
+        addFloatingText(p.x, p.y - 24, p.trappedTimer <= 0 ? 'BROKE FREE!' : 'SHATTERING TRAP...', '#facc15');
+        return;
+      }
+
+      // Check hunter traps on ground
+      if (!game.inCave) {
+        for (let i = game.traps.length - 1; i >= 0; i--) {
+          const t = game.traps[i];
+          if (Math.hypot(t.x - wx, t.y - wy) < 34 && Math.hypot(t.x - p.x, t.y - p.y) < reach) {
+            game.traps.splice(i, 1);
+            p.crystals += 1;
+            Sound.play('break');
+            spawnParticles(t.x, t.y, '#94a3b8', 12, 110);
+            addFloatingText(t.x, t.y - 12, '+1 Shard (Trap Broken)', '#38bdf8');
+            return;
+          }
+        }
+      }
+
+      // Check objects (trees, rocks, crystals, tents, houses)
+      const list = getActiveObjects();
+      for (let i = list.length - 1; i >= 0; i--) {
+        const obj = list[i];
+        if (Math.hypot(obj.x - wx, obj.y - wy) <= obj.radius + 16 && Math.hypot(obj.x - p.x, obj.y - p.y) <= reach + obj.radius) {
+          obj.hp -= (p.level >= 3 ? 2 : 1);
+          Sound.play('break');
+          const bColor = obj.convertedTo ? DRAGONS[obj.convertedTo].crystalColor : BIOMES[obj.biome].crystal;
+          spawnParticles(obj.x, obj.y, bColor, 9, 100);
+          if (obj.hp <= 0) {
+            list.splice(i, 1);
+            const drop = (obj.type === 'crystal' || obj.convertedTo) ? 2 : 1;
+            p.crystals += drop;
+            gainXp(10);
+            addFloatingText(obj.x, obj.y - 14, `+${drop} 💎`, '#67e8f9');
+            if (p.crystals >= 5 && p.armorInventory === 0 && !p.armorEquipped) {
+              showToast('You have 5+ crystals! Press [E] to craft Dragon Armor!');
+            }
+          }
+          return;
+        }
+      }
+    }
+
+    function tryEatNearbyLivestock(wx, wy, autoNearest = false) {
+      if (!game || game.paused || game.gameOver || game.inCave) return false;
+      const p = game.player;
+      const eatReach = 115 * p.scale;
+
+      let targetIdx = -1;
+      let bestDist = Infinity;
+
+      for (let i = 0; i < game.entities.length; i++) {
+        const e = game.entities[i];
+        if (e.type !== 'cow' && e.type !== 'pig') continue;
+        const distToPlayer = Math.hypot(e.x - p.x, e.y - p.y);
+        if (distToPlayer > eatReach) continue;
+
+        if (autoNearest) {
+          if (distToPlayer < bestDist) { bestDist = distToPlayer; targetIdx = i; }
+        } else {
+          const distToClick = Math.hypot(e.x - wx, e.y - wy);
+          if (distToClick <= e.radius + 32 && distToClick < bestDist) {
+            bestDist = distToClick;
+            targetIdx = i;
+          }
+        }
+      }
+
+      if (targetIdx !== -1) {
+        const prey = game.entities[targetIdx];
+        game.entities.splice(targetIdx, 1);
+        p.eaten++;
+        p.hp = Math.min(p.maxHp, p.hp + 25);
+        Sound.play('eat');
+        spawnParticles(prey.x, prey.y, '#fbbf24', 14, 120);
+        addFloatingText(prey.x, prey.y - 16, `YUM! (${p.eaten}/5)`, '#fde047');
+        gainXp(32);
+
+        // Respawn a fresh cow or pig elsewhere so the world never runs dry
+        setTimeout(() => {
+          if (!game) return;
+          game.entities.push({
+            id: Math.random().toString(36).slice(2),
+            type: Math.random() < 0.5 ? 'cow' : 'pig',
+            x: rand(500, WORLD_SIZE - 500),
+            y: rand(500, WORLD_SIZE - 500),
+            vx: 0, vy: 0, radius: 14, hp: 2, maxHp: 2,
+            aiTimer: rand(1, 3), facing: rand(0, Math.PI * 2)
+          });
+        }, 4500);
+
+        if (p.eaten === 5 && !p.abilityUnlocked) {
+          p.abilityUnlocked = true;
+          Sound.play('levelup');
+          showToast(`⚡ ${game.dragonDef.abilityName} UNLOCKED! Press Space or Right-Click to cast!`, 4.2);
+          addFloatingText(p.x, p.y - 44, `${game.dragonDef.abilityName.toUpperCase()} UNLOCKED!`, game.dragonDef.boltColor);
+        }
+        return true;
+      }
+      return false;
+    }
+
+    function castDragonAbility(wx, wy) {
+      if (!game || game.paused || game.gameOver) return;
+      const p = game.player;
+      if (!p.abilityUnlocked) {
+        showToast(`Eat ${5 - p.eaten} more cows or pigs (Right-Click them) to unlock ${game.dragonDef.abilityName}!`);
+        return;
+      }
+      if (p.abilityCooldown > 0) return;
+
+      p.abilityCooldown = 0.55;
+      const d = game.dragonDef;
+      const angle = Math.atan2(wy - p.y, wx - p.x);
+      const maxRange = 280 + p.level * 28;
+      const dist = Math.min(maxRange, Math.hypot(wx - p.x, wy - p.y));
+      const tx = p.x + Math.cos(angle) * Math.max(85, dist);
+      const ty = p.y + Math.sin(angle) * Math.max(85, dist);
+
+      Sound.play(d.abilityType === 'opal_wave' ? 'opal' : 'lightning');
+
+      // Visual bolt or iridescent opal wave
+      game.bolts.push({
+        x1: p.x + Math.cos(angle) * (20 * p.scale),
+        y1: p.y + Math.sin(angle) * (20 * p.scale),
+        x2: tx, y2: ty,
+        color: d.boltColor,
+        glow: d.boltGlow,
+        type: d.abilityType,
+        life: 0.32, maxLife: 0.32
+      });
+
+      // Leave a crystalized ground patch in overworld
+      if (!game.inCave) {
+        game.convertedPatches.push({ x: tx, y: ty, radius: rand(26, 42), dragonId: d.id });
+        if (game.convertedPatches.length > 90) game.convertedPatches.shift();
+      }
+
+      spawnParticles(tx, ty, d.crystalColor, 18, 150);
+
+      // Transform objects near impact into this dragon's crystal!
+      const list = getActiveObjects();
+      let convertedAny = false;
+      list.forEach(obj => {
+        if (Math.hypot(obj.x - tx, obj.y - ty) <= 78 + obj.radius) {
+          if (obj.convertedTo !== d.id) {
+            obj.convertedTo = d.id;
+            convertedAny = true;
+            gainXp(8);
+            addFloatingText(obj.x, obj.y - 18, `Turned to ${d.shortName}!`, d.crystalAccent);
+          }
+        }
+      });
+
+      // Zap hunters, traps, and mobs near impact!
+      if (!game.inCave) {
+        for (let i = game.traps.length - 1; i >= 0; i--) {
+          if (Math.hypot(game.traps[i].x - tx, game.traps[i].y - ty) < 85) {
+            game.traps.splice(i, 1);
+            spawnParticles(tx, ty, d.boltColor, 10, 120);
+          }
+        }
+        for (let i = game.entities.length - 1; i >= 0; i--) {
+          const e = game.entities[i];
+          if (Math.hypot(e.x - tx, e.y - ty) <= 82 + e.radius) {
+            if (e.type === 'hunter') {
+              e.hp -= 2.5;
+              e.stunTimer = 1.6;
+              // Knockback away from dragon
+              const ka = Math.atan2(e.y - p.y, e.x - p.x);
+              e.x += Math.cos(ka) * 45;
+              e.y += Math.sin(ka) * 45;
+              addFloatingText(e.x, e.y - 20, 'ZAPPED!', d.boltColor);
+              if (e.hp <= 0) {
+                game.entities.splice(i, 1);
+                p.crystals += 2;
+                gainXp(35);
+                addFloatingText(e.x, e.y - 28, 'Hunter Defeated! +2 💎', '#facc15');
+              }
+            } else if (e.type === 'mob') {
+              e.convertedTo = d.id;
+              e.hp -= 2;
+              if (e.hp <= 0) {
+                game.entities.splice(i, 1);
+                p.crystals += 1;
+                gainXp(20);
+                addFloatingText(e.x, e.y - 16, `Crystalized! +1 💎`, d.crystalAccent);
+              }
+            }
+          }
+        }
+      }
+
+      if (convertedAny) {
+        p.crystals += 1;
+      }
+    }
+
+    function toggleGlow() {
+      if (!game || game.paused || game.gameOver) return;
+      game.player.glowing = !game.player.glowing;
+      Sound.play('glow');
+      spawnParticles(game.player.x, game.player.y, game.dragonDef.glowColor, 14, 110);
+      showToast(game.player.glowing ? '✨ Dragon scales are now GLOWING!' : 'Dragon scale glow dimmed.', 1.8);
+    }
+
+    function tryToggleCave() {
+      if (!game || game.paused || game.gameOver) return;
+      const p = game.player;
+      if (game.inCave) {
+        const cave = game.caveData[game.inCave];
+        if (Math.hypot(p.x - cave.exitX, p.y - cave.exitY) < 75) {
+          game.inCave = null;
+          p.x = game.overworldReturn.x;
+          p.y = game.overworldReturn.y + 52;
+          Sound.play('opal');
+          showToast('Returned to the Overworld!');
+        }
+      } else {
+        const nearCave = game.caves.find(c => Math.hypot(p.x - c.x, p.y - c.y) < 70);
+        if (nearCave) {
+          game.overworldReturn = { x: nearCave.x, y: nearCave.y };
+          game.inCave = nearCave.biomeId;
+          p.x = CAVE_SIZE / 2;
+          p.y = CAVE_SIZE - 125;
+          Sound.play('opal');
+          showToast(`Entered ${nearCave.name}! Press [G] to glow in the dark!`, 3.5);
+        }
+      }
+    }
+
+    // ==================== 6. INVENTORY & MODALS ====================
+    function syncInventoryModal() {
+      if (!game) return;
+      const p = game.player;
+      document.getElementById('invCrystalCount').textContent = p.crystals;
+      document.getElementById('invFoodCount').textContent = `${p.eaten} / 5`;
+      document.getElementById('invArmorCount').textContent = p.armorInventory + (p.armorEquipped ? 1 : 0);
+
+      const craftBtn = document.getElementById('craftArmorBtn');
+      craftBtn.disabled = p.crystals < 5;
+
+      const equipBtn = document.getElementById('toggleEquipArmorBtn');
+      const slotDesc = document.getElementById('invArmorSlotDesc');
+      if (p.armorEquipped) {
+        slotDesc.textContent = `${game.dragonDef.shortName} Crystal Armor Equipped (-60% dmg)`;
+        equipBtn.textContent = 'Unequip';
+        equipBtn.disabled = false;
+      } else if (p.armorInventory > 0) {
+        slotDesc.textContent = 'Crystal Armor ready in bag';
+        equipBtn.textContent = 'Put On Armor';
+        equipBtn.disabled = false;
+      } else {
+        slotDesc.textContent = 'Craft armor using 5 crystal shards first';
+        equipBtn.textContent = 'Put On Armor';
+        equipBtn.disabled = true;
+      }
+    }
+
+    function toggleInventory() {
+      if (!game || game.gameOver) return;
+      const modal = document.getElementById('inventoryModal');
+      const isHidden = modal.classList.contains('hidden');
+      if (isHidden) {
+        document.getElementById('helpModal').classList.add('hidden');
+        game.paused = true;
+        syncInventoryModal();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+        game.paused = false;
+      }
+    }
+
+    function openEndModal(isVictory) {
+      game.paused = true;
+      if (!isVictory) game.gameOver = true;
+      document.getElementById('endIcon').textContent = isVictory ? '👑' : '🕸️';
+      document.getElementById('endTitle').textContent = isVictory ? 'Elder Crystal Dragon!' : 'Trapped by Hunters!';
+      document.getElementById('endDesc').textContent = isVictory
+        ? `Your ${game.dragonDef.name} grew to maximum Level 5 size and outgrew the hunters! You ate ${game.player.eaten} cows/pigs and gathered ${game.player.crystals} crystals.`
+        : `The hunters caught your ${game.dragonDef.name}. Try crafting Crystal Armor with 5 shards (press E) and using your lightning/opal power to escape!`;
+      document.getElementById('endContinueBtn').classList.toggle('hidden', !isVictory);
+      document.getElementById('endModal').classList.remove('hidden');
+    }
+
+    // ==================== 7. UPDATE LOOP ====================
+    function update(dt) {
+      if (!game || game.paused || game.gameOver) return;
+      game.time += dt;
+      const p = game.player;
+
+      if (toastTimer > 0) {
+        toastTimer -= dt;
+        if (toastTimer <= 0) document.getElementById('toastBanner').classList.add('hidden');
+      }
+      if (p.abilityCooldown > 0) p.abilityCooldown -= dt;
+      if (p.hurtFlash > 0) p.hurtFlash -= dt;
+
+      // Movement (WASD / Arrows)
+      let dx = 0, dy = 0;
+      if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
+      if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+      if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+      if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+
+      if (p.trappedTimer > 0) {
+        p.trappedTimer -= dt;
+        if (dx !== 0 || dy !== 0) p.trappedTimer -= dt * 0.9; // Struggling frees you faster
+        dx *= 0.12; dy *= 0.12;
+      }
+
+      if (dx !== 0 || dy !== 0) {
+        const len = Math.hypot(dx, dy);
+        dx /= len; dy /= len;
+        const speed = (195 + (p.level - 1) * 14) * (p.armorEquipped ? 1.04 : 1);
+        const bound = game.inCave ? CAVE_SIZE - 48 : WORLD_SIZE - 48;
+        p.x = clamp(p.x + dx * speed * dt, 48, bound);
+        p.y = clamp(p.y + dy * speed * dt, 48, bound);
+        p.wingPhase += dt * 11;
+      } else {
+        p.wingPhase += dt * 3.5;
+      }
+
+      // Aim dragon head toward mouse
+      p.angle = Math.atan2(mouse.worldY - p.y, mouse.worldX - p.x);
+
+      // Scale glow passive particles
+      if (p.glowing && Math.random() < 0.35) {
+        spawnParticles(p.x + rand(-18, 18), p.y + rand(-18, 18), game.dragonDef.glowColor, 1, 35);
+      }
+
+      // Overworld AI (Cows, Pigs, Humans, Mobs, Hunters & Traps)
+      if (!game.inCave) {
+        game.entities.forEach(e => {
+          e.aiTimer -= dt;
+          if (e.type === 'cow' || e.type === 'pig') {
+            if (e.aiTimer <= 0) {
+              const a = rand(0, Math.PI * 2);
+              const moving = Math.random() < 0.65;
+              e.vx = moving ? Math.cos(a) * 38 : 0;
+              e.vy = moving ? Math.sin(a) * 38 : 0;
+              e.facing = a;
+              e.aiTimer = rand(1.2, 3.5);
+            }
+            e.x = clamp(e.x + e.vx * dt, 80, WORLD_SIZE - 80);
+            e.y = clamp(e.y + e.vy * dt, 80, WORLD_SIZE - 80);
+          } else if (e.type === 'human') {
+            const dToDragon = Math.hypot(p.x - e.x, p.y - e.y);
+            if (dToDragon < 150) {
+              // Villagers nervously back away from big dragons
+              const a = Math.atan2(e.y - p.y, e.x - p.x);
+              e.vx = Math.cos(a) * 65; e.vy = Math.sin(a) * 65;
+            } else if (e.aiTimer <= 0) {
+              const a = Math.atan2(e.homeY - e.y + rand(-90, 90), e.homeX - e.x + rand(-90, 90));
+              e.vx = Math.cos(a) * 32; e.vy = Math.sin(a) * 32;
+              e.aiTimer = rand(1.5, 3.5);
+            }
+            e.x = clamp(e.x + e.vx * dt, 80, WORLD_SIZE - 80);
+            e.y = clamp(e.y + e.vy * dt, 80, WORLD_SIZE - 80);
+          } else if (e.type === 'mob') {
+            if (e.aiTimer <= 0) {
+              const a = rand(0, Math.PI * 2);
+              e.vx = Math.cos(a) * 52; e.vy = Math.sin(a) * 52;
+              e.aiTimer = rand(1, 2.5);
+            }
+            e.x = clamp(e.x + e.vx * dt, 80, WORLD_SIZE - 80);
+            e.y = clamp(e.y + e.vy * dt, 80, WORLD_SIZE - 80);
+          } else if (e.type === 'hunter') {
+            if (e.stunTimer > 0) { e.stunTimer -= dt; return; }
+            if (e.attackCooldown > 0) e.attackCooldown -= dt;
+            if (e.trapCooldown > 0) e.trapCooldown -= dt;
+
+            const dist = Math.hypot(p.x - e.x, p.y - e.y);
+            const detectRange = 360;
+            if (dist < detectRange) {
+              e.state = 'chase';
+              const a = Math.atan2(p.y - e.y, p.x - e.x);
+              const chaseSpeed = 128;
+              e.x = clamp(e.x + Math.cos(a) * chaseSpeed * dt, 60, WORLD_SIZE - 60);
+              e.y = clamp(e.y + Math.sin(a) * chaseSpeed * dt, 60, WORLD_SIZE - 60);
+
+              // Throw / lay trap ahead of dragon
+              if (e.trapCooldown <= 0 && dist < 240 && dist > 65 && game.traps.length < 18) {
+                e.trapCooldown = 6.5;
+                game.traps.push({
+                  x: e.x + Math.cos(a) * 55,
+                  y: e.y + Math.sin(a) * 55,
+                  radius: 18,
+                  life: 24
+                });
+                addFloatingText(e.x, e.y - 22, 'TRAP SET!', '#f87171');
+              }
+
+              // Melee capture strike if very close
+              if (dist < 28 + 14 * p.scale && e.attackCooldown <= 0) {
+                e.attackCooldown = 1.25;
+                const dmg = Math.round(14 * (p.armorEquipped ? 0.4 : 1));
+                p.hp = Math.max(0, p.hp - dmg);
+                p.hurtFlash = 0.25;
+                Sound.play('hurt');
+                addFloatingText(p.x, p.y - 24, `-${dmg} HP`, '#fb7185');
+                if (p.hp <= 0) openEndModal(false);
+              }
+            } else {
+              e.state = 'patrol';
+              if (e.aiTimer <= 0) {
+                const a = Math.atan2(e.homeY - e.y + rand(-140, 140), e.homeX - e.x + rand(-140, 140));
+                e.vx = Math.cos(a) * 54; e.vy = Math.sin(a) * 54;
+                e.aiTimer = rand(1.5, 3.5);
+              }
+              e.x = clamp(e.x + e.vx * dt, 80, WORLD_SIZE - 80);
+              e.y = clamp(e.y + e.vy * dt, 80, WORLD_SIZE - 80);
+            }
+          }
+        });
+
+        // Update Traps
+        for (let i = game.traps.length - 1; i >= 0; i--) {
+          const t = game.traps[i];
+          t.life -= dt;
+          if (t.life <= 0) { game.traps.splice(i, 1); continue; }
+          if (Math.hypot(p.x - t.x, p.y - t.y) < t.radius + 14 * p.scale) {
+            game.traps.splice(i, 1);
+            p.trappedTimer = p.armorEquipped ? 1.2 : 2.3;
+            const dmg = Math.round(12 * (p.armorEquipped ? 0.4 : 1));
+            p.hp = Math.max(0, p.hp - dmg);
+            p.hurtFlash = 0.3;
+            Sound.play('hurt');
+            addFloatingText(p.x, p.y - 30, 'CAUGHT IN TRAP! Left-Click!', '#f87171');
+            showToast('Caught in a hunter trap! Left-Click or mash WASD to break free!', 2.4);
+            if (p.hp <= 0) openEndModal(false);
+          }
+        }
+      }
+
+      // Particles, Bolts & Floating Text
+      for (let i = game.particles.length - 1; i >= 0; i--) {
+        const pt = game.particles[i];
+        pt.x += pt.vx * dt; pt.y += pt.vy * dt;
+        pt.life -= dt;
+        if (pt.life <= 0) game.particles.splice(i, 1);
+      }
+      for (let i = game.bolts.length - 1; i >= 0; i--) {
+        game.bolts[i].life -= dt;
+        if (game.bolts[i].life <= 0) game.bolts.splice(i, 1);
+      }
+      for (let i = game.floatingTexts.length - 1; i >= 0; i--) {
+        const ft = game.floatingTexts[i];
+        ft.y -= 28 * dt; ft.life -= dt;
+        if (ft.life <= 0) game.floatingTexts.splice(i, 1);
+      }
+
+      updateHUD();
+    }
+
+    function updateHUD() {
+      const p = game.player;
+      const d = game.dragonDef;
+      document.getElementById('hudDragonDot').style.background = d.crystalColor;
+      document.getElementById('hudDragonName').textContent = d.name;
+      document.getElementById('hudLevelBadge').textContent = `Lv ${p.level} • ${LEVEL_TITLES[p.level - 1]}`;
+      document.getElementById('hudHpText').textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+      document.getElementById('hudHpBar').style.width = `${(p.hp / p.maxHp) * 100}%`;
+
+      const nextXp = p.level < 5 ? LEVEL_THRESHOLDS[p.level] : LEVEL_THRESHOLDS[4];
+      const prevXp = LEVEL_THRESHOLDS[p.level - 1];
+      const xpPct = p.level >= 5 ? 100 : clamp(((p.xp - prevXp) / (nextXp - prevXp)) * 100, 0, 100);
+      document.getElementById('hudXpText').textContent = p.level >= 5 ? 'MAX SIZE' : `${p.xp} / ${nextXp} XP`;
+      document.getElementById('hudXpBar').style.width = `${xpPct}%`;
+
+      document.getElementById('hudFoodText').textContent = p.abilityUnlocked ? `Power Ready! (${p.eaten})` : `${p.eaten} / 5 Eaten`;
+      document.getElementById('hudArmorText').textContent = p.armorEquipped ? 'Armor ON' : (p.armorInventory > 0 ? 'In Bag [E]' : 'No Armor');
+      document.getElementById('hudArmorStatus').className = `flex items-center gap-1 font-medium ${p.armorEquipped ? 'text-emerald-300' : 'text-slate-400'}`;
+      document.getElementById('hudCrystalsCount').textContent = `💎 ${p.crystals}`;
+
+      const locBiome = game.inCave ? BIOMES[game.inCave] : BIOMES[getBiomeAt(p.x, p.y)];
+      document.getElementById('hudLocationIcon').textContent = game.inCave ? '🕳️' : '🌍';
+      document.getElementById('hudBiomeName').textContent = game.inCave ? locBiome.caveName : locBiome.name;
+
+      // Ability Hotbar Button
+      const abBtn = document.getElementById('btnActionAbility');
+      document.getElementById('abilityIcon').textContent = p.abilityUnlocked ? (d.abilityType === 'opal_wave' ? '🌀' : '⚡') : '🔒';
+      document.getElementById('abilityBtnLabel').textContent = p.abilityUnlocked ? d.shortName : `${p.eaten}/5 Eat`;
+      abBtn.classList.toggle('ability-ready', p.abilityUnlocked);
+
+      // Glow Button highlight
+      const glowBtn = document.getElementById('btnActionGlow');
+      glowBtn.classList.toggle('border-amber-400', p.glowing);
+      glowBtn.classList.toggle('bg-amber-500/25', p.glowing);
+
+      // Cave Entry/Exit Prompt
+      const promptEl = document.getElementById('promptBanner');
+      const caveHotBtn = document.getElementById('btnActionCave');
+      if (game.inCave) {
+        const cave = game.caveData[game.inCave];
+        const nearExit = Math.hypot(p.x - cave.exitX, p.y - cave.exitY) < 75;
+        promptEl.classList.toggle('hidden', !nearExit);
+        caveHotBtn.classList.toggle('hidden', !nearExit);
+        caveHotBtn.classList.toggle('flex', nearExit);
+        if (nearExit) {
+          promptEl.textContent = 'Press [C] or Click here to Exit Cave to Overworld';
+          document.getElementById('caveBtnLabel').textContent = 'Exit [C]';
+        }
+      } else {
+        const nearCave = game.caves.find(c => Math.hypot(p.x - c.x, p.y - c.y) < 70);
+        promptEl.classList.toggle('hidden', !nearCave);
+        caveHotBtn.classList.toggle('hidden', !nearCave);
+        caveHotBtn.classList.toggle('flex', !!nearCave);
+        if (nearCave) {
+          promptEl.textContent = `Press [C] or Click here to Enter ${nearCave.name}`;
+          document.getElementById('caveBtnLabel').textContent = 'Cave [C]';
+        }
+      }
+    }
+
+    // ==================== 8. RENDERING ====================
+    function render() {
+      if (!game) return;
+      const w = canvas.width;
+      const h = canvas.height;
+      const p = game.player;
+
+      const camX = p.x - w / 2;
+      const camY = p.y - h / 2;
+      mouse.worldX = mouse.x + camX;
+      mouse.worldY = mouse.y + camY;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.save();
+      ctx.translate(-camX, -camY);
+
+      if (game.inCave) {
+        renderCave(camX, camY, w, h);
+      } else {
+        renderOverworld(camX, camY, w, h);
+      }
+
+      // Render Dragon Player
+      drawDragonPlayer(p);
+
+      // Render Ceiling Crystals overhead when in a Cave!
+      if (game.inCave) {
+        renderCaveCeilingAndDarkness(camX, camY, w, h);
+      }
+
+      // Render Lightning Bolts / Opal Waves
+      game.bolts.forEach(b => {
+        const alpha = b.life / b.maxLife;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        if (b.type === 'opal_wave') {
+          const r = (1 - alpha) * 90 + 18;
+          const grad = ctx.createRadialGradient(b.x2, b.y2, 4, b.x2, b.y2, r);
+          grad.addColorStop(0, '#ff5ea8');
+          grad.addColorStop(0.5, '#22d3ee');
+          grad.addColorStop(1, 'rgba(168,85,247,0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath(); ctx.arc(b.x2, b.y2, r, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#ff5ea8';
+          ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+        } else {
+          // Jagged crystal lightning bolt
+          ctx.strokeStyle = b.glow;
+          ctx.lineWidth = 8;
+          ctx.lineCap = 'round';
+          drawJaggedBolt(b.x1, b.y1, b.x2, b.y2);
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2.8;
+          drawJaggedBolt(b.x1, b.y1, b.x2, b.y2);
+        }
+        ctx.restore();
+      });
+
+      // Particles
+      game.particles.forEach(pt => {
+        ctx.globalAlpha = clamp(pt.life / pt.maxLife, 0, 1);
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      // Floating Texts
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 13px Inter, sans-serif';
+      game.floatingTexts.forEach(ft => {
+        ctx.globalAlpha = clamp(ft.life / ft.maxLife, 0, 1);
+        ctx.fillStyle = '#000000';
+        ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, ft.x, ft.y);
+      });
+      ctx.globalAlpha = 1;
+
+      ctx.restore();
+
+      // Minimap
+      if (!game.inCave) renderMinimap();
+    }
+
+    function drawJaggedBolt(x1, y1, x2, y2) {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      const segs = 7;
+      for (let i = 1; i < segs; i++) {
+        const t = i / segs;
+        const jx = x1 + (x2 - x1) * t + rand(-14, 14);
+        const jy = y1 + (y2 - y1) * t + rand(-14, 14);
+        ctx.lineTo(jx, jy);
+      }
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    function renderOverworld(camX, camY, w, h) {
+      const tileSize = 80;
+      const startX = Math.max(0, Math.floor(camX / tileSize) * tileSize);
+      const startY = Math.max(0, Math.floor(camY / tileSize) * tileSize);
+      const endX = Math.min(WORLD_SIZE, camX + w + tileSize);
+      const endY = Math.min(WORLD_SIZE, camY + h + tileSize);
+
+      // Biome grass tiles
+      for (let y = startY; y < endY; y += tileSize) {
+        for (let x = startX; x < endX; x += tileSize) {
+          const bId = getBiomeAt(x + 40, y + 40);
+          const b = BIOMES[bId];
+          const alt = ((x / tileSize + y / tileSize) % 2 === 0);
+          ctx.fillStyle = alt ? b.ground : b.groundAlt;
+          ctx.fillRect(x, y, tileSize + 1, tileSize + 1);
+
+          // Crystal grass blades / shimmer flecks in crystal biomes
+          if (b.isCrystal) {
+            ctx.fillStyle = b.crystal;
+            ctx.globalAlpha = 0.25;
+            ctx.fillRect(x + 16, y + 22, 6, 10);
+            ctx.fillRect(x + 54, y + 48, 5, 9);
+            if (bId === 'black_opal') {
+              ctx.fillStyle = '#22d3ee';
+              ctx.fillRect(x + 34, y + 36, 4, 4);
+            }
+            ctx.globalAlpha = 1;
+          }
+        }
+      }
+
+      // World border wall
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+      ctx.lineWidth = 8;
+      ctx.strokeRect(4, 4, WORLD_SIZE - 8, WORLD_SIZE - 8);
+
+      // Crystalized ground patches from dragon abilities
+      game.convertedPatches.forEach(cp => {
+        const d = DRAGONS[cp.dragonId];
+        ctx.fillStyle = d.crystalColor;
+        ctx.globalAlpha = 0.28;
+        ctx.beginPath();
+        ctx.arc(cp.x, cp.y, cp.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+
+      // Village cobblestone plazas
+      game.villages.forEach(v => {
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.24)';
+        ctx.beginPath(); ctx.arc(v.x, v.y, 115, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🏘️ ${v.name}`, v.x, v.y - 122);
+      });
+
+      // Hunter campfires & warning circles
+      game.hunterCamps.forEach(c => {
+        ctx.fillStyle = 'rgba(120, 53, 15, 0.28)';
+        ctx.beginPath(); ctx.arc(c.x, c.y, 72, 0, Math.PI * 2); ctx.fill();
+        // Campfire glow
+        const flicker = Math.sin(game.time * 12) * 3;
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath(); ctx.arc(c.x, c.y + 12, 10 + flicker * 0.4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath(); ctx.arc(c.x, c.y + 12, 5, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // Cave Entrances
+      game.caves.forEach(c => {
+        const b = BIOMES[c.biomeId];
+        ctx.fillStyle = '#090d16';
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = b.crystal;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🕳️ ${b.caveName}`, c.x, c.y - c.radius - 8);
+      });
+
+      // Traps on ground
+      game.traps.forEach(t => {
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath(); ctx.arc(t.x, t.y, 6, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // Objects (Trees, Crystals, Rocks, Houses, Tents)
+      game.objects.forEach(obj => {
+        if (obj.x < camX - 60 || obj.x > camX + w + 60 || obj.y < camY - 60 || obj.y > camY + h + 60) return;
+        drawWorldObject(obj);
+      });
+
+      // Entities (Cows, Pigs, Humans, Mobs, Hunters)
+      game.entities.forEach(e => {
+        if (e.x < camX - 50 || e.x > camX + w + 50 || e.y < camY - 50 || e.y > camY + h + 50) return;
+        drawEntity(e);
+      });
+    }
+
+    function renderCave(camX, camY, w, h) {
+      const b = BIOMES[game.inCave];
+      const cave = game.caveData[game.inCave];
+
+      // Dark Cavern Floor
+      ctx.fillStyle = b.caveFloor;
+      ctx.fillRect(0, 0, CAVE_SIZE, CAVE_SIZE);
+
+      // Cavern Walls
+      ctx.strokeStyle = b.crystal;
+      ctx.lineWidth = 18;
+      ctx.strokeRect(9, 9, CAVE_SIZE - 18, CAVE_SIZE - 18);
+
+      // Biome-Specific Water / Lava Falls!
+      const wave = Math.sin(game.time * 3) * 8;
+      ctx.save();
+      if (game.inCave === 'ruby') {
+        // Lava Falls pouring from top wall into glowing lava pools
+        ctx.fillStyle = '#ea580c';
+        ctx.fillRect(160, 18, 95, 290);
+        ctx.fillRect(720, 18, 105, 330);
+        ctx.fillStyle = '#facc15';
+        ctx.globalAlpha = 0.65;
+        ctx.fillRect(185, 18 + (game.time * 80) % 40, 45, 250);
+        ctx.fillRect(750, 18 + (game.time * 95) % 40, 45, 290);
+        ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.ellipse(208, 320, 88, 44, 0, 0, Math.PI * 2); ctx.fillStyle = '#f97316'; ctx.fill();
+        ctx.beginPath(); ctx.ellipse(772, 355, 95, 48, 0, 0, Math.PI * 2); ctx.fill();
+      } else if (game.inCave === 'sapphire') {
+        // Glowing Blue Water Pools
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 28;
+        ctx.fillStyle = '#0284c7';
+        ctx.beginPath(); ctx.ellipse(260, 340, 145 + wave * 0.4, 90, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(740, 420, 130, 105 + wave * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#7dd3fc';
+        ctx.globalAlpha = 0.45;
+        ctx.beginPath(); ctx.ellipse(260, 340, 95, 55, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      } else if (game.inCave === 'amethyst') {
+        // Streams of Blue Water winding through cavern
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 62;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(60, 220);
+        ctx.bezierCurveTo(320, 140 + wave, 580, 460 - wave, 940, 310);
+        ctx.stroke();
+        ctx.strokeStyle = '#93c5fd';
+        ctx.lineWidth = 14;
+        ctx.setLineDash([24, 20]);
+        ctx.lineDashOffset = -game.time * 55;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (game.inCave === 'emerald') {
+        // Flowing Water Channels
+        ctx.strokeStyle = '#0ea5e9';
+        ctx.lineWidth = 70;
+        ctx.beginPath();
+        ctx.moveTo(220, 40);
+        ctx.quadraticCurveTo(480 + wave, 420, 790, 820);
+        ctx.stroke();
+        ctx.strokeStyle = '#bae6fd';
+        ctx.lineWidth = 12;
+        ctx.setLineDash([28, 22]);
+        ctx.lineDashOffset = -game.time * 68;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (game.inCave === 'black_opal') {
+        // Darker Shimmering Water with subtle opal reflections
+        ctx.fillStyle = '#111133';
+        ctx.beginPath(); ctx.ellipse(500, 340, 260, 125, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#4338ca';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.fillStyle = '#22d3ee';
+        ctx.globalAlpha = 0.45;
+        ctx.beginPath(); ctx.arc(440 + wave, 320, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ec4899';
+        ctx.beginPath(); ctx.arc(570 - wave, 350, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
+
+      // Cave Exit Portal
+      ctx.fillStyle = '#38bdf8';
+      ctx.globalAlpha = 0.25;
+      ctx.beginPath(); ctx.arc(cave.exitX, cave.exitY, 44, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = '#e0f2fe';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('EXIT TO OVERWORLD', cave.exitX, cave.exitY + 4);
+
+      // Cave Floor Crystal Clusters
+      cave.objects.forEach(obj => drawWorldObject(obj));
+    }
+
+    function renderCaveCeilingAndDarkness(camX, camY, w, h) {
+      const b = BIOMES[game.inCave];
+      const cave = game.caveData[game.inCave];
+      const p = game.player;
+
+      // Crystals hanging from the ceiling (slight parallax shift!)
+      cave.ceilingCrystals.forEach(cc => {
+        const px = cc.x + (cc.x - p.x) * 0.14;
+        const py = cc.y + (cc.y - p.y) * 0.14;
+        const pulse = 0.72 + Math.sin(game.time * 2.5 + cc.shimmerOffset) * 0.25;
+        ctx.save();
+        ctx.globalAlpha = 0.78 * pulse;
+        ctx.fillStyle = b.crystal;
+        ctx.beginPath();
+        ctx.moveTo(px, py - cc.size * 0.7);
+        ctx.lineTo(px + cc.size * 0.45, py);
+        ctx.lineTo(px, py + cc.size * 0.9);
+        ctx.lineTo(px - cc.size * 0.45, py);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // Ambient cave darkness — pressing [G] to make scales glow lights up the cavern!
+      const lightRadius = p.glowing ? 370 : 190;
+      const grad = ctx.createRadialGradient(p.x, p.y, 40, p.x, p.y, lightRadius);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, p.glowing ? 'rgba(4,6,16,0.42)' : 'rgba(4,6,16,0.78)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(camX, camY, w, h);
+    }
+
+    function drawWorldObject(obj) {
+      const b = obj.convertedTo ? BIOMES[obj.convertedTo] : BIOMES[obj.biome];
+      ctx.save();
+      ctx.translate(obj.x, obj.y);
+
+      if (obj.type === 'tree') {
+        // Trunk
+        ctx.fillStyle = obj.convertedTo ? b.groundAlt : '#5c3a21';
+        ctx.fillRect(-5, 2, 10, 14);
+        // Crystal or Forest Leaves
+        ctx.fillStyle = b.leaf;
+        ctx.beginPath(); ctx.arc(0, -4, obj.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = b.leafHi;
+        ctx.beginPath(); ctx.arc(-6, -10, obj.radius * 0.48, 0, Math.PI * 2); ctx.fill();
+      } else if (obj.type === 'crystal') {
+        ctx.fillStyle = b.crystal;
+        ctx.beginPath();
+        ctx.moveTo(0, -obj.radius);
+        ctx.lineTo(obj.radius * 0.72, 0);
+        ctx.lineTo(obj.radius * 0.42, obj.radius * 0.8);
+        ctx.lineTo(-obj.radius * 0.42, obj.radius * 0.8);
+        ctx.lineTo(-obj.radius * 0.72, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (obj.type === 'rock') {
+        ctx.fillStyle = obj.convertedTo ? b.crystal : '#64748b';
+        ctx.beginPath(); ctx.arc(0, 0, obj.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = obj.convertedTo ? b.leafHi : '#94a3b8';
+        ctx.beginPath(); ctx.arc(-4, -4, obj.radius * 0.45, 0, Math.PI * 2); ctx.fill();
+      } else if (obj.type === 'house') {
+        ctx.fillStyle = obj.convertedTo ? b.groundAlt : '#d6c5a3';
+        ctx.fillRect(-24, -18, 48, 38);
+        ctx.fillStyle = obj.convertedTo ? b.crystal : '#9a3412';
+        ctx.beginPath();
+        ctx.moveTo(-29, -16); ctx.lineTo(0, -38); ctx.lineTo(29, -16); ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#451a03';
+        ctx.fillRect(-6, 4, 12, 16);
+      } else if (obj.type === 'tent') {
+        ctx.fillStyle = obj.convertedTo ? b.crystal : '#b45309';
+        ctx.beginPath();
+        ctx.moveTo(0, -24); ctx.lineTo(24, 18); ctx.lineTo(-24, 18); ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.moveTo(0, -2); ctx.lineTo(8, 18); ctx.lineTo(-8, 18); ctx.closePath();
+        ctx.fill();
+      }
+
+      // Damage indicator bar if partially broken
+      if (obj.hp < obj.maxHp) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(-16, obj.radius + 5, 32, 4);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(-16, obj.radius + 5, 32 * (obj.hp / obj.maxHp), 4);
+      }
+      ctx.restore();
+    }
+
+    function drawEntity(e) {
+      ctx.save();
+      ctx.translate(e.x, e.y);
+
+      if (e.type === 'cow') {
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath(); ctx.ellipse(0, 0, 15, 11, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath(); ctx.arc(-5, -2, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(5, 3, 3.5, 0, Math.PI * 2); ctx.fill();
+        // Head
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath(); ctx.arc(13, 0, 6, 0, Math.PI * 2); ctx.fill();
+      } else if (e.type === 'pig') {
+        ctx.fillStyle = '#f9a8d4';
+        ctx.beginPath(); ctx.ellipse(0, 0, 13, 10, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#f472b6';
+        ctx.beginPath(); ctx.ellipse(11, 0, 5, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#831843';
+        ctx.fillRect(12, -2, 1.5, 1.5); ctx.fillRect(12, 1, 1.5, 1.5);
+      } else if (e.type === 'human') {
+        ctx.fillStyle = e.shirtColor || '#3b82f6';
+        ctx.beginPath(); ctx.arc(0, 2, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath(); ctx.arc(0, -7, 6.5, 0, Math.PI * 2); ctx.fill();
+      } else if (e.type === 'mob') {
+        const col = e.convertedTo ? DRAGONS[e.convertedTo].crystalColor : '#84cc16';
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-5, -3, 3, 3); ctx.fillRect(2, -3, 3, 3);
+      } else if (e.type === 'hunter') {
+        // Hunter cloak + spear
+        ctx.fillStyle = e.stunTimer > 0 ? '#60a5fa' : '#dc2626';
+        ctx.beginPath(); ctx.arc(0, 2, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fed7aa';
+        ctx.beginPath(); ctx.arc(0, -8, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(-8, -14, 16, 4); // Hunter hat brim
+        if (e.state === 'chase') {
+          ctx.fillStyle = '#facc15';
+          ctx.font = 'bold 14px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('!', 0, -20);
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawDragonPlayer(p) {
+      const d = game.dragonDef;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+
+      // Glowing Scales Aura when [G] is active
+      if (p.glowing) {
+        const glowGrad = ctx.createRadialGradient(0, 0, 8 * p.scale, 0, 0, 62 * p.scale);
+        glowGrad.addColorStop(0, `${d.glowColor}88`);
+        glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath(); ctx.arc(0, 0, 62 * p.scale, 0, Math.PI * 2); ctx.fill();
+      }
+
+      ctx.rotate(p.angle);
+      ctx.scale(p.scale, p.scale);
+
+      const flap = Math.sin(p.wingPhase) * 9;
+
+      // Tail
+      ctx.fillStyle = d.bodyPrimary;
+      ctx.beginPath();
+      ctx.moveTo(-14, 0);
+      ctx.lineTo(-42, -5 + flap * 0.25);
+      ctx.lineTo(-34, 6 + flap * 0.25);
+      ctx.closePath();
+      ctx.fill();
+      // Tail crystal tip
+      ctx.fillStyle = d.crystalColor;
+      ctx.beginPath();
+      ctx.moveTo(-42, -5 + flap * 0.25);
+      ctx.lineTo(-50, 0 + flap * 0.25);
+      ctx.lineTo(-38, 6 + flap * 0.25);
+      ctx.closePath();
+      ctx.fill();
+
+      // Wings
+      ctx.fillStyle = d.wingColor;
+      ctx.strokeStyle = p.glowing ? d.glowColor : d.crystalColor;
+      ctx.lineWidth = p.glowing ? 2.2 : 1.2;
+      // Left Wing
+      ctx.beginPath();
+      ctx.moveTo(4, -8);
+      ctx.lineTo(-14, -36 - flap);
+      ctx.lineTo(-24, -14 - flap * 0.4);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      // Right Wing
+      ctx.beginPath();
+      ctx.moveTo(4, 8);
+      ctx.lineTo(-14, 36 + flap);
+      ctx.lineTo(-24, 14 + flap * 0.4);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // Dragon Body
+      ctx.fillStyle = p.hurtFlash > 0 ? '#ffffff' : d.bodyPrimary;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 20, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Crystal Armor Plates if Equipped!
+      if (p.armorEquipped) {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.strokeStyle = d.crystalColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(-2, 0, 13, 9, 0, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+      } else {
+        // Spine scales
+        ctx.fillStyle = p.glowing ? '#ffffff' : d.crystalColor;
+        ctx.fillRect(-10, -2, 6, 4);
+        ctx.fillRect(0, -2, 6, 4);
+      }
+
+      // Head
+      ctx.fillStyle = d.bodySecondary;
+      ctx.beginPath();
+      ctx.ellipse(21, 0, 11, 8.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Dragon Eyes (Exact user-specified eye colors!)
+      ctx.fillStyle = game.eyeColor;
+      ctx.beginPath(); ctx.arc(24, -4.5, 2.8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(24, 4.5, 2.8, 0, Math.PI * 2); ctx.fill();
+
+      // Trapped Net Overlay
+      if (p.trappedTimer > 0) {
+        ctx.strokeStyle = '#f87171';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 26, 0, Math.PI * 2);
+        ctx.moveTo(-24, -10); ctx.lineTo(24, 10);
+        ctx.moveTo(-24, 10); ctx.lineTo(24, -10);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function renderMinimap() {
+      const mw = miniCanvas.width;
+      const mh = miniCanvas.height;
+      const scale = mw / WORLD_SIZE;
+
+      miniCtx.fillStyle = '#1e293b';
+      miniCtx.fillRect(0, 0, mw, mh);
+
+      // Biome blocks
+      miniCtx.fillStyle = BIOMES.plains.ground; miniCtx.fillRect(0, 0, mw, mh);
+      miniCtx.fillStyle = BIOMES.forest.ground;
+      miniCtx.fillRect(0, 0, 1180 * scale, mh);
+      miniCtx.fillRect(2020 * scale, 0, (WORLD_SIZE - 2020) * scale, mh);
+
+      miniCtx.fillStyle = BIOMES.ruby.groundAlt; miniCtx.fillRect(0, 0, 1020 * scale, 1020 * scale);
+      miniCtx.fillStyle = BIOMES.sapphire.groundAlt; miniCtx.fillRect(2180 * scale, 0, 1020 * scale, 1020 * scale);
+      miniCtx.fillStyle = BIOMES.amethyst.groundAlt; miniCtx.fillRect(0, 2180 * scale, 1020 * scale, 1020 * scale);
+      miniCtx.fillStyle = BIOMES.emerald.groundAlt; miniCtx.fillRect(2180 * scale, 2180 * scale, 1020 * scale, 1020 * scale);
+
+      miniCtx.fillStyle = BIOMES.black_opal.groundAlt;
+      miniCtx.beginPath(); miniCtx.arc(1600 * scale, 420 * scale, 470 * scale, 0, Math.PI * 2); miniCtx.fill();
+
+      // Villages (cyan dots)
+      miniCtx.fillStyle = '#fde047';
+      game.villages.forEach(v => miniCtx.fillRect(v.x * scale - 2, v.y * scale - 2, 4, 4));
+
+      // Hunters (red dots)
+      miniCtx.fillStyle = '#ef4444';
+      game.entities.forEach(e => {
+        if (e.type === 'hunter') miniCtx.fillRect(e.x * scale - 1.5, e.y * scale - 1.5, 3, 3);
+      });
+
+      // Player Dragon (bright white/crystal dot)
+      miniCtx.fillStyle = '#ffffff';
+      miniCtx.beginPath();
+      miniCtx.arc(game.player.x * scale, game.player.y * scale, 3.5, 0, Math.PI * 2);
+      miniCtx.fill();
+    }
+
+    // ==================== 9. LIFECYCLE & EVENTS ====================
+    function startGame(dragonId) {
+      if (rafId) cancelAnimationFrame(rafId);
+      Sound.init();
+      game = buildWorld(dragonId);
+
+      document.getElementById('sanctuaryScreen').classList.add('hidden');
+      document.getElementById('endModal').classList.add('hidden');
+      document.getElementById('inventoryModal').classList.add('hidden');
+      document.getElementById('helpModal').classList.add('hidden');
+      document.getElementById('gameContainer').classList.remove('hidden');
+
+      resizeCanvas();
+      updateHUD();
+      showToast(`Spawned in ${game.dragonDef.biomeName}! Eat 5 cows/pigs (Right-Click) to unlock ${game.dragonDef.abilityName}!`, 4.2);
+
+      lastTime = performance.now();
+      function loop(now) {
+        const dt = Math.min(0.05, (now - lastTime) / 1000);
+        lastTime = now;
+        update(dt);
+        render();
+        rafId = requestAnimationFrame(loop);
+      }
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function returnToSanctuary() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+      game = null;
+      document.getElementById('gameContainer').classList.add('hidden');
+      document.getElementById('endModal').classList.add('hidden');
+      document.getElementById('inventoryModal').classList.add('hidden');
+      document.getElementById('helpModal').classList.add('hidden');
+      document.getElementById('sanctuaryScreen').classList.remove('hidden');
+      renderSanctuary();
+    }
+
+    function resizeCanvas() {
+      if (!canvas) return;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      if (game) render();
+    }
+
+    window.addEventListener('load', () => {
+      canvas = document.getElementById('gameCanvas');
+      ctx = canvas.getContext('2d');
+      miniCanvas = document.getElementById('minimapCanvas');
+      miniCtx = miniCanvas.getContext('2d');
+
+      renderSanctuary();
+      window.addEventListener('resize', resizeCanvas);
+
+      // Start Game
+      document.getElementById('startGameBtn').addEventListener('click', () => startGame(selectedDragonId));
+
+      // HUD Buttons
+      document.getElementById('btnSound').addEventListener('click', () => {
+        Sound.muted = !Sound.muted;
+        document.getElementById('btnSound').textContent = Sound.muted ? '🔇' : '🔊';
+      });
+      document.getElementById('btnSanctuary').addEventListener('click', returnToSanctuary);
+      document.getElementById('btnHelp').addEventListener('click', () => {
+        if (!game) return;
+        const m = document.getElementById('helpModal');
+        const show = m.classList.contains('hidden');
+        m.classList.toggle('hidden', !show);
+        game.paused = show;
+      });
+      document.getElementById('closeHelpBtn').addEventListener('click', () => {
+        document.getElementById('helpModal').classList.add('hidden');
+        if (game && !game.gameOver) game.paused = false;
+      });
+
+      // Hotbar Buttons
+      document.getElementById('btnActionGlow').addEventListener('click', toggleGlow);
+      document.getElementById('btnActionInv').addEventListener('click', toggleInventory);
+      document.getElementById('btnActionCave').addEventListener('click', tryToggleCave);
+      document.getElementById('promptBanner').addEventListener('click', tryToggleCave);
+      document.getElementById('btnActionAbility').addEventListener('click', () => {
+        if (!game) return;
+        const p = game.player;
+        castDragonAbility(p.x + Math.cos(p.angle) * 180, p.y + Math.sin(p.angle) * 180);
+      });
+
+      // Inventory Modal Controls
+      document.getElementById('closeInvBtn').addEventListener('click', toggleInventory);
+      document.getElementById('craftArmorBtn').addEventListener('click', () => {
+        if (!game || game.player.crystals < 5) return;
+        game.player.crystals -= 5;
+        game.player.armorInventory += 1;
+        Sound.play('armor');
+        syncInventoryModal();
+        updateHUD();
+        showToast('🛡️ Forged Crystal Dragon Armor! Click Put On Armor to wear it!');
+      });
+      document.getElementById('toggleEquipArmorBtn').addEventListener('click', () => {
+        if (!game) return;
+        const p = game.player;
+        if (p.armorEquipped) {
+          p.armorEquipped = false;
+          p.armorInventory += 1;
+        } else if (p.armorInventory > 0) {
+          p.armorInventory -= 1;
+          p.armorEquipped = true;
+        }
+        Sound.play('armor');
+        syncInventoryModal();
+        updateHUD();
+      });
+
+      // End Modal Controls
+      document.getElementById('endContinueBtn').addEventListener('click', () => {
+        document.getElementById('endModal').classList.add('hidden');
+        if (game) game.paused = false;
+      });
+      document.getElementById('endRetryBtn').addEventListener('click', () => startGame(selectedDragonId));
+      document.getElementById('endSanctuaryBtn').addEventListener('click', returnToSanctuary);
+
+      // Keyboard Controls (Minecraft-style WASD + E + G + Space + C)
+      window.addEventListener('keydown', (e) => {
+        keys[e.code] = true;
+        if (!game) return;
+
+        if (e.code === 'KeyE') {
+          e.preventDefault();
+          toggleInventory();
+        } else if (e.code === 'Escape') {
+          if (!document.getElementById('inventoryModal').classList.contains('hidden')) toggleInventory();
+          if (!document.getElementById('helpModal').classList.contains('hidden')) {
+            document.getElementById('helpModal').classList.add('hidden');
+            if (!game.gameOver) game.paused = false;
+          }
+        } else if (e.code === 'KeyG' && !game.paused) {
+          toggleGlow();
+        } else if (e.code === 'KeyC' && !game.paused) {
+          tryToggleCave();
+        } else if (e.code === 'Space' && !game.paused) {
+          e.preventDefault();
+          castDragonAbility(mouse.worldX, mouse.worldY);
+        }
+      });
+      window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+      // Mouse Controls on Canvas
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+      });
+      canvas.addEventListener('mousedown', (e) => {
+        if (!game || game.paused || game.gameOver) return;
+        Sound.init();
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+        const camX = game.player.x - canvas.width / 2;
+        const camY = game.player.y - canvas.height / 2;
+        const wx = mouse.x + camX;
+        const wy = mouse.y + camY;
+
+        if (e.button === 0) {
+          handleLeftClickBreak(wx, wy);
+        } else if (e.button === 2) {
+          const ate = tryEatNearbyLivestock(wx, wy, false);
+          if (!ate) castDragonAbility(wx, wy);
+        }
+      });
+      canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      // Touch D-Pad Controls
+      const dirMap = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' };
+      document.querySelectorAll('#touchControls button[data-dir]').forEach(btn => {
+        const code = dirMap[btn.dataset.dir];
+        const press = (ev) => { ev.preventDefault(); keys[code] = true; };
+        const release = (ev) => { ev.preventDefault(); keys[code] = false; };
+        btn.addEventListener('touchstart', press, { passive: false });
+        btn.addEventListener('touchend', release, { passive: false });
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
+        btn.addEventListener('mouseleave', release);
+      });
+      document.getElementById('touchEatBtn').addEventListener('click', () => {
+        if (!game) return;
+        const ate = tryEatNearbyLivestock(0, 0, true);
+        if (!ate) showToast('Move closer to a cow or pig to eat it!');
+      });
+    });
+  })();
+  </script>
+</body>
+</html>
