@@ -1,0 +1,2762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vertical Loop Rollercoaster — Circular Motion Lab</title>
+  <style>
+    /* ==========================================================================
+       DESIGN TOKENS & BASE STYLES (Zero External Dependencies)
+       ========================================================================== */
+    :root {
+      --bg-app: #0b1120;
+      --bg-panel: #111827;
+      --bg-card: #1e293b;
+      --bg-input: #0a101e;
+      --border-subtle: #263348;
+      --border-bright: #3b4f6e;
+
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      /* High-Contrast Physics & Status Palette */
+      --accent-cyan: #38bdf8;     /* Velocity / Centripetal / Primary UI */
+      --accent-emerald: #34d399;  /* Normal Force / Safe */
+      --accent-amber: #fbbf24;    /* Gravity / Weight / Warning */
+      --accent-rose: #f87171;     /* Danger / Fall / Crash */
+
+      --radius-lg: 14px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .tabular {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ==========================================================================
+       APP SHELL & RESPONSIVE 3-PANEL DASHBOARD
+       ========================================================================== */
+    .app-wrapper {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      max-width: 1740px;
+      margin: 0 auto;
+      padding: 14px;
+      gap: 14px;
+    }
+
+    .app-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 12px 18px;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(52, 211, 153, 0.2));
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .header-brand h1 {
+      font-size: 1.12rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+    }
+
+    .header-brand p {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+
+    .header-badges {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+    }
+
+    .pill-dot.paused {
+      background: var(--accent-amber);
+      box-shadow: 0 0 8px var(--accent-amber);
+    }
+
+    .pill-dot.danger {
+      background: var(--accent-rose);
+      box-shadow: 0 0 8px var(--accent-rose);
+    }
+
+    /* 3-Column Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 330px minmax(430px, 1fr) 395px;
+      gap: 14px;
+      flex: 1;
+      align-items: stretch;
+    }
+
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 9px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .panel-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================================================
+       LEFT PANEL: CONTROLS, PRESETS & SAFETY METER
+       ========================================================================== */
+    .control-group {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+    }
+
+    .control-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 7px;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .control-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .symbol-tag {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent-cyan);
+      font-weight: 700;
+    }
+
+    .quick-action-btn {
+      width: 100%;
+      margin-top: 7px;
+      padding: 5px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      background: rgba(251, 191, 36, 0.12);
+      color: var(--accent-amber);
+      font-size: 0.73rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .quick-action-btn:hover {
+      background: rgba(251, 191, 36, 0.24);
+      color: #fde68a;
+    }
+
+    .num-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 2px 6px;
+    }
+
+    .num-wrap:focus-within {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.22);
+    }
+
+    .num-input {
+      width: 58px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .num-unit {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      user-select: none;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      border: 2px solid var(--bg-app);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+      cursor: pointer;
+      transition: transform 0.12s ease, background-color 0.12s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+      background: #7dd3fc;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      border: 2px solid var(--bg-app);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+      cursor: pointer;
+    }
+
+    .slider-bounds {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.69rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      margin-top: 3px;
+    }
+
+    /* Presets */
+    .presets-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .sub-heading {
+      font-size: 0.71rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .preset-btn {
+      padding: 6px 7px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-input);
+      color: var(--text-secondary);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--border-bright);
+      color: var(--text-primary);
+    }
+
+    .preset-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: rgba(56, 189, 248, 0.55);
+      color: var(--accent-cyan);
+    }
+
+    /* Safety / Top G-Force Meter */
+    .safety-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .safety-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-weight: 600;
+      gap: 6px;
+    }
+
+    .safety-val {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
+
+    .safety-track {
+      position: relative;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+
+    .safety-fill {
+      height: 100%;
+      width: 50%;
+      border-radius: 999px;
+      transition: width 0.14s ease, background-color 0.2s ease;
+    }
+
+    .safety-crit-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #f8fafc;
+      box-shadow: 0 0 6px #ffffff;
+    }
+
+    .safety-foot {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.69rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Playback & Speed Controls */
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      font-size: 0.81rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--border-bright);
+      background: #273549;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      border-color: rgba(248, 113, 113, 0.55);
+      color: #ffffff;
+    }
+
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    .speed-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .speed-row span {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .speed-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      flex: 1;
+      max-width: 185px;
+    }
+
+    .speed-btn {
+      padding: 5px 6px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-input);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .speed-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent-cyan);
+      border-color: rgba(56, 189, 248, 0.55);
+    }
+
+    .toggle-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.74rem;
+      color: var(--text-primary);
+      cursor: pointer;
+      user-select: none;
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      background: rgba(10, 16, 30, 0.65);
+      border: 1px solid var(--border-subtle);
+      transition: border-color 0.15s ease;
+    }
+
+    .checkbox-item:hover {
+      border-color: var(--border-bright);
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent-cyan);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .color-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    /* ==========================================================================
+       CENTER PANEL: VERTICAL LOOP SIMULATION CANVAS
+       ========================================================================== */
+    .sim-panel {
+      padding: 14px;
+    }
+
+    .canvas-stage {
+      position: relative;
+      flex: 1;
+      min-height: 520px;
+      border-radius: var(--radius-md);
+      background: radial-gradient(circle at 50% 35%, #162238 0%, #0d1526 70%, #070c17 100%);
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+
+    .canvas-stage canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Top-Left HUD Status Badge */
+    .hud-status-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      border: 1px solid transparent;
+    }
+
+    .hud-status-badge.safe {
+      background: rgba(52, 211, 153, 0.18);
+      border-color: rgba(52, 211, 153, 0.6);
+      color: var(--accent-emerald);
+    }
+
+    .hud-status-badge.critical {
+      background: rgba(251, 191, 36, 0.2);
+      border-color: rgba(251, 191, 36, 0.65);
+      color: var(--accent-amber);
+    }
+
+    .hud-status-badge.danger {
+      background: rgba(248, 113, 113, 0.24);
+      border-color: rgba(248, 113, 113, 0.78);
+      color: #fca5a5;
+    }
+
+    .hud-shortcut-hint {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(11, 17, 32, 0.8);
+      border: 1px solid rgba(59, 79, 110, 0.55);
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      pointer-events: none;
+    }
+
+    /* Non-intrusive Crash Overlay Banner */
+    .crash-banner {
+      position: absolute;
+      left: 50%;
+      top: 52px;
+      transform: translateX(-50%) translateY(-8px);
+      background: rgba(17, 24, 39, 0.94);
+      border: 1.5px solid var(--accent-rose);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: 92%;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55), 0 0 18px rgba(248, 113, 113, 0.28);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+    }
+
+    .crash-banner.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .crash-banner-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .crash-banner-title {
+      font-size: 0.84rem;
+      font-weight: 800;
+      color: #fca5a5;
+    }
+
+    .crash-banner-sub {
+      font-size: 0.73rem;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    .sim-legend {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .legend-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .legend-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(11, 17, 32, 0.84);
+      border: 1px solid rgba(59, 79, 110, 0.5);
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+
+    .legend-line {
+      width: 11px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    /* ==========================================================================
+       RIGHT PANEL: LIVE DATA READOUT & FREE BODY DIAGRAM
+       ========================================================================== */
+    .data-textbox {
+      background: var(--bg-input);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .data-grid-top {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .data-cell {
+      background: rgba(30, 41, 59, 0.82);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 6px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .data-cell-label {
+      font-family: var(--font-sans);
+      font-size: 0.69rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .data-cell-value {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    .data-cell-value .unit {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-left: 2px;
+    }
+
+    /* 3-Column Normal Force Comparison Row */
+    .fn-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border-subtle);
+    }
+
+    .fn-card {
+      background: rgba(17, 24, 39, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 6px 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+
+    .fn-card:hover {
+      border-color: var(--border-bright);
+    }
+
+    .fn-card.selected {
+      background: rgba(56, 189, 248, 0.14);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
+    }
+
+    .fn-card .lbl {
+      font-family: var(--font-sans);
+      font-size: 0.66rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .fn-card.selected .lbl {
+      color: var(--accent-cyan);
+    }
+
+    .fn-card .val {
+      font-size: 0.84rem;
+      font-weight: 800;
+      color: var(--accent-emerald);
+    }
+
+    .fn-card .val.zero-warn {
+      color: var(--accent-rose);
+    }
+
+    /* FBD Section */
+    .fbd-section {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      flex: 1;
+    }
+
+    .fbd-segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .fbd-tab {
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 6px 8px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .fbd-tab:hover {
+      color: var(--text-primary);
+    }
+
+    .fbd-tab.active {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(37, 99, 235, 0.28));
+      color: #e0f2fe;
+      box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.55);
+    }
+
+    .fbd-canvas-wrap {
+      position: relative;
+      width: 100%;
+      height: 255px;
+      border-radius: var(--radius-md);
+      background: #0a1222;
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+
+    .fbd-canvas-wrap canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .equations-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.75rem;
+    }
+
+    .eq-title {
+      font-family: var(--font-sans);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .eq-main {
+      padding: 7px 9px;
+      border-radius: 6px;
+      background: rgba(10, 16, 30, 0.78);
+      border: 1px solid rgba(59, 79, 110, 0.6);
+      color: var(--text-primary);
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .eq-sub {
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      color: #93c5fd;
+      line-height: 1.4;
+    }
+
+    .eq-sub.danger {
+      color: #fca5a5;
+    }
+
+    /* ==========================================================================
+       RESPONSIVE BREAKPOINTS
+       ========================================================================== */
+    @media (max-width: 1220px) {
+      .dashboard-grid {
+        grid-template-columns: 315px 1fr;
+      }
+      .right-panel {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr 1.15fr;
+        align-items: start;
+      }
+      .right-panel .panel-header {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 840px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      .right-panel {
+        grid-column: auto;
+        display: flex;
+      }
+      .canvas-stage {
+        min-height: 410px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- ==================== HEADER ==================== -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="11" r="7.5" stroke="#38bdf8" stroke-width="2"/>
+            <line x1="2" y1="18.5" x2="22" y2="18.5" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="3.5" r="2.3" fill="#34d399"/>
+            <line x1="12" y1="5.8" x2="12" y2="10.2" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Vertical Loop Rollercoaster — Circular Motion Lab</h1>
+          <p>Constant-Speed Vertical Circular Motion, Normal Force, Weightlessness &amp; Detachment</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <div class="pill">g = 9.81 m/s²</div>
+        <div class="pill">Constant Speed Model</div>
+        <div class="pill">
+          <span class="pill-dot" id="headerDot"></span>
+          <span id="headerStatusText">Running 1x</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==================== 3-PANEL DASHBOARD ==================== -->
+    <main class="dashboard-grid">
+      <!-- ==================== LEFT PANEL: CONTROLS & PRESETS ==================== -->
+      <section class="panel left-panel" aria-label="Simulation Controls">
+        <div class="panel-header">
+          <h2 class="panel-title">Controls &amp; Presets</h2>
+        </div>
+
+        <!-- Car Speed (v) -->
+        <div class="control-group">
+          <div class="control-top">
+            <label class="control-label" for="slider-v">
+              Car Speed <span class="symbol-tag">v</span>
+            </label>
+            <div class="num-wrap">
+              <input type="number" class="num-input" id="num-v" min="2.0" max="35.0" step="0.1" value="16.0" aria-label="Car speed in m/s" />
+              <span class="num-unit">m/s</span>
+            </div>
+          </div>
+          <input type="range" id="slider-v" min="2.0" max="35.0" step="0.1" value="16.0" />
+          <div class="slider-bounds">
+            <span>2.0 m/s</span>
+            <span id="vminHint">v_min = 10.85 m/s</span>
+            <span>35.0 m/s</span>
+          </div>
+          <button type="button" class="quick-action-btn" id="btn-set-crit">
+            Set to Critical Speed (v<sub>min</sub> = &radic;gr)
+          </button>
+        </div>
+
+        <!-- Loop Radius (r) -->
+        <div class="control-group">
+          <div class="control-top">
+            <label class="control-label" for="slider-r">
+              Loop Radius <span class="symbol-tag">r</span>
+            </label>
+            <div class="num-wrap">
+              <input type="number" class="num-input" id="num-r" min="4.0" max="25.0" step="0.5" value="12.0" aria-label="Loop radius in meters" />
+              <span class="num-unit">m</span>
+            </div>
+          </div>
+          <input type="range" id="slider-r" min="4.0" max="25.0" step="0.5" value="12.0" />
+          <div class="slider-bounds">
+            <span>4.0 m</span>
+            <span>25.0 m</span>
+          </div>
+        </div>
+
+        <!-- Car Mass (m) -->
+        <div class="control-group">
+          <div class="control-top">
+            <label class="control-label" for="slider-m">
+              Car Mass <span class="symbol-tag">m</span>
+            </label>
+            <div class="num-wrap">
+              <input type="number" class="num-input" id="num-m" min="100" max="2000" step="10" value="500" aria-label="Car mass in kg" />
+              <span class="num-unit">kg</span>
+            </div>
+          </div>
+          <input type="range" id="slider-m" min="100" max="2000" step="10" value="500" />
+          <div class="slider-bounds">
+            <span>100 kg</span>
+            <span>2000 kg</span>
+          </div>
+        </div>
+
+        <!-- Quick Track Presets -->
+        <div class="presets-box">
+          <span class="sub-heading">Quick Track Presets</span>
+          <div class="preset-grid" role="group" aria-label="Rollercoaster presets">
+            <button type="button" class="preset-btn active" data-preset="classic">Classic Steel Loop</button>
+            <button type="button" class="preset-btn" data-preset="weightless">Weightless at Top</button>
+            <button type="button" class="preset-btn" data-preset="highg">High-G Thrill</button>
+            <button type="button" class="preset-btn" data-preset="tooslow">Too Slow (Fall!)</button>
+          </div>
+        </div>
+
+        <!-- Live Top-of-Loop Safety / G-Force Meter -->
+        <div class="safety-box">
+          <div class="safety-header">
+            <span>Top-of-Loop Apparent Weight</span>
+            <span class="safety-val" id="safetyGVal">+1.17 g</span>
+          </div>
+          <div class="safety-track" aria-label="Speed relative to critical minimum speed">
+            <div class="safety-fill" id="safetyFill"></div>
+            <div class="safety-crit-line" id="safetyCritLine" title="Critical speed v_min"></div>
+          </div>
+          <div class="safety-foot">
+            <span id="safetyCompare">v = 16.0 vs v_min = 10.85</span>
+            <span id="safetyLabel" style="font-weight: 700;">SAFE</span>
+          </div>
+        </div>
+
+        <!-- Playback & Speed Controls -->
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" id="btn-play-pause">
+            <span id="playPauseIcon">&#10074;&#10074;</span>
+            <span id="playPauseLabel">Pause</span>
+          </button>
+          <button type="button" class="btn" id="btn-reset">
+            &#8634; Reset Car
+          </button>
+        </div>
+
+        <div class="speed-row">
+          <span>Playback Speed</span>
+          <div class="speed-group" role="group" aria-label="Playback speed multiplier">
+            <button type="button" class="speed-btn" data-speed="0.25">0.25x</button>
+            <button type="button" class="speed-btn" data-speed="0.5">0.5x</button>
+            <button type="button" class="speed-btn active" data-speed="1">1x</button>
+          </div>
+        </div>
+
+        <!-- Visual Vector & Overlay Toggles -->
+        <div class="toggle-grid">
+          <label class="checkbox-item">
+            <input type="checkbox" id="chk-vec-v" checked />
+            <span>Velocity (v)</span>
+            <span class="color-dot" style="background: var(--accent-cyan);"></span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="chk-vec-fn" checked />
+            <span>Normal (F<sub>N</sub>)</span>
+            <span class="color-dot" style="background: var(--accent-emerald);"></span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="chk-vec-fg" checked />
+            <span>Gravity (F<sub>g</sub>)</span>
+            <span class="color-dot" style="background: var(--accent-amber);"></span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="chk-trail" checked />
+            <span>Trail &amp; Radius</span>
+            <span class="color-dot" style="background: #94a3b8;"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- ==================== CENTER PANEL: VERTICAL LOOP SIMULATION ==================== -->
+      <section class="panel sim-panel" aria-label="Vertical Loop Rollercoaster Simulation">
+        <div class="panel-header">
+          <h2 class="panel-title">Vertical Loop Simulation</h2>
+          <span class="pill" id="loopDimPill">Diameter = 24.0 m &bull; T = 4.71 s</span>
+        </div>
+
+        <div class="canvas-stage" id="simStage">
+          <canvas id="simCanvas" aria-label="Animated vertical loop rollercoaster"></canvas>
+
+          <!-- Top-Left HUD Status Badge -->
+          <div class="hud-status-badge safe" id="hudBadge">LOOPING — SAFE</div>
+          <div class="hud-shortcut-hint">Space: Play/Pause &bull; R: Reset</div>
+
+          <!-- Non-Intrusive Crash Overlay Banner -->
+          <div class="crash-banner" id="crashBanner" role="alert">
+            <div class="crash-banner-text">
+              <span class="crash-banner-title">Lost Contact! Speed below v<sub>min</sub></span>
+              <span class="crash-banner-sub" id="crashSubText">Car detached when F_N dropped to 0 N — Click Reset to relaunch.</span>
+            </div>
+            <button type="button" class="btn btn-danger" id="btn-banner-reset" style="padding: 7px 12px; white-space: nowrap;">
+              &#8634; Reset
+            </button>
+          </div>
+
+          <div class="sim-legend">
+            <div class="legend-chips">
+              <span class="legend-chip"><span class="legend-line" style="background: var(--accent-cyan);"></span>Velocity (v)</span>
+              <span class="legend-chip"><span class="legend-line" style="background: var(--accent-emerald);"></span>Normal (F<sub>N</sub>)</span>
+              <span class="legend-chip"><span class="legend-line" style="background: var(--accent-amber);"></span>Gravity (F<sub>g</sub>)</span>
+            </div>
+            <span class="legend-chip" id="fbdMarkerHint">Highlighted Marker: Top</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== RIGHT PANEL: LIVE DATA & FREE BODY DIAGRAM ==================== -->
+      <section class="panel right-panel" aria-label="Live Physics Data and Free Body Diagram">
+        <div class="panel-header">
+          <h2 class="panel-title">Live Physics Data &amp; FBD</h2>
+        </div>
+
+        <!-- Monospace Lab Data Readout Box -->
+        <div class="data-textbox" role="region" aria-label="Calculated Physics Quantities">
+          <div class="data-grid-top">
+            <div class="data-cell">
+              <span class="data-cell-label">Critical Speed <span style="color: var(--accent-amber);">v<sub>min</sub></span></span>
+              <span class="data-cell-value"><span id="out-vmin">10.85</span><span class="unit">m/s</span></span>
+            </div>
+            <div class="data-cell">
+              <span class="data-cell-label">Centripetal Force <span style="color: var(--accent-cyan);">F<sub>c</sub></span></span>
+              <span class="data-cell-value"><span id="out-Fc">10,667</span><span class="unit">N</span></span>
+            </div>
+            <div class="data-cell">
+              <span class="data-cell-label">Period <span style="color: var(--accent-cyan);">T</span></span>
+              <span class="data-cell-value"><span id="out-T">4.71</span><span class="unit">s</span></span>
+            </div>
+            <div class="data-cell">
+              <span class="data-cell-label">Centripetal Accel <span style="color: var(--accent-cyan);">a<sub>c</sub></span></span>
+              <span class="data-cell-value" style="font-size: 0.84rem;"><span id="out-ac">21.33</span><span class="unit">m/s²</span> (<span id="out-acg">2.17</span>g)</span>
+            </div>
+            <div class="data-cell" style="grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between;">
+              <span class="data-cell-label">Car Weight <span style="color: var(--accent-amber); margin-left: 5px;">F<sub>g</sub> = mg</span></span>
+              <span class="data-cell-value"><span id="out-Fg">4,905</span><span class="unit">N</span></span>
+            </div>
+          </div>
+
+          <!-- Normal Force at Top, Horizontal, Bottom (Clickable to sync FBD) -->
+          <div class="fn-row">
+            <div class="fn-card selected" id="fn-card-top" data-pos="top" title="Show Top Free Body Diagram">
+              <span class="lbl">F<sub>N,top</sub></span>
+              <span class="val" id="out-FN-top">5,762 N</span>
+            </div>
+            <div class="fn-card" id="fn-card-horizontal" data-pos="horizontal" title="Show Horizontal Free Body Diagram">
+              <span class="lbl">F<sub>N,side</sub></span>
+              <span class="val" id="out-FN-side">10,667 N</span>
+            </div>
+            <div class="fn-card" id="fn-card-bottom" data-pos="bottom" title="Show Bottom Free Body Diagram">
+              <span class="lbl">F<sub>N,bottom</sub></span>
+              <span class="val" id="out-FN-bottom">15,572 N</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Free Body Diagram Section -->
+        <div class="fbd-section">
+          <div class="fbd-segmented" role="tablist" aria-label="Free Body Diagram Position">
+            <button type="button" class="fbd-tab active" role="tab" aria-selected="true" data-pos="top">Top</button>
+            <button type="button" class="fbd-tab" role="tab" aria-selected="false" data-pos="horizontal">Horizontal</button>
+            <button type="button" class="fbd-tab" role="tab" aria-selected="false" data-pos="bottom">Bottom</button>
+          </div>
+
+          <div class="fbd-canvas-wrap" id="fbdWrap">
+            <canvas id="fbdCanvas" aria-label="Free Body Diagram of rollercoaster car at selected position"></canvas>
+          </div>
+
+          <div class="equations-card" aria-label="Live Governing Equations">
+            <div class="eq-title" id="eqTitle">Top of Loop (&theta; = 90&deg;) — Radial Force Equation</div>
+            <div class="eq-main" id="eqMain">
+              F<sub>N</sub> + F<sub>g</sub> = F<sub>c</sub> &nbsp;&rArr;&nbsp; F<sub>N</sub> = 10,667 &minus; 4,905 = 5,762 N
+            </div>
+            <div class="eq-sub" id="eqSub">
+              Apparent weight at top: 1.17 g (normal force pushes downward with gravity to supply F<sub>c</sub>).
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      /* ========================================================================
+         CONSTANTS & APPLICATION STATE
+         ======================================================================== */
+      const G = 9.81; // m/s^2
+      const LIMITS = {
+        v: { min: 2.0, max: 35.0 },
+        r: { min: 4.0, max: 25.0 },
+        m: { min: 100, max: 2000 }
+      };
+
+      const state = {
+        // User parameters
+        v: 16.0,   // m/s (constant speed on loop)
+        r: 12.0,   // m (loop radius)
+        m: 500,    // kg (car mass)
+
+        // Simulation state machine: "LOOPING" | "FALLING" | "CRASHED"
+        mode: "LOOPING",
+        isPlaying: true,
+        speedMult: 1.0,
+        pulseClock: 0,
+
+        // Selected FBD view: "top" | "horizontal" | "bottom"
+        fbdPos: "top",
+
+        // Looping kinematics: theta measured CCW from 3 o'clock (0 = right, pi/2 = top, -pi/2 = bottom)
+        theta: -Math.PI / 2,
+
+        // Falling projectile kinematics (loop-center coordinates in meters: +x right, +y up)
+        carX: 0,
+        carY: -12.0,
+        carVx: 16.0,
+        carVy: 0,
+        carRot: 0,        // canvas rotation angle (radians)
+        carSpinRate: 0,   // rad/s gentle tumble during fall
+        detachPoint: null,
+
+        // Visual FX
+        loopTrail: [],    // recent (x, y) while looping
+        fallTrail: [],    // parabolic (x, y) while falling
+        particles: [],    // impact sparks, debris, smoke
+        shakeTime: 0,
+
+        // Overlay Toggles
+        showVecV: true,
+        showVecFn: true,
+        showVecFg: true,
+        showTrail: true
+      };
+
+      let phys = {};
+      let simSize = { w: 620, h: 520 };
+      let fbdSize = { w: 360, h: 255 };
+
+      /* ========================================================================
+         DOM REFERENCES
+         ======================================================================== */
+      const els = {
+        sliderV: document.getElementById("slider-v"),
+        numV: document.getElementById("num-v"),
+        vminHint: document.getElementById("vminHint"),
+        btnSetCrit: document.getElementById("btn-set-crit"),
+
+        sliderR: document.getElementById("slider-r"),
+        numR: document.getElementById("num-r"),
+        sliderM: document.getElementById("slider-m"),
+        numM: document.getElementById("num-m"),
+
+        presetBtns: Array.from(document.querySelectorAll(".preset-btn")),
+
+        safetyGVal: document.getElementById("safetyGVal"),
+        safetyFill: document.getElementById("safetyFill"),
+        safetyCritLine: document.getElementById("safetyCritLine"),
+        safetyCompare: document.getElementById("safetyCompare"),
+        safetyLabel: document.getElementById("safetyLabel"),
+
+        btnPlayPause: document.getElementById("btn-play-pause"),
+        playPauseIcon: document.getElementById("playPauseIcon"),
+        playPauseLabel: document.getElementById("playPauseLabel"),
+        btnReset: document.getElementById("btn-reset"),
+        btnBannerReset: document.getElementById("btn-banner-reset"),
+        speedBtns: Array.from(document.querySelectorAll(".speed-btn")),
+
+        chkVecV: document.getElementById("chk-vec-v"),
+        chkVecFn: document.getElementById("chk-vec-fn"),
+        chkVecFg: document.getElementById("chk-vec-fg"),
+        chkTrail: document.getElementById("chk-trail"),
+
+        headerDot: document.getElementById("headerDot"),
+        headerStatusText: document.getElementById("headerStatusText"),
+        loopDimPill: document.getElementById("loopDimPill"),
+        hudBadge: document.getElementById("hudBadge"),
+        crashBanner: document.getElementById("crashBanner"),
+        crashSubText: document.getElementById("crashSubText"),
+        fbdMarkerHint: document.getElementById("fbdMarkerHint"),
+
+        outVmin: document.getElementById("out-vmin"),
+        outFc: document.getElementById("out-Fc"),
+        outT: document.getElementById("out-T"),
+        outAc: document.getElementById("out-ac"),
+        outAcg: document.getElementById("out-acg"),
+        outFg: document.getElementById("out-Fg"),
+        outFnTop: document.getElementById("out-FN-top"),
+        outFnSide: document.getElementById("out-FN-side"),
+        outFnBottom: document.getElementById("out-FN-bottom"),
+
+        fnCards: {
+          top: document.getElementById("fn-card-top"),
+          horizontal: document.getElementById("fn-card-horizontal"),
+          bottom: document.getElementById("fn-card-bottom")
+        },
+        fbdTabs: Array.from(document.querySelectorAll(".fbd-tab")),
+
+        eqTitle: document.getElementById("eqTitle"),
+        eqMain: document.getElementById("eqMain"),
+        eqSub: document.getElementById("eqSub"),
+
+        simStage: document.getElementById("simStage"),
+        simCanvas: document.getElementById("simCanvas"),
+        fbdWrap: document.getElementById("fbdWrap"),
+        fbdCanvas: document.getElementById("fbdCanvas")
+      };
+
+      const simCtx = els.simCanvas.getContext("2d");
+      const fbdCtx = els.fbdCanvas.getContext("2d");
+
+      /* ========================================================================
+         EXACT CONSTANT-SPEED VERTICAL LOOP PHYSICS ENGINE
+         ======================================================================== */
+      function computePhysics() {
+        const v = state.v;
+        const r = state.r;
+        const m = state.m;
+
+        const vMin = Math.sqrt(G * r);
+        const ac = (v * v) / r;
+        const acG = ac / G;
+        const Fc = m * ac;
+        const Fg = m * G;
+        const T = (2 * Math.PI * r) / v;
+        const omega = v / r;
+
+        // Raw & physical Normal Force at key positions
+        const FnTopRaw = Fc - Fg;
+        const FnTop = Math.max(0, FnTopRaw);
+        const FnSide = Fc;
+        const FnBottom = Fc + Fg;
+
+        // Current instantaneous Normal Force at angle theta
+        const FnCurrentRaw = Fc - Fg * Math.sin(state.theta);
+        const FnCurrent = Math.max(0, FnCurrentRaw);
+
+        // Top apparent weight in g's
+        const topG = FnTopRaw / Fg;
+        const bottomG = FnBottom / Fg;
+
+        phys = {
+          v, r, m, vMin, ac, acG, Fc, Fg, T, omega,
+          FnTopRaw, FnTop, FnSide, FnBottom,
+          FnCurrentRaw, FnCurrent, topG, bottomG
+        };
+      }
+
+      function fmtInt(n) {
+        return Math.round(n).toLocaleString("en-US");
+      }
+
+      /* ========================================================================
+         UI SYNCHRONIZATION
+         ======================================================================== */
+      function syncInputs() {
+        els.sliderV.value = state.v.toFixed(1);
+        els.numV.value = state.v.toFixed(1);
+        els.sliderR.value = state.r.toFixed(1);
+        els.numR.value = state.r.toFixed(1);
+        els.sliderM.value = state.m;
+        els.numM.value = state.m;
+      }
+
+      function syncReadouts() {
+        els.vminHint.textContent = `v_min = ${phys.vMin.toFixed(2)} m/s`;
+        els.loopDimPill.textContent = `Diameter = ${(state.r * 2).toFixed(1)} m • T = ${phys.T.toFixed(2)} s`;
+
+        // Safety / Top-of-Loop G-Force Meter
+        const barMaxV = Math.max(LIMITS.v.max, phys.vMin * 1.8);
+        const fillPct = Math.min(100, (state.v / barMaxV) * 100);
+        const critPct = Math.min(96, (phys.vMin / barMaxV) * 100);
+        els.safetyFill.style.width = `${fillPct.toFixed(1)}%`;
+        els.safetyCritLine.style.left = `${critPct.toFixed(1)}%`;
+        els.safetyCompare.textContent = `v = ${state.v.toFixed(1)} vs v_min = ${phys.vMin.toFixed(2)} m/s`;
+
+        if (state.v < phys.vMin - 0.02) {
+          els.safetyGVal.textContent = "0.00 g (FALLS!)";
+          els.safetyGVal.style.color = "var(--accent-rose)";
+          els.safetyFill.style.backgroundColor = "var(--accent-rose)";
+          els.safetyLabel.textContent = "WILL FALL OFF";
+          els.safetyLabel.style.color = "var(--accent-rose)";
+        } else if (state.v <= phys.vMin * 1.06) {
+          els.safetyGVal.textContent = `+${Math.max(0, phys.topG).toFixed(2)} g`;
+          els.safetyGVal.style.color = "var(--accent-amber)";
+          els.safetyFill.style.backgroundColor = "var(--accent-amber)";
+          els.safetyLabel.textContent = "CRITICAL";
+          els.safetyLabel.style.color = "var(--accent-amber)";
+        } else {
+          els.safetyGVal.textContent = `+${phys.topG.toFixed(2)} g`;
+          els.safetyGVal.style.color = "var(--accent-emerald)";
+          els.safetyFill.style.backgroundColor = "var(--accent-emerald)";
+          els.safetyLabel.textContent = "SAFE";
+          els.safetyLabel.style.color = "var(--accent-emerald)";
+        }
+
+        // Monospace Lab Readout Grid
+        els.outVmin.textContent = phys.vMin.toFixed(2);
+        els.outFc.textContent = fmtInt(phys.Fc);
+        els.outT.textContent = phys.T.toFixed(2);
+        els.outAc.textContent = phys.ac.toFixed(2);
+        els.outAcg.textContent = phys.acG.toFixed(2);
+        els.outFg.textContent = fmtInt(phys.Fg);
+
+        const topDetaches = state.v < phys.vMin - 0.01;
+        els.outFnTop.textContent = topDetaches ? "0 N (Falls!)" : `${fmtInt(phys.FnTop)} N`;
+        els.outFnTop.classList.toggle("zero-warn", topDetaches);
+        els.outFnSide.textContent = `${fmtInt(phys.FnSide)} N`;
+        els.outFnBottom.textContent = `${fmtInt(phys.FnBottom)} N`;
+
+        // Sync FBD Equations Card
+        updateFBDEquations();
+        updateStatusHUD();
+        drawFBD();
+      }
+
+      function updateFBDEquations() {
+        const pos = state.fbdPos;
+        const posLabel = pos === "top" ? "Top" : (pos === "horizontal" ? "Horizontal" : "Bottom");
+        els.fbdMarkerHint.textContent = `Highlighted Marker: ${posLabel}`;
+
+        Object.keys(els.fnCards).forEach(k => {
+          els.fnCards[k].classList.toggle("selected", k === pos);
+        });
+        els.fbdTabs.forEach(tab => {
+          const active = tab.dataset.pos === pos;
+          tab.classList.toggle("active", active);
+          tab.setAttribute("aria-selected", active ? "true" : "false");
+        });
+
+        els.eqSub.classList.remove("danger");
+
+        if (pos === "top") {
+          els.eqTitle.textContent = "Top of Loop (θ = 90°) — Radial Force Equation";
+          if (state.v < phys.vMin - 0.01) {
+            els.eqMain.innerHTML =
+              `F<sub>g</sub> (${fmtInt(phys.Fg)} N) &gt; F<sub>c</sub> (${fmtInt(phys.Fc)} N) &nbsp;&rArr;&nbsp; <span style="color:#f87171;">Car falls!</span>`;
+            els.eqSub.textContent =
+              `Normal force cannot pull on the car (F_N ≥ 0). Because v (${state.v.toFixed(1)} m/s) < v_min (${phys.vMin.toFixed(2)} m/s), the car loses contact before reaching the top.`;
+            els.eqSub.classList.add("danger");
+          } else {
+            els.eqMain.innerHTML =
+              `F<sub>N</sub> + F<sub>g</sub> = F<sub>c</sub> &nbsp;&rArr;&nbsp; F<sub>N</sub> = ${fmtInt(phys.Fc)} &minus; ${fmtInt(phys.Fg)} = <span style="color:#34d399;">${fmtInt(phys.FnTop)} N</span>`;
+            els.eqSub.textContent =
+              Math.abs(phys.topG) < 0.04
+                ? `Apparent weight: ~0.00 g (Weightless! Gravity alone provides the entire centripetal force).`
+                : `Apparent weight at top: ${phys.topG.toFixed(2)} g — both F_N and F_g point downward toward the loop center.`;
+          }
+        } else if (pos === "horizontal") {
+          els.eqTitle.textContent = "Horizontal Position (θ = 0°) — Radial Force Equation";
+          els.eqMain.innerHTML =
+            `F<sub>N</sub> = F<sub>c</sub> = mv² / r = <span style="color:#34d399;">${fmtInt(phys.FnSide)} N</span>`;
+          els.eqSub.textContent =
+            `At 3 o'clock, the rail's horizontal normal force F_N provides 100% of the centripetal force (${phys.acG.toFixed(2)} g inward), while constant speed is maintained against downward gravity F_g (${fmtInt(phys.Fg)} N).`;
+        } else {
+          els.eqTitle.textContent = "Bottom of Loop (θ = −90°) — Radial Force Equation";
+          els.eqMain.innerHTML =
+            `F<sub>N</sub> &minus; F<sub>g</sub> = F<sub>c</sub> &nbsp;&rArr;&nbsp; F<sub>N</sub> = ${fmtInt(phys.Fc)} + ${fmtInt(phys.Fg)} = <span style="color:#34d399;">${fmtInt(phys.FnBottom)} N</span>`;
+          els.eqSub.textContent =
+            `Apparent weight at bottom: ${phys.bottomG.toFixed(2)} g — the track must support the car's weight AND supply the upward centripetal force.`;
+        }
+      }
+
+      function updateStatusHUD() {
+        els.hudBadge.className = "hud-status-badge";
+        els.headerDot.className = "pill-dot";
+
+        if (state.mode === "CRASHED") {
+          els.hudBadge.classList.add("danger");
+          els.hudBadge.textContent = "CRASHED";
+          els.headerDot.classList.add("danger");
+          els.headerStatusText.textContent = "Crashed";
+        } else if (state.mode === "FALLING") {
+          els.hudBadge.classList.add("danger");
+          els.hudBadge.textContent = "FALLING — LOST CONTACT";
+          els.headerDot.classList.add("danger");
+          els.headerStatusText.textContent = "Falling!";
+        } else {
+          if (!state.isPlaying) {
+            els.headerDot.classList.add("paused");
+            els.headerStatusText.textContent = "Paused";
+          } else {
+            els.headerStatusText.textContent = `Running ${state.speedMult}x`;
+          }
+
+          if (state.v < phys.vMin - 0.02) {
+            els.hudBadge.classList.add("danger");
+            els.hudBadge.textContent = "LOOPING — WILL DETACH";
+          } else if (state.v <= phys.vMin * 1.06) {
+            els.hudBadge.classList.add("critical");
+            els.hudBadge.textContent = "CRITICAL — WEIGHTLESS AT TOP";
+          } else {
+            els.hudBadge.classList.add("safe");
+            els.hudBadge.textContent = "LOOPING — SAFE";
+          }
+        }
+
+        if (state.isPlaying) {
+          els.playPauseIcon.innerHTML = "&#10074;&#10074;";
+          els.playPauseLabel.textContent = "Pause";
+        } else {
+          els.playPauseIcon.innerHTML = "&#9654;";
+          els.playPauseLabel.textContent = "Play";
+        }
+      }
+
+      /* ========================================================================
+         STATE TRANSITIONS: RESET, DETACH (FALLING), CRASH
+         ======================================================================== */
+      function resetCar(keepPlaying) {
+        state.mode = "LOOPING";
+        state.theta = -Math.PI / 2; // Start at bottom (6 o'clock) moving CCW
+        state.carX = 0;
+        state.carY = -state.r;
+        state.carVx = state.v;
+        state.carVy = 0;
+        state.carRot = 0;
+        state.carSpinRate = 0;
+        state.detachPoint = null;
+        state.loopTrail = [];
+        state.fallTrail = [];
+        state.particles = [];
+        state.shakeTime = 0;
+
+        els.crashBanner.classList.remove("visible");
+
+        if (typeof keepPlaying === "boolean") {
+          state.isPlaying = keepPlaying;
+        }
+        computePhysics();
+        syncReadouts();
+      }
+
+      function detachFromLoop() {
+        state.mode = "FALLING";
+        // Exact position and tangential CCW velocity at detachment angle theta
+        state.carX = state.r * Math.cos(state.theta);
+        state.carY = state.r * Math.sin(state.theta);
+        state.carVx = -state.v * Math.sin(state.theta);
+        state.carVy = state.v * Math.cos(state.theta);
+        state.carRot = -(state.theta + Math.PI / 2);
+        // Gentle tumble during free fall
+        state.carSpinRate = -(1.4 + phys.omega * 0.45);
+        state.detachPoint = { x: state.carX, y: state.carY };
+        state.fallTrail = [{ x: state.carX, y: state.carY }];
+
+        updateStatusHUD();
+      }
+
+      function triggerCrash(groundY) {
+        state.mode = "CRASHED";
+        state.carY = groundY;
+        state.carVx = 0;
+        state.carVy = 0;
+        state.shakeTime = 0.42;
+
+        // Spawn impact sparks, debris, and smoke puffs in world meters
+        for (let i = 0; i < 36; i++) {
+          const isSpark = i < 20;
+          const isDebris = i >= 20 && i < 28;
+          const ang = Math.random() * Math.PI; // upward hemisphere
+          const spd = isSpark ? (4 + Math.random() * 11) : (2 + Math.random() * 6);
+          state.particles.push({
+            x: state.carX + (Math.random() - 0.5) * 1.2,
+            y: groundY + 0.3,
+            vx: Math.cos(ang) * spd * (Math.random() > 0.5 ? 1 : -1) * 0.8 + (Math.random() - 0.5) * 4,
+            vy: Math.abs(Math.sin(ang) * spd) + (isSpark ? 3 : 1.5),
+            life: isSpark ? (0.4 + Math.random() * 0.45) : (0.75 + Math.random() * 0.65),
+            maxLife: 1.25,
+            size: isSpark ? (2 + Math.random() * 2.4) : (isDebris ? 3.5 : 6.5),
+            type: isSpark ? "spark" : (isDebris ? "debris" : "smoke"),
+            color: isSpark
+              ? (Math.random() > 0.45 ? "#fbbf24" : "#f97316")
+              : (isDebris ? "#64748b" : "#94a3b8")
+          });
+        }
+
+        els.crashSubText.textContent =
+          `v (${state.v.toFixed(1)} m/s) < v_min (${phys.vMin.toFixed(2)} m/s) — Click Reset (or press R) to relaunch.`;
+        els.crashBanner.classList.add("visible");
+        updateStatusHUD();
+      }
+
+      /* ========================================================================
+         CONTROL EVENT BINDINGS & KEYBOARD SHORTCUTS
+         ======================================================================== */
+      function clearPresetActive() {
+        els.presetBtns.forEach(b => b.classList.remove("active"));
+      }
+
+      function bindParam(sliderEl, numEl, key, decimals) {
+        const lim = LIMITS[key];
+
+        function apply(raw) {
+          let val = parseFloat(raw);
+          if (isNaN(val)) return;
+          val = Math.max(lim.min, Math.min(lim.max, val));
+          state[key] = val;
+          clearPresetActive();
+          computePhysics();
+          syncInputs();
+          syncReadouts();
+        }
+
+        sliderEl.addEventListener("input", () => apply(sliderEl.value));
+        numEl.addEventListener("input", () => {
+          const val = parseFloat(numEl.value);
+          if (!isNaN(val) && val >= lim.min && val <= lim.max) {
+            state[key] = val;
+            clearPresetActive();
+            computePhysics();
+            syncInputs();
+            syncReadouts();
+          }
+        });
+        numEl.addEventListener("change", () => {
+          apply(numEl.value);
+          numEl.value = decimals > 0 ? state[key].toFixed(decimals) : Math.round(state[key]);
+        });
+      }
+
+      bindParam(els.sliderV, els.numV, "v", 1);
+      bindParam(els.sliderR, els.numR, "r", 1);
+      bindParam(els.sliderM, els.numM, "m", 0);
+
+      // Set to Critical Speed (v_min)
+      els.btnSetCrit.addEventListener("click", () => {
+        computePhysics();
+        state.v = Math.max(LIMITS.v.min, Math.min(LIMITS.v.max, parseFloat(phys.vMin.toFixed(2))));
+        clearPresetActive();
+        computePhysics();
+        syncInputs();
+        if (state.mode !== "LOOPING") {
+          resetCar(true);
+        } else {
+          syncReadouts();
+        }
+      });
+
+      // Quick Track Presets
+      els.presetBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const p = btn.dataset.preset;
+          if (p === "classic") {
+            state.r = 12.0; state.v = 16.0; state.m = 500;
+          } else if (p === "weightless") {
+            state.r = 12.0; state.v = parseFloat(Math.sqrt(G * 12.0).toFixed(2)); state.m = 500;
+          } else if (p === "highg") {
+            state.r = 15.0; state.v = 24.0; state.m = 800;
+          } else if (p === "tooslow") {
+            state.r = 14.0; state.v = 8.5; state.m = 500;
+          }
+          els.presetBtns.forEach(b => b.classList.toggle("active", b === btn));
+          computePhysics();
+          syncInputs();
+          resetCar(true);
+        });
+      });
+
+      // Play / Pause & Reset
+      els.btnPlayPause.addEventListener("click", () => {
+        if (state.mode === "CRASHED") {
+          resetCar(true);
+          return;
+        }
+        state.isPlaying = !state.isPlaying;
+        updateStatusHUD();
+      });
+
+      els.btnReset.addEventListener("click", () => resetCar(true));
+      els.btnBannerReset.addEventListener("click", () => resetCar(true));
+
+      // Playback Speed Selector
+      els.speedBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.speedMult = parseFloat(btn.dataset.speed);
+          els.speedBtns.forEach(b => b.classList.toggle("active", b === btn));
+          updateStatusHUD();
+        });
+      });
+
+      // Overlay Toggles
+      els.chkVecV.addEventListener("change", () => { state.showVecV = els.chkVecV.checked; });
+      els.chkVecFn.addEventListener("change", () => { state.showVecFn = els.chkVecFn.checked; });
+      els.chkVecFg.addEventListener("change", () => { state.showVecFg = els.chkVecFg.checked; });
+      els.chkTrail.addEventListener("change", () => {
+        state.showTrail = els.chkTrail.checked;
+        if (!state.showTrail) state.loopTrail = [];
+      });
+
+      // FBD Position Toggle (Tabs & Readout Cards)
+      function setFBDPos(pos) {
+        state.fbdPos = pos;
+        updateFBDEquations();
+        drawFBD();
+      }
+
+      els.fbdTabs.forEach(tab => {
+        tab.addEventListener("click", () => setFBDPos(tab.dataset.pos));
+      });
+      Object.keys(els.fnCards).forEach(k => {
+        els.fnCards[k].addEventListener("click", () => setFBDPos(k));
+      });
+
+      // Keyboard Shortcuts: Space (Play/Pause), R (Reset)
+      window.addEventListener("keydown", e => {
+        const tag = (document.activeElement && document.activeElement.tagName) || "";
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+        if (e.code === "Space") {
+          e.preventDefault();
+          if (state.mode === "CRASHED") resetCar(true);
+          else {
+            state.isPlaying = !state.isPlaying;
+            updateStatusHUD();
+          }
+        } else if (e.key === "r" || e.key === "R") {
+          e.preventDefault();
+          resetCar(true);
+        }
+      });
+
+      /* ========================================================================
+         RESPONSIVE HiDPI CANVAS SIZING (ResizeObserver + window resize)
+         ======================================================================== */
+      function resizeCanvases() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        const sRect = els.simStage.getBoundingClientRect();
+        if (sRect.width > 0 && sRect.height > 0) {
+          simSize.w = Math.max(280, Math.floor(sRect.width));
+          simSize.h = Math.max(320, Math.floor(sRect.height));
+          els.simCanvas.width = Math.floor(simSize.w * dpr);
+          els.simCanvas.height = Math.floor(simSize.h * dpr);
+          simCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        const fRect = els.fbdWrap.getBoundingClientRect();
+        if (fRect.width > 0 && fRect.height > 0) {
+          fbdSize.w = Math.max(220, Math.floor(fRect.width));
+          fbdSize.h = Math.max(200, Math.floor(fRect.height));
+          els.fbdCanvas.width = Math.floor(fbdSize.w * dpr);
+          els.fbdCanvas.height = Math.floor(fbdSize.h * dpr);
+          fbdCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        drawSimulation();
+        drawFBD();
+      }
+
+      window.addEventListener("resize", resizeCanvases);
+      if (typeof ResizeObserver !== "undefined") {
+        const ro = new ResizeObserver(resizeCanvases);
+        ro.observe(els.simStage);
+        ro.observe(els.fbdWrap);
+      }
+
+      /* ========================================================================
+         SHARED DRAWING HELPERS
+         ======================================================================== */
+      function drawArrow(ctx, x1, y1, x2, y2, opts) {
+        const {
+          color = "#38bdf8",
+          lineWidth = 2.6,
+          headLen = 10,
+          dashed = false
+        } = opts || {};
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.hypot(dx, dy);
+        if (len < 2) return;
+
+        const ang = Math.atan2(dy, dx);
+        const effHead = Math.min(headLen, len * 0.45);
+        const sx = x2 - Math.cos(ang) * (effHead * 0.68);
+        const sy = y2 - Math.sin(ang) * (effHead * 0.68);
+
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = "round";
+        if (dashed) ctx.setLineDash([5, 4]);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(
+          x2 - effHead * Math.cos(ang - Math.PI / 6),
+          y2 - effHead * Math.sin(ang - Math.PI / 6)
+        );
+        ctx.lineTo(
+          x2 - effHead * Math.cos(ang + Math.PI / 6),
+          y2 - effHead * Math.sin(ang + Math.PI / 6)
+        );
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawPillLabel(ctx, text, x, y, color, align) {
+        ctx.save();
+        ctx.font = "700 11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+        const padX = 6;
+        const w = ctx.measureText(text).width + padX * 2;
+        const h = 19;
+
+        let bx = x - w / 2;
+        if (align === "left") bx = x;
+        else if (align === "right") bx = x - w;
+        const by = y - h / 2;
+
+        ctx.fillStyle = "rgba(11, 17, 32, 0.88)";
+        ctx.strokeStyle = "rgba(59, 79, 110, 0.65)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, w, h, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = color || "#f1f5f9";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, bx + padX, y + 0.5);
+        ctx.restore();
+      }
+
+      /* ========================================================================
+         CENTER CANVAS: VERTICAL LOOP ROLLERCOASTER RENDERER
+         ======================================================================== */
+      /**
+       * Draws a detailed side-view rollercoaster car.
+       * Local coordinate system: +x = forward, +y = toward rail/wheels, -y = toward riders' heads.
+       * Origin (0, 0) is the car's center of mass; bottom of wheels is at y = +wheelBottomY.
+       */
+      function drawRollercoasterCar(ctx, sx, sy, rot, scalePx) {
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(rot);
+
+        const s = scalePx; // ~1.0 at normal loop size
+        const halfL = 17 * s;
+        const chassisH = 8.5 * s;
+        const wheelR = 3.2 * s;
+        const wheelY = 7.2 * s; // wheel axle y
+
+        // Soft headlight beam ahead
+        const beam = ctx.createLinearGradient(halfL, 0, halfL + 30 * s, 0);
+        beam.addColorStop(0, "rgba(254, 240, 138, 0.4)");
+        beam.addColorStop(1, "rgba(254, 240, 138, 0)");
+        ctx.fillStyle = beam;
+        ctx.beginPath();
+        ctx.moveTo(halfL, -2 * s);
+        ctx.lineTo(halfL + 30 * s, -9 * s);
+        ctx.lineTo(halfL + 30 * s, 6 * s);
+        ctx.lineTo(halfL, 4 * s);
+        ctx.closePath();
+        ctx.fill();
+
+        // Two riders (seated with colorful helmets & torso)
+        const riderXs = [-5.5 * s, 4.5 * s];
+        riderXs.forEach((rx, idx) => {
+          // Seat back
+          ctx.fillStyle = "#1e293b";
+          ctx.beginPath();
+          ctx.roundRect(rx - 4.2 * s, -10.5 * s, 3.2 * s, 9 * s, 1.5 * s);
+          ctx.fill();
+
+          // Torso
+          ctx.fillStyle = idx === 0 ? "#38bdf8" : "#a78bfa";
+          ctx.beginPath();
+          ctx.roundRect(rx - 1.5 * s, -9.2 * s, 4.6 * s, 7.2 * s, 2 * s);
+          ctx.fill();
+
+          // Helmet / Head
+          ctx.fillStyle = idx === 0 ? "#f8fafc" : "#fbbf24";
+          ctx.beginPath();
+          ctx.arc(rx + 1 * s, -12.2 * s, 3.2 * s, 0, Math.PI * 2);
+          ctx.fill();
+          // Visor
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(rx + 1.8 * s, -13.1 * s, 2.3 * s, 1.6 * s);
+        });
+
+        // Sleek aerodynamic coaster car body
+        const bodyGrad = ctx.createLinearGradient(0, -4 * s, 0, 6 * s);
+        bodyGrad.addColorStop(0, "#38bdf8");
+        bodyGrad.addColorStop(0.5, "#2563eb");
+        bodyGrad.addColorStop(1, "#1e3a8a");
+        ctx.fillStyle = bodyGrad;
+        ctx.strokeStyle = "#bfdbfe";
+        ctx.lineWidth = 1.2;
+
+        ctx.beginPath();
+        ctx.moveTo(-halfL, -3 * s);
+        ctx.lineTo(halfL - 5 * s, -3 * s);
+        ctx.quadraticCurveTo(halfL + 2 * s, -2.5 * s, halfL + 1.5 * s, 3.5 * s);
+        ctx.lineTo(halfL - 1 * s, 5.5 * s);
+        ctx.lineTo(-halfL + 1 * s, 5.5 * s);
+        ctx.quadraticCurveTo(-halfL - 1 * s, 4 * s, -halfL, -3 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Racing stripe & front headlight
+        ctx.fillStyle = "#e0f2fe";
+        ctx.fillRect(-halfL + 3 * s, 0.2 * s, halfL * 1.65, 1.8 * s);
+
+        ctx.fillStyle = "#fef08a";
+        ctx.beginPath();
+        ctx.arc(halfL - 0.5 * s, 1.5 * s, 1.9 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Undercarriage bogie bar
+        ctx.fillStyle = "#334155";
+        ctx.fillRect(-halfL + 4 * s, 5.2 * s, (halfL - 4 * s) * 2, 2.4 * s);
+
+        // Front & Rear Steel Coaster Wheels (touching inner rail at y = wheelY + wheelR)
+        [-10 * s, 10 * s].forEach(wx => {
+          ctx.fillStyle = "#0f172a";
+          ctx.strokeStyle = "#cbd5e1";
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.arc(wx, wheelY, wheelR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = "#94a3b8";
+          ctx.beginPath();
+          ctx.arc(wx, wheelY, 1.1 * s, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        ctx.restore();
+      }
+
+      function drawSimulation() {
+        const w = simSize.w;
+        const h = simSize.h;
+        const ctx = simCtx;
+
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.save();
+        if (state.shakeTime > 0) {
+          const amp = (state.shakeTime / 0.42) * 7.5;
+          ctx.translate((Math.random() - 0.5) * 2 * amp, (Math.random() - 0.5) * 2 * amp);
+        }
+
+        // 1. Subtle Engineering Grid
+        ctx.save();
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.055)";
+        ctx.lineWidth = 1;
+        const gStep = 32;
+        for (let gx = (w / 2) % gStep; gx < w; gx += gStep) {
+          ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke();
+        }
+        for (let gy = (h / 2) % gStep; gy < h; gy += gStep) {
+          ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke();
+        }
+        ctx.restore();
+
+        // 2. Dynamic Auto-Scaling Viewport
+        const padTop = 68;
+        const padBot = 74;
+        const padSide = 74;
+        const availW = Math.max(120, w - padSide * 2);
+        const availH = Math.max(140, h - padTop - padBot);
+
+        // Fit loop diameter (2*r) nicely with breathing room
+        const loopRpx = Math.min(availW * 0.46, availH * 0.47);
+        const pxPerM = loopRpx / state.r;
+        const cx = w * 0.5;
+        const cy = padTop + availH * 0.5;
+        const railThick = Math.max(8, Math.min(13, loopRpx * 0.068));
+        const outerRailR = loopRpx + railThick;
+        const innerRailR = loopRpx;
+        const groundY = cy + outerRailR + 10;
+
+        function worldToScreen(wx, wy) {
+          return {
+            sx: cx + wx * pxPerM,
+            sy: cy - wy * pxPerM
+          };
+        }
+
+        // 3. Concrete Ground Platform
+        ctx.save();
+        const groundGrad = ctx.createLinearGradient(0, groundY, 0, h);
+        groundGrad.addColorStop(0, "#1e293b");
+        groundGrad.addColorStop(1, "#0b1120");
+        ctx.fillStyle = groundGrad;
+        ctx.fillRect(0, groundY, w, h - groundY);
+
+        ctx.strokeStyle = "#475569";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, groundY);
+        ctx.lineTo(w, groundY);
+        ctx.stroke();
+
+        // Diagonal concrete hatch marks
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.14)";
+        ctx.lineWidth = 1;
+        for (let hx = 10; hx < w; hx += 20) {
+          ctx.beginPath();
+          ctx.moveTo(hx, groundY);
+          ctx.lineTo(hx - 10, groundY + 12);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // 4. Steel Support A-Frame / Truss Legs
+        ctx.save();
+        const legAngles = [Math.PI * 0.18, Math.PI * 0.82, -Math.PI * 0.18, -Math.PI * 0.82];
+        const anchorPoints = [
+          { ang: Math.PI * 0.2, footX: cx + outerRailR * 1.18 },
+          { ang: Math.PI * 0.8, footX: cx - outerRailR * 1.18 },
+          { ang: -Math.PI * 0.12, footX: cx + outerRailR * 0.92 },
+          { ang: -Math.PI * 0.88, footX: cx - outerRailR * 0.92 }
+        ];
+
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 4.5;
+        ctx.lineCap = "round";
+        anchorPoints.forEach(ap => {
+          const ax = cx + outerRailR * Math.cos(ap.ang);
+          const ay = cy - outerRailR * Math.sin(ap.ang);
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(ap.footX, groundY);
+          ctx.stroke();
+        });
+
+        // Horizontal cross-bracing between outer legs
+        ctx.strokeStyle = "rgba(71, 85, 105, 0.65)";
+        ctx.lineWidth = 2;
+        [0.42, 0.72].forEach(frac => {
+          const yBrace = cy + (groundY - cy) * frac;
+          // Left truss brace
+          const l1 = cx - outerRailR * (0.94 + frac * 0.2);
+          const l2 = cx - outerRailR * (0.76 + frac * 0.14);
+          ctx.beginPath(); ctx.moveTo(l1, yBrace); ctx.lineTo(l2, yBrace); ctx.stroke();
+          // Right truss brace
+          const r1 = cx + outerRailR * (0.94 + frac * 0.2);
+          const r2 = cx + outerRailR * (0.76 + frac * 0.14);
+          ctx.beginPath(); ctx.moveTo(r1, yBrace); ctx.lineTo(r2, yBrace); ctx.stroke();
+        });
+        ctx.restore();
+
+        // 5. Horizontal Entry/Exit Track Extensions at Bottom
+        ctx.save();
+        const entryYInner = cy + innerRailR;
+        const entryYOuter = cy + outerRailR;
+
+        // Cross-ties along horizontal lead-in/lead-out tracks
+        ctx.strokeStyle = "#475569";
+        ctx.lineWidth = 2;
+        for (let tx = 14; tx < w - 14; tx += 16) {
+          if (Math.abs(tx - cx) > 10) {
+            ctx.beginPath();
+            ctx.moveTo(tx, entryYInner);
+            ctx.lineTo(tx, entryYOuter);
+            ctx.stroke();
+          }
+        }
+        // Horizontal steel rails
+        ctx.strokeStyle = "#64748b";
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(0, entryYOuter); ctx.lineTo(w, entryYOuter);
+        ctx.stroke();
+        ctx.strokeStyle = "#94a3b8";
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(0, entryYInner); ctx.lineTo(w, entryYInner);
+        ctx.stroke();
+        ctx.restore();
+
+        // 6. Double-Rail Circular Loop Track with Radial Cross-Ties
+        ctx.save();
+        // Radial cross-ties
+        const tieCount = 48;
+        ctx.strokeStyle = "#475569";
+        ctx.lineWidth = 2;
+        for (let i = 0; i < tieCount; i++) {
+          const a = (i / tieCount) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(cx + innerRailR * Math.cos(a), cy - innerRailR * Math.sin(a));
+          ctx.lineTo(cx + outerRailR * Math.cos(a), cy - outerRailR * Math.sin(a));
+          ctx.stroke();
+        }
+
+        // Outer backbone tube
+        ctx.strokeStyle = "#38bdf8";
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerRailR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        ctx.strokeStyle = "#64748b";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerRailR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner running rail (bright brushed steel)
+        ctx.strokeStyle = "#cbd5e1";
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        ctx.arc(cx, cy, innerRailR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // 7. Loop Diameter / Height Scale Indicator (Left Side)
+        ctx.save();
+        const dimX = Math.max(24, cx - outerRailR - 26);
+        const topY = cy - innerRailR;
+        const botY = cy + innerRailR;
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.45)";
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(dimX - 5, topY); ctx.lineTo(dimX + 5, topY);
+        ctx.moveTo(dimX, topY); ctx.lineTo(dimX, botY);
+        ctx.moveTo(dimX - 5, botY); ctx.lineTo(dimX + 5, botY);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(dimX - 11, cy);
+        ctx.rotate(-Math.PI / 2);
+        ctx.font = "600 11px ui-monospace, monospace";
+        ctx.fillStyle = "#94a3b8";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`2r = ${(state.r * 2).toFixed(1)} m`, 0, 0);
+        ctx.restore();
+        ctx.restore();
+
+        // 8. Center Crosshair & Optional Radius Line
+        ctx.save();
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.6)";
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(cx - 7, cy); ctx.lineTo(cx + 7, cy);
+        ctx.moveTo(cx, cy - 7); ctx.lineTo(cx, cy + 7);
+        ctx.stroke();
+        ctx.fillStyle = "#94a3b8";
+        ctx.beginPath();
+        ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 9. Key Position Marker Rings (Top, Horizontal, Bottom) — pulsing highlight on active FBD tab
+        const markers = [
+          { key: "top", ang: Math.PI / 2, label: "TOP" },
+          { key: "horizontal", ang: 0, label: "SIDE" },
+          { key: "bottom", ang: -Math.PI / 2, label: "BOTTOM" }
+        ];
+        const pulse = 0.5 + 0.5 * Math.sin(state.pulseClock * 5.0);
+
+        markers.forEach(mk => {
+          const mx = cx + innerRailR * Math.cos(mk.ang);
+          const my = cy - innerRailR * Math.sin(mk.ang);
+          const isSelected = state.fbdPos === mk.key;
+
+          ctx.save();
+          if (isSelected) {
+            // Pulsing glow halo
+            const glowR = 13 + pulse * 6;
+            const g = ctx.createRadialGradient(mx, my, 2, mx, my, glowR);
+            g.addColorStop(0, "rgba(56, 189, 248, 0.55)");
+            g.addColorStop(1, "rgba(56, 189, 248, 0)");
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(mx, my, glowR, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = "#38bdf8";
+            ctx.lineWidth = 2.2;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.arc(mx, my, 10 + pulse * 2.5, 0, Math.PI * 2);
+            ctx.stroke();
+          } else {
+            ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
+            ctx.lineWidth = 1.4;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.arc(mx, my, 8, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.restore();
+        });
+
+        // 10. Car Screen Position & Trail / Radius Line
+        const carScale = Math.max(0.75, Math.min(1.12, loopRpx / 155));
+        const wheelOffsetPx = 10.4 * carScale; // distance from car CM to bottom of wheels
+
+        let carSx, carSy, carRot;
+        if (state.mode === "LOOPING") {
+          const carRpx = innerRailR - wheelOffsetPx;
+          carSx = cx + carRpx * Math.cos(state.theta);
+          carSy = cy - carRpx * Math.sin(state.theta);
+          carRot = -(state.theta + Math.PI / 2);
+
+          if (state.showTrail) {
+            // Dashed radius line from center to car
+            ctx.save();
+            ctx.strokeStyle = "rgba(148, 163, 184, 0.55)";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 4]);
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(carSx, carSy);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+
+            drawPillLabel(ctx, `r = ${state.r.toFixed(1)} m`, (cx + carSx) * 0.5, (cy + carSy) * 0.5, "#cbd5e1", "center");
+
+            // Smooth fading motion trail along loop
+            if (state.loopTrail.length > 1) {
+              ctx.save();
+              ctx.lineCap = "round";
+              for (let i = 1; i < state.loopTrail.length; i++) {
+                const a0 = state.loopTrail[i - 1];
+                const a1 = state.loopTrail[i];
+                const t = i / state.loopTrail.length;
+                ctx.strokeStyle = `rgba(56, 189, 248, ${(t * t * 0.65).toFixed(3)})`;
+                ctx.lineWidth = 1.5 + t * 3.5;
+                ctx.beginPath();
+                ctx.moveTo(cx + carRpx * Math.cos(a0), cy - carRpx * Math.sin(a0));
+                ctx.lineTo(cx + carRpx * Math.cos(a1), cy - carRpx * Math.sin(a1));
+                ctx.stroke();
+              }
+              ctx.restore();
+            }
+          }
+        } else {
+          // FALLING or CRASHED: use exact projectile world coordinates (carX, carY)
+          const p = worldToScreen(state.carX, state.carY);
+          carSx = p.sx;
+          carSy = p.sy;
+          carRot = state.carRot;
+        }
+
+        // 11. Dashed Red Parabolic Falling Trajectory Trail
+        if (state.fallTrail.length > 1) {
+          ctx.save();
+          ctx.strokeStyle = "rgba(248, 113, 113, 0.85)";
+          ctx.lineWidth = 2.4;
+          ctx.setLineDash([6, 5]);
+          ctx.beginPath();
+          state.fallTrail.forEach((pt, idx) => {
+            const sp = worldToScreen(pt.x, pt.y);
+            if (idx === 0) ctx.moveTo(sp.sx, sp.sy);
+            else ctx.lineTo(sp.sx, sp.sy);
+          });
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Detachment point marker
+          if (state.detachPoint) {
+            const dp = worldToScreen(state.detachPoint.x, state.detachPoint.y);
+            ctx.fillStyle = "#f87171";
+            ctx.beginPath();
+            ctx.arc(dp.sx, dp.sy, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            drawPillLabel(ctx, "Detached (FN = 0)", dp.sx, dp.sy - 16, "#fca5a5", "center");
+          }
+          ctx.restore();
+        }
+
+        // 12. Impact Sparks, Debris & Smoke Particles
+        for (let i = 0; i < state.particles.length; i++) {
+          const pt = state.particles[i];
+          const sp = worldToScreen(pt.x, pt.y);
+          const alpha = Math.max(0, pt.life / pt.maxLife);
+          ctx.save();
+          ctx.globalAlpha = alpha * (pt.type === "smoke" ? 0.55 : 0.95);
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(sp.sx, sp.sy, pt.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // 13. Draw Rollercoaster Car
+        drawRollercoasterCar(ctx, carSx, carSy, carRot, carScale);
+
+        // 14. Live Vectors from Car Center of Mass
+        if (state.mode !== "CRASHED") {
+          // Unified force scaling so F_N and F_g are visibly proportional on the loop
+          const maxF = Math.max(phys.FnBottom, phys.Fg, 1);
+          const forceScale = Math.min(loopRpx * 0.58, 92) / maxF;
+
+          // Gravity Vector (F_g, amber, always straight down)
+          if (state.showVecFg) {
+            const fgLen = Math.max(18, phys.Fg * forceScale);
+            drawArrow(ctx, carSx, carSy, carSx, carSy + fgLen, {
+              color: "#fbbf24",
+              lineWidth: 2.6,
+              headLen: 9
+            });
+            drawPillLabel(ctx, "Fg", carSx + 14, carSy + fgLen * 0.72, "#fbbf24", "left");
+          }
+
+          // Normal Force Vector (F_N, emerald, radially inward, dynamically shrinking/growing)
+          if (state.showVecFn && state.mode === "LOOPING" && phys.FnCurrent > 1) {
+            const fnLen = Math.max(12, phys.FnCurrent * forceScale);
+            // Inward radial unit vector in canvas coords: (-cos(theta), +sin(theta))
+            const ix = -Math.cos(state.theta);
+            const iy = Math.sin(state.theta);
+            const tipX = carSx + ix * fnLen;
+            const tipY = carSy + iy * fnLen;
+            drawArrow(ctx, carSx, carSy, tipX, tipY, {
+              color: "#34d399",
+              lineWidth: 2.8,
+              headLen: 9
+            });
+            if (fnLen > 18) {
+              drawPillLabel(ctx, "FN", tipX + ix * 12, tipY + iy * 12, "#34d399", "center");
+            }
+          }
+
+          // Velocity Vector (v, cyan)
+          if (state.showVecV) {
+            let vxDir, vyDir, spdMag;
+            if (state.mode === "LOOPING") {
+              // CCW tangent in canvas coords: (-sin(theta), -cos(theta))
+              vxDir = -Math.sin(state.theta);
+              vyDir = -Math.cos(state.theta);
+              spdMag = state.v;
+            } else {
+              spdMag = Math.hypot(state.carVx, state.carVy) || 1;
+              vxDir = state.carVx / spdMag;
+              vyDir = -state.carVy / spdMag;
+            }
+            const vLen = Math.min(82, Math.max(26, 22 + spdMag * 1.65));
+            const vTipX = carSx + vxDir * vLen;
+            const vTipY = carSy + vyDir * vLen;
+            drawArrow(ctx, carSx, carSy, vTipX, vTipY, {
+              color: "#38bdf8",
+              lineWidth: 2.8,
+              headLen: 9
+            });
+            drawPillLabel(ctx, "v", vTipX + vxDir * 12, vTipY + vyDir * 12, "#38bdf8", "center");
+          }
+        }
+
+        ctx.restore();
+      }
+
+      /* ========================================================================
+         RIGHT PANEL CANVAS: INTERACTIVE 2D FREE BODY DIAGRAM (TOP / HORIZONTAL / BOTTOM)
+         ======================================================================== */
+      function drawFBD() {
+        const w = fbdSize.w;
+        const h = fbdSize.h;
+        const ctx = fbdCtx;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Subtle engineering grid
+        ctx.save();
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.06)";
+        ctx.lineWidth = 1;
+        for (let x = 20; x < w; x += 24) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for (let y = 20; y < h; y += 24) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+        ctx.restore();
+
+        const pos = state.fbdPos;
+        const cx = pos === "horizontal" ? w * 0.62 : w * 0.44;
+        const cy = pos === "top" ? h * 0.34 : (pos === "bottom" ? h * 0.66 : h * 0.46);
+
+        // 1. Curved Track Segment for Spatial Context
+        ctx.save();
+        const arcR = 125;
+        ctx.strokeStyle = "#94a3b8";
+        ctx.lineWidth = 5;
+        ctx.lineCap = "round";
+
+        if (pos === "top") {
+          // Curved rail ABOVE the car (center below)
+          ctx.beginPath();
+          ctx.arc(cx, cy + arcR - 14, arcR, -Math.PI * 0.68, -Math.PI * 0.32, false);
+          ctx.stroke();
+          ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy + arcR - 14, arcR + 7, -Math.PI * 0.68, -Math.PI * 0.32, false);
+          ctx.stroke();
+        } else if (pos === "horizontal") {
+          // Curved rail TO THE RIGHT of the car (center to the left)
+          ctx.beginPath();
+          ctx.arc(cx - arcR + 14, cy, arcR, -Math.PI * 0.19, Math.PI * 0.19, false);
+          ctx.stroke();
+          ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(cx - arcR + 14, cy, arcR + 7, -Math.PI * 0.19, Math.PI * 0.19, false);
+          ctx.stroke();
+        } else {
+          // Curved rail BELOW the car (center above)
+          ctx.beginPath();
+          ctx.arc(cx, cy - arcR + 14, arcR, Math.PI * 0.32, Math.PI * 0.68, false);
+          ctx.stroke();
+          ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy - arcR + 14, arcR + 7, Math.PI * 0.32, Math.PI * 0.68, false);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // 2. Proportional Force Scaling
+        const maxRef = Math.max(phys.FnBottom, phys.Fc, phys.Fg, 1);
+        const availVert = pos === "top" ? (h - cy - 30) : (pos === "bottom" ? (cy - 28) : (h - cy - 28));
+        const availLeft = cx - 28;
+        const maxArrowPx = Math.max(48, Math.min(availVert, pos === "horizontal" ? availLeft : 115));
+        const pxPerN = maxArrowPx / maxRef;
+
+        const lenFg = Math.max(20, phys.Fg * pxPerN);
+        const lenFc = Math.max(20, phys.Fc * pxPerN);
+        const lenFnTop = phys.FnTop > 0 ? Math.max(16, phys.FnTop * pxPerN) : 0;
+        const lenFnSide = Math.max(20, phys.FnSide * pxPerN);
+        const lenFnBot = Math.max(24, phys.FnBottom * pxPerN);
+
+        // 3. Draw Dashed Centripetal Net Force Indicator F_c & Real Force Vectors
+        if (pos === "top") {
+          const detaches = state.v < phys.vMin - 0.01;
+
+          // Dashed Fc indicator (cyan, offset to the right so it never overlaps downward Fg/FN)
+          const fcX = cx + 46;
+          drawArrow(ctx, fcX, cy, fcX, cy + lenFc, {
+            color: "#38bdf8",
+            lineWidth: 2.2,
+            headLen: 8,
+            dashed: true
+          });
+          drawPillLabel(ctx, `Fc = ${fmtInt(phys.Fc)} N`, fcX + 8, cy + lenFc * 0.55, "#38bdf8", "left");
+
+          // Gravity F_g (amber, straight down)
+          const fgX = detaches ? cx : cx - 7;
+          drawArrow(ctx, fgX, cy, fgX, cy + lenFg, {
+            color: "#fbbf24",
+            lineWidth: 3.2,
+            headLen: 10
+          });
+          drawPillLabel(ctx, `Fg = ${fmtInt(phys.Fg)} N`, fgX - 10, cy + Math.max(24, lenFg * 0.62), "#fbbf24", "right");
+
+          // Normal Force F_N (emerald, pointing down) OR red warning pill when v < v_min
+          if (!detaches && lenFnTop > 0) {
+            const fnX = cx + 7;
+            drawArrow(ctx, fnX, cy, fnX, cy + lenFnTop, {
+              color: "#34d399",
+              lineWidth: 3.2,
+              headLen: 10
+            });
+            drawPillLabel(ctx, `FN = ${fmtInt(phys.FnTop)} N`, cx - 10, cy + Math.min(h - cy - 16, Math.max(lenFg + 20, lenFnTop)), "#34d399", "right");
+          } else if (detaches) {
+            // Clear red warning pill
+            ctx.save();
+            const warn = "FN = 0 N (Loses contact — falls!)";
+            ctx.font = "700 11.5px ui-monospace, monospace";
+            const tw = ctx.measureText(warn).width + 18;
+            const bx = (w - tw) * 0.5;
+            const by = h - 30;
+            ctx.fillStyle = "rgba(220, 38, 38, 0.9)";
+            ctx.strokeStyle = "#fca5a5";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(bx, by, tw, 22, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(warn, w * 0.5, by + 11);
+            ctx.restore();
+          } else {
+            drawPillLabel(ctx, "FN = 0 N (Weightless)", cx, h - 22, "#fbbf24", "center");
+          }
+        } else if (pos === "horizontal") {
+          // Dashed Fc indicator (cyan, pointing left toward center, offset slightly upward)
+          drawArrow(ctx, cx, cy - 22, cx - lenFc, cy - 22, {
+            color: "#38bdf8",
+            lineWidth: 2.2,
+            headLen: 8,
+            dashed: true
+          });
+          drawPillLabel(ctx, `Fc = ${fmtInt(phys.Fc)} N`, Math.max(58, cx - lenFc * 0.55), cy - 38, "#38bdf8", "center");
+
+          // Normal Force F_N (emerald, pointing left/inward)
+          drawArrow(ctx, cx, cy, cx - lenFnSide, cy, {
+            color: "#34d399",
+            lineWidth: 3.2,
+            headLen: 10
+          });
+          drawPillLabel(ctx, `FN = ${fmtInt(phys.FnSide)} N`, Math.max(58, cx - lenFnSide * 0.55), cy + 19, "#34d399", "center");
+
+          // Gravity F_g (amber, pointing straight down)
+          drawArrow(ctx, cx, cy, cx, cy + lenFg, {
+            color: "#fbbf24",
+            lineWidth: 3.2,
+            headLen: 10
+          });
+          drawPillLabel(ctx, `Fg = ${fmtInt(phys.Fg)} N`, cx + 10, Math.min(h - 16, cy + lenFg * 0.72), "#fbbf24", "left");
+        } else {
+          // Bottom: F_N UP (emerald), F_g DOWN (amber), F_c UP (cyan dashed offset right)
+          const fcX = cx + 48;
+          drawArrow(ctx, fcX, cy, fcX, cy - lenFc, {
+            color: "#38bdf8",
+            lineWidth: 2.2,
+            headLen: 8,
+            dashed: true
+          });
+          drawPillLabel(ctx, `Fc = ${fmtInt(phys.Fc)} N`, fcX + 8, Math.max(22, cy - lenFc * 0.55), "#38bdf8", "left");
+
+          // Normal Force F_N (emerald, pointing straight UP)
+          drawArrow(ctx, cx, cy, cx, cy - lenFnBot, {
+            color: "#34d399",
+            lineWidth: 3.2,
+            headLen: 10
+          });
+          drawPillLabel(ctx, `FN = ${fmtInt(phys.FnBottom)} N`, cx - 10, Math.max(20, cy - lenFnBot * 0.65), "#34d399", "right");
+
+          // Gravity F_g (amber, pointing straight DOWN)
+          const fgDownLen = Math.min(h - cy - 14, lenFg);
+          drawArrow(ctx, cx, cy, cx, cy + fgDownLen, {
+            color: "#fbbf24",
+            lineWidth: 3.2,
+            headLen: 10
+          });
+          drawPillLabel(ctx, `Fg = ${fmtInt(phys.Fg)} N`, cx - 10, Math.min(h - 15, cy + Math.max(18, fgDownLen * 0.65)), "#fbbf24", "right");
+        }
+
+        // 4. Clean Schematic Car / Point Mass at Center
+        ctx.save();
+        ctx.translate(cx, cy);
+        if (pos === "top") ctx.rotate(Math.PI);
+        else if (pos === "horizontal") ctx.rotate(-Math.PI / 2);
+
+        ctx.fillStyle = "rgba(37, 99, 235, 0.35)";
+        ctx.strokeStyle = "#60a5fa";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.roundRect(-14, -7, 28, 14, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        // Point mass dot
+        ctx.fillStyle = "#f8fafc";
+        ctx.strokeStyle = "#0f172a";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Corner Direction Note ("Center of Loop")
+        const dirText = pos === "top" ? "↓ Center of Loop" : (pos === "horizontal" ? "← Center of Loop" : "↑ Center of Loop");
+        drawPillLabel(ctx, dirText, w - 10, 17, "#93c5fd", "right");
+      }
+
+      /* ========================================================================
+         MAIN 60FPS PHYSICS & ANIMATION LOOP
+         ======================================================================== */
+      let lastTimestamp = null;
+
+      function updateSimulation(dt) {
+        state.pulseClock += dt;
+
+        if (state.shakeTime > 0) {
+          state.shakeTime = Math.max(0, state.shakeTime - dt);
+        }
+
+        // Update crash particles
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const p = state.particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          if (p.type === "smoke") {
+            p.vy += 1.8 * dt;
+            p.size += dt * 4.5;
+            p.vx *= 0.96;
+          } else {
+            p.vy -= G * 1.4 * dt;
+          }
+          p.life -= dt;
+          if (p.life <= 0) state.particles.splice(i, 1);
+        }
+
+        if (!state.isPlaying) return;
+
+        const simDt = dt * state.speedMult;
+
+        if (state.mode === "LOOPING") {
+          const subSteps = 4;
+          const hDt = simDt / subSteps;
+
+          for (let k = 0; k < subSteps; k++) {
+            // Advance angle CCW at constant angular speed omega = v / r
+            state.theta += (state.v / state.r) * hDt;
+            if (state.theta > Math.PI * 1.5) {
+              state.theta -= Math.PI * 2;
+            }
+
+            // Check exact detachment condition: upper half AND F_N(theta) <= 0
+            // F_N(theta) = m*v^2/r - m*g*sin(theta) <= 0  <=>  sin(theta) >= v^2 / (g*r)
+            const sinTh = Math.sin(state.theta);
+            if (sinTh > 0 && state.v < phys.vMin - 0.005) {
+              const criticalSin = (state.v * state.v) / (G * state.r);
+              if (sinTh >= criticalSin) {
+                computePhysics();
+                detachFromLoop();
+                return;
+              }
+            }
+          }
+
+          if (state.showTrail) {
+            state.loopTrail.push(state.theta);
+            if (state.loopTrail.length > 52) {
+              state.loopTrail.shift();
+            }
+          }
+
+          computePhysics();
+        } else if (state.mode === "FALLING") {
+          // Exact parabolic projectile motion under gravity
+          const subSteps = 4;
+          const hDt = simDt / subSteps;
+          const groundWorldY = -state.r + 0.55;
+
+          for (let k = 0; k < subSteps; k++) {
+            state.carVy -= G * hDt;
+            state.carX += state.carVx * hDt;
+            state.carY += state.carVy * hDt;
+            state.carRot += state.carSpinRate * hDt;
+
+            if (state.carY <= groundWorldY) {
+              triggerCrash(groundWorldY);
+              return;
+            }
+          }
+
+          state.fallTrail.push({ x: state.carX, y: state.carY });
+          if (state.fallTrail.length > 260) {
+            state.fallTrail.shift();
+          }
+        }
+      }
+
+      function animate(timestamp) {
+        if (lastTimestamp === null) lastTimestamp = timestamp;
+        const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+        lastTimestamp = timestamp;
+
+        try {
+          updateSimulation(dt);
+          drawSimulation();
+        } catch (err) {
+          console.error("Simulation loop error:", err);
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      /* ========================================================================
+         INITIALIZATION
+         ======================================================================== */
+      window.addEventListener("load", () => {
+        try {
+          computePhysics();
+          syncInputs();
+          syncReadouts();
+          resizeCanvases();
+          resetCar(true);
+          requestAnimationFrame(animate);
+        } catch (err) {
+          console.error("Initialization error:", err);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

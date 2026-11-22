@@ -1,0 +1,2924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orbital Launch Control — Circular Orbit Mission Simulator</title>
+  <style>
+    /* ==========================================================================
+       LAUNCH CONTROL CONSOLE DESIGN TOKENS (Zero External Dependencies)
+       ========================================================================== */
+    :root {
+      --bg-void: #060911;
+      --bg-console: #0b1019;
+      --bg-panel: #121a28;
+      --bg-module: #182235;
+      --bg-recess: #080d16;
+      --border-bezel: #24324a;
+      --border-hi: #364b6e;
+
+      --text-main: #e6eef8;
+      --text-sec: #94a3b8;
+      --text-dim: #64748b;
+
+      --cyan: #22d3ee;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --red: #f87171;
+      --violet: #a78bfa;
+
+      --radius-lg: 12px;
+      --radius-md: 8px;
+      --radius-sm: 5px;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      min-height: 100%;
+      background-color: var(--bg-void);
+      background-image:
+        radial-gradient(circle at 20% 0%, rgba(34, 211, 238, 0.06), transparent 45%),
+        radial-gradient(circle at 80% 100%, rgba(52, 211, 153, 0.05), transparent 45%);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.42;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ==========================================================================
+       APP SHELL & TOP LAUNCH CONTROL HEADER + DIGITAL LED SCOREBOARD
+       ========================================================================== */
+    .console-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      max-width: 1780px;
+      margin: 0 auto;
+      padding: 12px;
+      gap: 12px;
+    }
+
+    .top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: linear-gradient(180deg, #152033 0%, #0f1726 100%);
+      border: 1px solid var(--border-bezel);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 6px 20px rgba(0, 0, 0, 0.45);
+      border-radius: var(--radius-lg);
+      padding: 10px 16px;
+    }
+
+    .brand-block {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-emblem {
+      width: 40px;
+      height: 40px;
+      border-radius: 9px;
+      background: var(--bg-recess);
+      border: 1px solid rgba(34, 211, 238, 0.45);
+      box-shadow: inset 0 0 12px rgba(34, 211, 238, 0.16);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-title h1 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-main);
+    }
+
+    .brand-sub {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 2px;
+      font-family: var(--font-mono);
+      font-size: 0.71rem;
+      color: var(--text-sec);
+    }
+
+    .led-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-recess);
+      border: 1px solid var(--border-bezel);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.69rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .led-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .led-dot.cyan { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+    .led-dot.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+    .led-dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+    /* Digital LED Scoreboard */
+    .scoreboard-wrap {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .led-board {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(76px, auto));
+      gap: 6px;
+      background: var(--bg-recess);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--radius-md);
+      padding: 6px 8px;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.7);
+    }
+
+    .led-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2px 8px;
+      border-right: 1px solid rgba(36, 50, 74, 0.8);
+    }
+
+    .led-cell:last-child {
+      border-right: none;
+    }
+
+    .led-lbl {
+      font-family: var(--font-mono);
+      font-size: 0.61rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .led-num {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 1.15rem;
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: 0.02em;
+    }
+
+    .led-num.green { color: var(--green); text-shadow: 0 0 10px rgba(52, 211, 153, 0.45); }
+    .led-num.cyan { color: var(--cyan); text-shadow: 0 0 10px rgba(34, 211, 238, 0.45); }
+    .led-num.amber { color: var(--amber); text-shadow: 0 0 10px rgba(251, 191, 36, 0.45); }
+
+    .led-sub {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--text-sec);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-bezel);
+      background: var(--bg-module);
+      color: var(--text-sec);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--border-hi);
+      color: var(--text-main);
+    }
+
+    .icon-btn.active {
+      border-color: rgba(34, 211, 238, 0.55);
+      color: var(--cyan);
+      background: rgba(34, 211, 238, 0.12);
+    }
+
+    /* ==========================================================================
+       3-COLUMN CONSOLE GRID
+       ========================================================================== */
+    .console-grid {
+      display: grid;
+      grid-template-columns: 365px minmax(430px, 1fr) 375px;
+      gap: 12px;
+      flex: 1;
+      align-items: stretch;
+    }
+
+    .console-panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-lg);
+      padding: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .panel-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-bezel);
+    }
+
+    .panel-hdr h2 {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--cyan);
+    }
+
+    .bezel-tag {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--bg-recess);
+      border: 1px solid var(--border-bezel);
+      color: var(--text-sec);
+    }
+
+    /* ==========================================================================
+       LEFT PANEL: MODE SWITCHES, BRIEFING, FLIGHT COMPUTER & FORMULAS
+       ========================================================================== */
+    .switch-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .switch-lbl {
+      font-family: var(--font-mono);
+      font-size: 0.67rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .seg-group {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      background: var(--bg-recess);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+      gap: 2px;
+      flex: 1;
+    }
+
+    .seg-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-sec);
+      font-family: var(--font-mono);
+      font-size: 0.69rem;
+      font-weight: 700;
+      padding: 5px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .seg-btn:hover {
+      color: var(--text-main);
+    }
+
+    .seg-btn.active {
+      background: rgba(34, 211, 238, 0.2);
+      color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.5);
+    }
+
+    /* Mission Briefing Card */
+    .briefing-card {
+      background: var(--bg-module);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-md);
+      padding: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .briefing-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .mission-id {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--amber);
+      letter-spacing: 0.06em;
+    }
+
+    .task-badge {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(34, 211, 238, 0.15);
+      border: 1px solid rgba(34, 211, 238, 0.45);
+      color: var(--cyan);
+      letter-spacing: 0.05em;
+    }
+
+    .body-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .body-class {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-sec);
+    }
+
+    .param-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .param-box {
+      background: var(--bg-recess);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-sm);
+      padding: 7px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .param-box.full {
+      grid-column: 1 / -1;
+      border-color: rgba(52, 211, 153, 0.42);
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.09), rgba(8, 13, 22, 0.96));
+    }
+
+    .param-lbl {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .param-val {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .param-box.full .param-val {
+      font-size: 0.98rem;
+      color: var(--green);
+    }
+
+    .param-sub {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-sec);
+    }
+
+    /* Flight Computer Input Deck */
+    .input-deck {
+      background: var(--bg-module);
+      border: 1px solid var(--border-hi);
+      border-radius: var(--radius-md);
+      padding: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .input-prompt {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .input-prompt .unknown-var {
+      font-family: var(--font-mono);
+      color: var(--cyan);
+      font-size: 0.82rem;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 86px;
+      gap: 6px;
+    }
+
+    .flight-input {
+      width: 100%;
+      background: var(--bg-recess);
+      border: 1.5px solid var(--border-hi);
+      border-radius: var(--radius-sm);
+      padding: 9px 11px;
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 0.96rem;
+      font-weight: 700;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .flight-input::placeholder {
+      color: var(--text-dim);
+      font-weight: 500;
+      font-size: 0.82rem;
+    }
+
+    .flight-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+    }
+
+    .unit-select {
+      background: var(--bg-recess);
+      border: 1.5px solid var(--border-hi);
+      border-radius: var(--radius-sm);
+      padding: 8px 6px;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.86rem;
+      font-weight: 700;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .unit-select:focus {
+      border-color: var(--cyan);
+    }
+
+    .parsed-preview {
+      min-height: 22px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.72rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: var(--bg-recess);
+      border: 1px solid var(--border-bezel);
+      color: var(--text-sec);
+    }
+
+    .parsed-preview.valid {
+      color: var(--green);
+      border-color: rgba(52, 211, 153, 0.35);
+    }
+
+    .parsed-preview.invalid {
+      color: var(--red);
+      border-color: rgba(248, 113, 113, 0.45);
+    }
+
+    .launch-btn-row {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 7px;
+      margin-top: 2px;
+    }
+
+    .btn-launch {
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(52, 211, 153, 0.75);
+      background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+      color: #031510;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+      transition: all 0.14s ease;
+    }
+
+    .btn-launch:hover {
+      filter: brightness(1.09);
+      box-shadow: 0 0 24px rgba(52, 211, 153, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .btn-launch:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      padding: 9px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-hi);
+      background: var(--bg-recess);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .btn-secondary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* Collapsible Formula Reference */
+    .formula-module {
+      background: var(--bg-module);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .formula-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 11px;
+      background: transparent;
+      border: none;
+      color: var(--text-sec);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .formula-toggle:hover {
+      color: var(--cyan);
+    }
+
+    .formula-body {
+      padding: 0 11px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      border-top: 1px solid var(--border-bezel);
+      padding-top: 8px;
+    }
+
+    .formula-body.hidden {
+      display: none;
+    }
+
+    .f-line {
+      background: var(--bg-recess);
+      border: 1px solid rgba(36, 50, 74, 0.8);
+      border-radius: 4px;
+      padding: 4px 8px;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .f-line span:first-child {
+      color: var(--cyan);
+      font-weight: 700;
+    }
+
+    /* ==========================================================================
+       CENTER PANEL: ORBITAL RADAR & LAUNCH VIEWPORT
+       ========================================================================== */
+    .viewport-panel {
+      padding: 12px;
+    }
+
+    .radar-stage {
+      position: relative;
+      flex: 1;
+      min-height: 520px;
+      border-radius: var(--radius-md);
+      background: #050912;
+      border: 1px solid var(--border-hi);
+      box-shadow: inset 0 0 36px rgba(0, 0, 0, 0.75);
+      overflow: hidden;
+    }
+
+    .radar-stage canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .radar-hud-tl {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      pointer-events: none;
+    }
+
+    .flight-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: rgba(8, 13, 22, 0.88);
+      border: 1px solid var(--border-hi);
+      color: var(--cyan);
+      backdrop-filter: blur(4px);
+    }
+
+    .flight-status-pill.success { border-color: var(--green); color: var(--green); background: rgba(6, 40, 28, 0.86); }
+    .flight-status-pill.warn { border-color: var(--amber); color: var(--amber); background: rgba(45, 30, 6, 0.88); }
+    .flight-status-pill.fail { border-color: var(--red); color: var(--red); background: rgba(52, 12, 16, 0.88); }
+
+    .radar-hud-tr {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      pointer-events: none;
+    }
+
+    .radar-chip {
+      padding: 3px 8px;
+      border-radius: 5px;
+      background: rgba(8, 13, 22, 0.84);
+      border: 1px solid var(--border-bezel);
+      font-family: var(--font-mono);
+      font-size: 0.69rem;
+      color: var(--text-sec);
+    }
+
+    .radar-controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--bg-recess);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-md);
+      padding: 7px 10px;
+    }
+
+    .hud-btn-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .hud-btn {
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-bezel);
+      background: var(--bg-module);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .hud-btn:hover:not(:disabled) {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .hud-btn.active {
+      background: rgba(34, 211, 238, 0.18);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .hud-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .radar-legend {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--text-sec);
+    }
+
+    .leg-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .leg-swatch {
+      width: 10px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    /* ==========================================================================
+       RIGHT PANEL: POST-FLIGHT TELEMETRY, WORKED SOLUTION & MISSION LOG
+       ========================================================================== */
+    .analysis-card {
+      background: var(--bg-module);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-md);
+      padding: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .analysis-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .result-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 3px 9px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: var(--bg-recess);
+      border: 1px solid var(--border-bezel);
+      color: var(--text-sec);
+    }
+
+    .result-badge.pass { background: rgba(52, 211, 153, 0.16); border-color: var(--green); color: var(--green); }
+    .result-badge.fail { background: rgba(248, 113, 113, 0.18); border-color: var(--red); color: var(--red); }
+    .result-badge.wait { background: rgba(34, 211, 238, 0.12); border-color: rgba(34, 211, 238, 0.45); color: var(--cyan); }
+
+    .telem-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .telem-cell {
+      background: var(--bg-recess);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .telem-lbl {
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .telem-val {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .feedback-box {
+      background: var(--bg-recess);
+      border-left: 3px solid var(--cyan);
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-size: 0.77rem;
+      color: var(--text-sec);
+      line-height: 1.45;
+    }
+
+    .feedback-box.pass { border-left-color: var(--green); color: #d1fae5; }
+    .feedback-box.fail { border-left-color: var(--red); color: #fee2e2; }
+    .feedback-box.warn { border-left-color: var(--amber); color: #fef3c7; }
+
+    .post-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    /* Worked Solution Box */
+    .solution-box {
+      background: var(--bg-recess);
+      border: 1px solid rgba(34, 211, 238, 0.4);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      line-height: 1.55;
+      color: var(--text-main);
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .solution-box.visible {
+      display: flex;
+    }
+
+    .sol-title {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      border-bottom: 1px solid var(--border-bezel);
+      padding-bottom: 4px;
+    }
+
+    .sol-step {
+      color: var(--text-sec);
+    }
+
+    .sol-step strong {
+      color: var(--green);
+    }
+
+    /* Scrollable Mission Log */
+    .log-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-height: 160px;
+    }
+
+    .log-list {
+      flex: 1;
+      max-height: 280px;
+      overflow-y: auto;
+      background: var(--bg-recess);
+      border: 1px solid var(--border-bezel);
+      border-radius: var(--radius-md);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .log-empty {
+      padding: 18px 10px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    .log-entry {
+      display: grid;
+      grid-template-columns: 20px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 5px;
+      background: var(--bg-module);
+      border: 1px solid var(--border-bezel);
+      font-family: var(--font-mono);
+      font-size: 0.71rem;
+    }
+
+    .log-icon {
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .log-icon.pass { color: var(--green); }
+    .log-icon.fail { color: var(--red); }
+
+    .log-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .log-main {
+      color: var(--text-main);
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .log-sub {
+      color: var(--text-dim);
+      font-size: 0.65rem;
+    }
+
+    .log-err {
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--bg-recess);
+    }
+
+    /* ==========================================================================
+       RESPONSIVE BREAKPOINTS
+       ========================================================================== */
+    @media (max-width: 1240px) {
+      .console-grid {
+        grid-template-columns: 350px 1fr;
+      }
+      .right-panel {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        align-items: start;
+      }
+      .right-panel .panel-hdr {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 840px) {
+      .console-grid {
+        grid-template-columns: 1fr;
+      }
+      .right-panel {
+        grid-column: auto;
+        display: flex;
+      }
+      .radar-stage {
+        min-height: 410px;
+      }
+      .led-board {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="console-shell">
+    <!-- ==================== TOP LAUNCH CONTROL HEADER & SCOREBOARD ==================== -->
+    <header class="top-bar">
+      <div class="brand-block">
+        <div class="brand-emblem" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="4.2" fill="rgba(34,211,238,0.28)" stroke="#22d3ee" stroke-width="1.6"/>
+            <circle cx="12" cy="12" r="9" stroke="#34d399" stroke-width="1.4" stroke-dasharray="3 2.5"/>
+            <path d="M18.5 5.5 L20.8 3.2 M18.5 5.5 L15.5 6.8" stroke="#fbbf24" stroke-width="1.6" stroke-linecap="round"/>
+            <circle cx="18.5" cy="5.5" r="1.9" fill="#34d399"/>
+          </svg>
+        </div>
+        <div class="brand-title">
+          <h1>Orbital Launch Control</h1>
+          <div class="brand-sub">
+            <span class="led-pill"><span class="led-dot" id="sysLed"></span>TELEMETRY ONLINE</span>
+            <span class="led-pill">G = 6.674 &times; 10<sup>&minus;11</sup> N&middot;m&sup2;/kg&sup2;</span>
+            <span class="led-pill">TOLERANCE &plusmn;2.5%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Digital LED Scoreboard & Audio Controls -->
+      <div class="scoreboard-wrap">
+        <div class="led-board" aria-label="Mission Scoreboard">
+          <div class="led-cell">
+            <span class="led-lbl">Correct</span>
+            <span class="led-num green" id="scoreCorrect">0</span>
+          </div>
+          <div class="led-cell">
+            <span class="led-lbl">Attempts</span>
+            <span class="led-num cyan" id="scoreAttempts">0</span>
+          </div>
+          <div class="led-cell">
+            <span class="led-lbl">Accuracy</span>
+            <span class="led-num cyan" id="scoreAccuracy">--%</span>
+          </div>
+          <div class="led-cell">
+            <span class="led-lbl">Streak</span>
+            <span class="led-num amber" id="scoreStreak">0</span>
+            <span class="led-sub" id="scoreBest">BEST: 0</span>
+          </div>
+        </div>
+
+        <div class="top-actions">
+          <button type="button" class="icon-btn active" id="btnSfx" aria-pressed="true" title="Toggle synthesized console sound effects">
+            <span id="sfxIcon">&#128266;</span> SFX ON
+          </button>
+          <button type="button" class="icon-btn" id="btnResetScore" title="Reset scoreboard and mission log">
+            &#8634; Reset Score
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==================== 3-COLUMN LAUNCH CONTROL CONSOLE ==================== -->
+    <main class="console-grid">
+      <!-- ==================== LEFT PANEL: BRIEFING & FLIGHT COMPUTER ==================== -->
+      <section class="console-panel left-panel" aria-label="Mission Briefing and Flight Computer">
+        <div class="panel-hdr">
+          <h2>Flight Computer</h2>
+          <span class="bezel-tag" id="sectorTag">SOLAR SYSTEM</span>
+        </div>
+
+        <!-- Mode Switches -->
+        <div class="switch-stack">
+          <div class="switch-row">
+            <span class="switch-lbl">Task</span>
+            <div class="seg-group" role="group" aria-label="Mission Type">
+              <button type="button" class="seg-btn active" data-task="MIXED">MIXED</button>
+              <button type="button" class="seg-btn" data-task="FIND_R">FIND r</button>
+              <button type="button" class="seg-btn" data-task="FIND_T">FIND T</button>
+            </div>
+          </div>
+          <div class="switch-row">
+            <span class="switch-lbl">Sector</span>
+            <div class="seg-group" role="group" aria-label="Celestial Sector">
+              <button type="button" class="seg-btn active" data-sector="SOLAR">SOLAR SYSTEM</button>
+              <button type="button" class="seg-btn" data-sector="DEEP">DEEP SPACE</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mission Briefing Card -->
+        <div class="briefing-card">
+          <div class="briefing-top">
+            <span class="mission-id" id="missionId">MSN-001</span>
+            <span class="task-badge" id="taskBadge">SOLVE FOR RADIUS (r)</span>
+          </div>
+          <div class="body-title">
+            <span id="planetName">Earth</span>
+            <span class="body-class" id="planetClass">Terrestrial Planet</span>
+          </div>
+          <div class="param-grid">
+            <div class="param-box">
+              <span class="param-lbl">Body Mass (M)</span>
+              <span class="param-val" id="briefMass">5.97 &times; 10<sup>24</sup> kg</span>
+            </div>
+            <div class="param-box">
+              <span class="param-lbl">Body Radius (R<sub>p</sub>)</span>
+              <span class="param-val" id="briefRp">6.37 &times; 10<sup>6</sup> m</span>
+              <span class="param-sub" id="briefRpKm">6,371 km</span>
+            </div>
+            <div class="param-box full">
+              <span class="param-lbl" id="givenLabel">Given Target Period (T)</span>
+              <span class="param-val" id="givenPrimary">10,160 s</span>
+              <span class="param-sub" id="givenSecondary">2 hr 49.3 min</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flight Computer Input Deck -->
+        <div class="input-deck">
+          <div class="input-prompt">
+            <label for="answerInput" id="inputPromptLabel">Enter Target Orbital Radius</label>
+            <span class="unknown-var" id="unknownTag">r = ?</span>
+          </div>
+          <div class="input-row">
+            <input
+              type="text"
+              id="answerInput"
+              class="flight-input"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="e.g. 1.27e7 or 1.27*10^7"
+            />
+            <select id="unitSelect" class="unit-select" aria-label="Answer unit">
+              <option value="m">m</option>
+              <option value="km">km</option>
+            </select>
+          </div>
+          <div class="parsed-preview" id="parsedPreview">
+            Awaiting flight computer entry (supports 4.22e7 or 4.22 × 10^7)...
+          </div>
+          <div class="launch-btn-row">
+            <button type="button" class="btn-launch" id="btnLaunch">&#9650; Initiate Launch</button>
+            <button type="button" class="btn-secondary" id="btnNext">Next Mission &rarr;</button>
+          </div>
+        </div>
+
+        <!-- Collapsible Formula Reference -->
+        <div class="formula-module">
+          <button type="button" class="formula-toggle" id="btnFormulaToggle" aria-expanded="true">
+            <span>Formula Reference (Kepler's 3rd Law)</span>
+            <span id="formulaCaret">&#9662;</span>
+          </button>
+          <div class="formula-body" id="formulaBody">
+            <div class="f-line">
+              <span>T&sup2; = (4&pi;&sup2; / GM) &middot; r&sup3;</span>
+              <span style="color: var(--text-dim);">Circular Orbit</span>
+            </div>
+            <div class="f-line">
+              <span>r = (G M T&sup2; / 4&pi;&sup2;)<sup>1/3</sup></span>
+              <span style="color: var(--text-dim);">Solve for r</span>
+            </div>
+            <div class="f-line">
+              <span>T = 2&pi; &radic;(r&sup3; / G M)</span>
+              <span style="color: var(--text-dim);">Solve for T</span>
+            </div>
+            <div class="f-line">
+              <span>G = 6.674 &times; 10<sup>&minus;11</sup></span>
+              <span style="color: var(--text-dim);">N&middot;m&sup2;/kg&sup2;</span>
+            </div>
+            <div class="f-line">
+              <span>1 km = 10<sup>3</sup> m</span>
+              <span>1 hr = 3600 s &bull; 1 min = 60 s</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== CENTER PANEL: ORBITAL RADAR & LAUNCH VIEWPORT ==================== -->
+      <section class="console-panel viewport-panel" aria-label="Orbital Radar and Launch Viewport">
+        <div class="panel-hdr">
+          <h2>Orbital Radar &amp; Launch Viewport</h2>
+          <span class="bezel-tag" id="viewportModeTag">STANDBY ON PAD</span>
+        </div>
+
+        <div class="radar-stage" id="radarStage">
+          <canvas id="radarCanvas" aria-label="Interactive orbital radar and rocket launch simulation"></canvas>
+
+          <div class="radar-hud-tl">
+            <div class="flight-status-pill" id="flightStatusPill">
+              <span class="led-dot cyan" id="flightLed"></span>
+              <span id="flightStatusText">READY FOR LAUNCH</span>
+            </div>
+          </div>
+
+          <div class="radar-hud-tr">
+            <div class="radar-chip" id="hudTargetChip">TARGET ORBIT: --</div>
+            <div class="radar-chip" id="hudSpeedChip">ORBITAL SPEED: --</div>
+          </div>
+        </div>
+
+        <div class="radar-controls-bar">
+          <div class="hud-btn-group">
+            <button type="button" class="hud-btn" id="btnPause">&#10074;&#10074; Pause</button>
+            <button type="button" class="hud-btn active" data-warp="1">1&times;</button>
+            <button type="button" class="hud-btn" data-warp="2">2&times;</button>
+            <button type="button" class="hud-btn" data-warp="5">5&times;</button>
+            <button type="button" class="hud-btn" id="btnReplay" disabled>&#8634; Replay Launch</button>
+          </div>
+          <div class="radar-legend">
+            <span class="leg-item"><span class="leg-swatch" style="background: var(--green);"></span>Target Orbit</span>
+            <span class="leg-item"><span class="leg-swatch" style="background: var(--cyan);"></span>Satellite</span>
+            <span class="leg-item"><span class="leg-swatch" style="background: var(--amber);"></span>Predicted / Error</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== RIGHT PANEL: TELEMETRY, SOLUTION & MISSION LOG ==================== -->
+      <section class="console-panel right-panel" aria-label="Post-Flight Telemetry and Mission Log">
+        <div class="panel-hdr">
+          <h2>Post-Flight Telemetry</h2>
+          <span class="bezel-tag" id="scoringNoteTag">+1 PT AVAILABLE</span>
+        </div>
+
+        <div class="analysis-card">
+          <div class="analysis-hdr">
+            <span class="mono" style="font-size: 0.72rem; color: var(--text-sec); font-weight: 700;">FLIGHT ANALYSIS</span>
+            <span class="result-badge wait" id="resultBadge">AWAITING LAUNCH</span>
+          </div>
+
+          <div class="telem-grid">
+            <div class="telem-cell">
+              <span class="telem-lbl">Your Entry</span>
+              <span class="telem-val" id="telStudent">--</span>
+            </div>
+            <div class="telem-cell">
+              <span class="telem-lbl">Exact Value</span>
+              <span class="telem-val" id="telExact">--</span>
+            </div>
+            <div class="telem-cell">
+              <span class="telem-lbl">Percent Error</span>
+              <span class="telem-val" id="telError">--</span>
+            </div>
+            <div class="telem-cell">
+              <span class="telem-lbl">True Orbital Speed (v)</span>
+              <span class="telem-val" id="telSpeed">--</span>
+            </div>
+          </div>
+
+          <div class="feedback-box" id="feedbackBox">
+            Calculate the required orbital parameter using Kepler's 3rd Law and press <strong>INITIATE LAUNCH</strong> (or hit Enter).
+          </div>
+
+          <div class="post-actions">
+            <button type="button" class="btn-secondary" id="btnRetry" disabled>&#8634; Retry Calibration</button>
+            <button type="button" class="btn-secondary" id="btnSolution">Show Worked Solution</button>
+          </div>
+        </div>
+
+        <!-- Step-by-Step Worked Solution -->
+        <div class="solution-box" id="solutionBox" aria-live="polite">
+          <div class="sol-title">Step-by-Step Worked Solution</div>
+          <div id="solutionSteps"></div>
+        </div>
+
+        <!-- Scrollable Mission Log -->
+        <div class="log-section">
+          <div class="panel-hdr" style="padding-bottom: 5px;">
+            <h2>Mission Log</h2>
+            <span class="bezel-tag" id="logCountTag">0 LOGGED</span>
+          </div>
+          <div class="log-list" id="missionLog">
+            <div class="log-empty">No launches logged yet. Complete your first orbital insertion!</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      /* ========================================================================
+         CONSTANTS & CELESTIAL BODY CATALOG
+         ======================================================================== */
+      const G = 6.674e-11; // N·m²/kg²
+      const TOLERANCE = 0.025; // ±2.5%
+
+      const SOLAR_BODIES = [
+        {
+          id: "earth",
+          name: "Earth",
+          cls: "Terrestrial Planet",
+          M: 5.97e24,
+          Rp: 6.371e6,
+          theme: "earth"
+        },
+        {
+          id: "mars",
+          name: "Mars",
+          cls: "Terrestrial Planet",
+          M: 6.42e23,
+          Rp: 3.390e6,
+          theme: "mars"
+        },
+        {
+          id: "moon",
+          name: "Luna (Moon)",
+          cls: "Natural Satellite",
+          M: 7.35e22,
+          Rp: 1.737e6,
+          theme: "moon"
+        },
+        {
+          id: "venus",
+          name: "Venus",
+          cls: "Terrestrial Planet",
+          M: 4.87e24,
+          Rp: 6.052e6,
+          theme: "venus"
+        },
+        {
+          id: "mercury",
+          name: "Mercury",
+          cls: "Terrestrial Planet",
+          M: 3.30e23,
+          Rp: 2.440e6,
+          theme: "mercury"
+        },
+        {
+          id: "jupiter",
+          name: "Jupiter",
+          cls: "Gas Giant",
+          M: 1.90e27,
+          Rp: 6.991e7,
+          theme: "jupiter"
+        },
+        {
+          id: "saturn",
+          name: "Saturn",
+          cls: "Ringed Gas Giant",
+          M: 5.68e26,
+          Rp: 5.823e7,
+          theme: "saturn"
+        }
+      ];
+
+      const DEEP_PREFIXES = ["Kepler", "Gliese", "Trappist", "Vega", "Cygnus", "Lyra", "Orion", "Aurelia", "Helios", "Draco"];
+      const DEEP_THEMES = ["exo-ocean", "exo-ember", "exo-ice", "exo-gas", "exo-emerald"];
+
+      // Deterministic Starfield
+      const STARS = [];
+      for (let i = 0; i < 130; i++) {
+        const s1 = Math.sin(i * 12.9898) * 43758.5453;
+        const s2 = Math.sin(i * 78.233) * 29143.1337;
+        const s3 = Math.sin(i * 39.425) * 18231.9123;
+        STARS.push({
+          fx: s1 - Math.floor(s1),
+          fy: s2 - Math.floor(s2),
+          r: 0.5 + (s3 - Math.floor(s3)) * 1.3,
+          a: 0.18 + (s3 - Math.floor(s3)) * 0.65
+        });
+      }
+
+      /* ========================================================================
+         WEB AUDIO API SYNTHESIZER (Zero External Audio Files)
+         ======================================================================== */
+      let audioCtx = null;
+
+      function ensureAudio() {
+        if (!state.sfxEnabled) return null;
+        if (!audioCtx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (Ctx) audioCtx = new Ctx();
+        }
+        if (audioCtx && audioCtx.state === "suspended") {
+          audioCtx.resume().catch(() => {});
+        }
+        return audioCtx;
+      }
+
+      function playBeep(freq, duration, type, gainVal) {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type || "sine";
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(gainVal || 0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+      }
+
+      function playIgnitionSFX() {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const dur = 0.85;
+        const bufferSize = Math.floor(ctx.sampleRate * dur);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.6));
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(180, now);
+        filter.frequency.exponentialRampToValueAtTime(520, now + 0.25);
+        filter.frequency.exponentialRampToValueAtTime(120, now + dur);
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start(now);
+      }
+
+      function playSuccessSFX() {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((f, idx) => {
+          setTimeout(() => playBeep(f, 0.22, "triangle", 0.075), idx * 85);
+        });
+      }
+
+      function playWarningSFX() {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        playBeep(210, 0.22, "sawtooth", 0.07);
+        setTimeout(() => playBeep(165, 0.30, "sawtooth", 0.07), 160);
+      }
+
+      function playCrashSFX() {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const dur = 0.6;
+        const bufferSize = Math.floor(ctx.sampleRate * dur);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+        }
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(340, now);
+        filter.frequency.exponentialRampToValueAtTime(55, now + dur);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        src.start(now);
+      }
+
+      /* ========================================================================
+         APPLICATION STATE
+         ======================================================================== */
+      const state = {
+        taskMode: "MIXED",    // "MIXED" | "FIND_R" | "FIND_T"
+        sectorMode: "SOLAR",  // "SOLAR" | "DEEP"
+        sfxEnabled: true,
+        missionCounter: 0,
+
+        // Scoreboard
+        correct: 0,
+        attempts: 0,
+        streak: 0,
+        bestStreak: 0,
+        log: [],
+
+        // Current Mission Object
+        mission: null,
+        solutionRevealed: false,
+        awardedCorrect: false,
+        hasLaunched: false,
+
+        // Last Launch Result
+        lastResult: null, // { correct, studentSI, exactSI, pctErr, outcome, message, ratio }
+
+        // Viewport Animation State
+        isPaused: false,
+        timeWarp: 1,
+        animPhase: "STANDBY", // "STANDBY" | "ASCENT" | "ORBIT" | "CRASH"
+        ascentT: 0,           // 0 -> 1
+        satAngle: 0,          // radians (0 = right / 3 o'clock, CCW)
+        predAngle: 0,         // predicted clock marker angle (for FIND_T mismatch)
+        trail: [],            // { x, y } normalized to planet-center screen offsets
+        particles: [],        // exhaust / explosion sparks
+        shockwave: null,
+        shakeTime: 0,
+        pulseClock: 0,
+
+        // Preview parsed value while typing
+        parsedSI: null
+      };
+
+      let radarSize = { w: 580, h: 520 };
+
+      /* ========================================================================
+         DOM REFERENCES
+         ======================================================================== */
+      const els = {
+        scoreCorrect: document.getElementById("scoreCorrect"),
+        scoreAttempts: document.getElementById("scoreAttempts"),
+        scoreAccuracy: document.getElementById("scoreAccuracy"),
+        scoreStreak: document.getElementById("scoreStreak"),
+        scoreBest: document.getElementById("scoreBest"),
+        btnSfx: document.getElementById("btnSfx"),
+        sfxIcon: document.getElementById("sfxIcon"),
+        btnResetScore: document.getElementById("btnResetScore"),
+
+        taskBtns: Array.from(document.querySelectorAll("[data-task]")),
+        sectorBtns: Array.from(document.querySelectorAll("[data-sector]")),
+        sectorTag: document.getElementById("sectorTag"),
+
+        missionId: document.getElementById("missionId"),
+        taskBadge: document.getElementById("taskBadge"),
+        planetName: document.getElementById("planetName"),
+        planetClass: document.getElementById("planetClass"),
+        briefMass: document.getElementById("briefMass"),
+        briefRp: document.getElementById("briefRp"),
+        briefRpKm: document.getElementById("briefRpKm"),
+        givenLabel: document.getElementById("givenLabel"),
+        givenPrimary: document.getElementById("givenPrimary"),
+        givenSecondary: document.getElementById("givenSecondary"),
+
+        inputPromptLabel: document.getElementById("inputPromptLabel"),
+        unknownTag: document.getElementById("unknownTag"),
+        answerInput: document.getElementById("answerInput"),
+        unitSelect: document.getElementById("unitSelect"),
+        parsedPreview: document.getElementById("parsedPreview"),
+        btnLaunch: document.getElementById("btnLaunch"),
+        btnNext: document.getElementById("btnNext"),
+
+        btnFormulaToggle: document.getElementById("btnFormulaToggle"),
+        formulaCaret: document.getElementById("formulaCaret"),
+        formulaBody: document.getElementById("formulaBody"),
+
+        radarStage: document.getElementById("radarStage"),
+        radarCanvas: document.getElementById("radarCanvas"),
+        viewportModeTag: document.getElementById("viewportModeTag"),
+        flightStatusPill: document.getElementById("flightStatusPill"),
+        flightLed: document.getElementById("flightLed"),
+        flightStatusText: document.getElementById("flightStatusText"),
+        hudTargetChip: document.getElementById("hudTargetChip"),
+        hudSpeedChip: document.getElementById("hudSpeedChip"),
+
+        btnPause: document.getElementById("btnPause"),
+        warpBtns: Array.from(document.querySelectorAll("[data-warp]")),
+        btnReplay: document.getElementById("btnReplay"),
+
+        scoringNoteTag: document.getElementById("scoringNoteTag"),
+        resultBadge: document.getElementById("resultBadge"),
+        telStudent: document.getElementById("telStudent"),
+        telExact: document.getElementById("telExact"),
+        telError: document.getElementById("telError"),
+        telSpeed: document.getElementById("telSpeed"),
+        feedbackBox: document.getElementById("feedbackBox"),
+        btnRetry: document.getElementById("btnRetry"),
+        btnSolution: document.getElementById("btnSolution"),
+        solutionBox: document.getElementById("solutionBox"),
+        solutionSteps: document.getElementById("solutionSteps"),
+        logCountTag: document.getElementById("logCountTag"),
+        missionLog: document.getElementById("missionLog")
+      };
+
+      const ctx = els.radarCanvas.getContext("2d");
+
+      /* ========================================================================
+         FORMATTING & SCIENTIFIC NOTATION PARSER
+         ======================================================================== */
+      function formatSciHTML(val, sigFigs) {
+        if (!Number.isFinite(val) || val === 0) return "0";
+        const exp = Math.floor(Math.log10(Math.abs(val)));
+        const mant = val / Math.pow(10, exp);
+        const dec = Math.max(1, (sigFigs || 3) - 1);
+        return `${mant.toFixed(dec)} &times; 10<sup>${exp}</sup>`;
+      }
+
+      function formatSciPlain(val, sigFigs) {
+        if (!Number.isFinite(val) || val === 0) return "0";
+        const exp = Math.floor(Math.log10(Math.abs(val)));
+        const mant = val / Math.pow(10, exp);
+        const dec = Math.max(1, (sigFigs || 3) - 1);
+        const supMap = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+        const sup = String(exp).split("").map(c => supMap[c] || c).join("");
+        return `${mant.toFixed(dec)} × 10${sup}`;
+      }
+
+      function formatDuration(sec) {
+        if (!Number.isFinite(sec) || sec <= 0) return "--";
+        if (sec < 120) return `${sec.toFixed(1)} s`;
+        const totalMin = sec / 60;
+        if (totalMin < 120) {
+          const m = Math.floor(totalMin);
+          const s = Math.round(sec - m * 60);
+          return `${m} min ${s} s`;
+        }
+        const totalHr = sec / 3600;
+        if (totalHr < 72) {
+          const h = Math.floor(totalHr);
+          const m = (totalHr - h) * 60;
+          return `${h} hr ${m.toFixed(1)} min`;
+        }
+        const days = totalHr / 24;
+        return `${days.toFixed(2)} days (${totalHr.toFixed(1)} hr)`;
+      }
+
+      function formatDistance(meters) {
+        const km = meters / 1000;
+        if (km >= 100000) return `${formatSciPlain(km, 3)} km`;
+        return `${Math.round(km).toLocaleString("en-US")} km`;
+      }
+
+      /**
+       * Robust scientific-notation parser.
+       * Accepts: "4.22e7", "4.22E+07", "4.22*10^7", "4.22 x 10^7", "4.22 × 10^7",
+       * "4.22*10**7", "42,200,000", "10^7".
+       */
+      function parseSmartNumber(raw) {
+        if (typeof raw !== "string") return null;
+        let s = raw.trim();
+        if (!s) return null;
+
+        // Remove commas and normalize unicode minus/multiplication signs
+        s = s.replace(/,/g, "");
+        s = s.replace(/[−–—]/g, "-");
+        s = s.replace(/[×✕]/g, "*");
+
+        // Convert "a * 10^b" or "a x 10^b" or "a * 10**b" -> "a e b"
+        const sciPattern = /^([+-]?\d*\.?\d+)\s*(?:\*|x|X)\s*10\s*(?:\^|\*\*)\s*([+-]?\d+)$/;
+        const barePowPattern = /^10\s*(?:\^|\*\*)\s*([+-]?\d+)$/;
+
+        let val = NaN;
+        const m1 = s.match(sciPattern);
+        const m2 = s.match(barePowPattern);
+
+        if (m1) {
+          val = parseFloat(m1[1]) * Math.pow(10, parseInt(m1[2], 10));
+        } else if (m2) {
+          val = Math.pow(10, parseInt(m2[1], 10));
+        } else {
+          // Standard float or e-notation (strictly validate full string)
+          const compact = s.replace(/\s+/g, "");
+          if (/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(compact)) {
+            val = Number(compact);
+          }
+        }
+
+        if (!Number.isFinite(val) || val <= 0) return null;
+        return val;
+      }
+
+      function toSI(val, unit) {
+        if (unit === "km") return val * 1000;
+        if (unit === "min") return val * 60;
+        if (unit === "hr") return val * 3600;
+        return val; // m or s
+      }
+
+      /* ========================================================================
+         MISSION GENERATOR (SOLAR SYSTEM & DEEP SPACE)
+         ======================================================================== */
+      function generateDeepSpaceBody() {
+        const prefix = DEEP_PREFIXES[Math.floor(Math.random() * DEEP_PREFIXES.length)];
+        const num = Math.floor(100 + Math.random() * 899);
+        const letter = ["b", "c", "d", "e", "f"][Math.floor(Math.random() * 5)];
+        const name = `${prefix}-${num}${letter}`;
+
+        // Clean 3-sig-fig mass from 1.20e23 to 6.50e27 kg
+        const expM = [23, 24, 24, 25, 26, 27][Math.floor(Math.random() * 6)];
+        const mantM = parseFloat((1.2 + Math.random() * 7.8).toFixed(2));
+        const M = mantM * Math.pow(10, expM);
+
+        // Realistic radius scaling with clean 3-sig-fig value
+        const baseRp = 6.37e6 * Math.pow(M / 5.97e24, 0.34);
+        const expR = Math.floor(Math.log10(baseRp));
+        const mantR = parseFloat((baseRp / Math.pow(10, expR)).toFixed(2));
+        const Rp = mantR * Math.pow(10, expR);
+
+        const isGiant = expM >= 26;
+        const theme = isGiant ? "exo-gas" : DEEP_THEMES[Math.floor(Math.random() * DEEP_THEMES.length)];
+
+        return {
+          id: `deep-${num}`,
+          name,
+          cls: isGiant ? "Exoplanet Gas Giant" : "Rocky Exoplanet",
+          M,
+          Rp,
+          theme
+        };
+      }
+
+      function generateMission() {
+        state.missionCounter += 1;
+        const idStr = `MSN-${String(state.missionCounter).padStart(3, "0")}`;
+
+        // Pick celestial body
+        let body;
+        if (state.sectorMode === "SOLAR") {
+          // Avoid immediate repeat of same planet
+          const prevId = state.mission ? state.mission.body.id : null;
+          const pool = SOLAR_BODIES.filter(b => b.id !== prevId);
+          body = pool[Math.floor(Math.random() * pool.length)];
+        } else {
+          body = generateDeepSpaceBody();
+        }
+
+        // Pick mission task
+        let task = state.taskMode;
+        if (task === "MIXED") {
+          task = Math.random() < 0.5 ? "FIND_R" : "FIND_T";
+        }
+
+        // Target orbital radius safely between 1.4 Rp and 8.0 Rp
+        const mult = 1.45 + Math.random() * 6.35;
+        let rExact = body.Rp * mult;
+        // Round target r cleanly to 3 sig figs if FIND_T, or round target T cleanly to 3 sig figs if FIND_R
+        const mu = G * body.M;
+        let TExact;
+
+        if (task === "FIND_T") {
+          const expR = Math.floor(Math.log10(rExact));
+          rExact = parseFloat((rExact / Math.pow(10, expR)).toFixed(2)) * Math.pow(10, expR);
+          TExact = 2 * Math.PI * Math.sqrt(Math.pow(rExact, 3) / mu);
+        } else {
+          const rawT = 2 * Math.PI * Math.sqrt(Math.pow(rExact, 3) / mu);
+          const expT = Math.floor(Math.log10(rawT));
+          TExact = parseFloat((rawT / Math.pow(10, expT)).toFixed(2)) * Math.pow(10, expT);
+          rExact = Math.cbrt((mu * TExact * TExact) / (4 * Math.PI * Math.PI));
+        }
+
+        const vExact = Math.sqrt(mu / rExact);
+
+        state.mission = {
+          id: idStr,
+          body,
+          task,
+          rExact,
+          TExact,
+          vExact,
+          rMult: rExact / body.Rp
+        };
+
+        // Reset mission-specific states
+        state.solutionRevealed = false;
+        state.awardedCorrect = false;
+        state.hasLaunched = false;
+        state.lastResult = null;
+        state.parsedSI = null;
+        state.animPhase = "STANDBY";
+        state.ascentT = 0;
+        state.satAngle = 0;
+        state.predAngle = 0;
+        state.trail = [];
+        state.particles = [];
+        state.shockwave = null;
+        state.shakeTime = 0;
+
+        renderMissionUI();
+      }
+
+      /* ========================================================================
+         UI RENDERING & INPUT PARSING
+         ======================================================================== */
+      function renderMissionUI() {
+        const m = state.mission;
+        if (!m) return;
+
+        els.sectorTag.textContent = state.sectorMode === "SOLAR" ? "SOLAR SYSTEM" : "DEEP SPACE";
+        els.missionId.textContent = m.id;
+        els.planetName.textContent = m.body.name;
+        els.planetClass.textContent = m.body.cls;
+        els.briefMass.innerHTML = `${formatSciHTML(m.body.M, 3)} kg`;
+        els.briefRp.innerHTML = `${formatSciHTML(m.body.Rp, 3)} m`;
+        els.briefRpKm.textContent = formatDistance(m.body.Rp);
+
+        // Configure Given Target & Input Unit Dropdown
+        els.unitSelect.innerHTML = "";
+        if (m.task === "FIND_R") {
+          els.taskBadge.textContent = "SOLVE FOR RADIUS (r)";
+          els.givenLabel.textContent = "Given Target Period (T)";
+          els.givenPrimary.innerHTML = `${formatSciHTML(m.TExact, 3)} s <span style="font-size:0.74rem; color:var(--text-sec); font-weight:600;">(${Math.round(m.TExact).toLocaleString()} s)</span>`;
+          els.givenSecondary.textContent = formatDuration(m.TExact);
+
+          els.inputPromptLabel.textContent = "Enter Target Orbital Radius";
+          els.unknownTag.textContent = "r = ?";
+          els.answerInput.placeholder = "e.g. 2.45e7 or 2.45*10^7";
+          els.unitSelect.innerHTML = `<option value="m">m</option><option value="km">km</option>`;
+        } else {
+          els.taskBadge.textContent = "SOLVE FOR PERIOD (T)";
+          els.givenLabel.textContent = "Given Target Radius (r)";
+          els.givenPrimary.innerHTML = `${formatSciHTML(m.rExact, 3)} m`;
+          els.givenSecondary.textContent = `${formatDistance(m.rExact)} (${m.rMult.toFixed(2)} R_p)`;
+
+          els.inputPromptLabel.textContent = "Enter Target Orbital Period";
+          els.unknownTag.textContent = "T = ?";
+          els.answerInput.placeholder = "e.g. 9.85e3 or 9850";
+          els.unitSelect.innerHTML = `<option value="s">s</option><option value="min">min</option><option value="hr">hr</option>`;
+        }
+
+        els.answerInput.value = "";
+        updateParsedPreview();
+
+        // Reset Post-Flight Panel
+        els.scoringNoteTag.textContent = "+1 PT AVAILABLE";
+        els.scoringNoteTag.style.color = "var(--green)";
+        els.resultBadge.className = "result-badge wait";
+        els.resultBadge.textContent = "AWAITING LAUNCH";
+        els.telStudent.textContent = "--";
+        els.telExact.textContent = "--";
+        els.telError.textContent = "--";
+        els.telSpeed.textContent = "--";
+        els.feedbackBox.className = "feedback-box";
+        els.feedbackBox.innerHTML = `Calculate the required <strong>${m.task === "FIND_R" ? "orbital radius (r)" : "orbital period (T)"}</strong> using Kepler's 3rd Law and press <strong>INITIATE LAUNCH</strong>.`;
+
+        els.btnRetry.disabled = true;
+        els.btnReplay.disabled = true;
+        els.solutionBox.classList.remove("visible");
+
+        // Reset Viewport HUD
+        els.viewportModeTag.textContent = "STANDBY ON PAD";
+        els.flightStatusPill.className = "flight-status-pill";
+        els.flightLed.className = "led-dot cyan";
+        els.flightStatusText.textContent = "READY FOR LAUNCH";
+        els.hudTargetChip.textContent = m.task === "FIND_R"
+          ? `TARGET T: ${formatDuration(m.TExact)}`
+          : `TARGET r: ${formatDistance(m.rExact)}`;
+        els.hudSpeedChip.textContent = "ORBITAL SPEED: --";
+
+        els.answerInput.focus();
+      }
+
+      function updateParsedPreview() {
+        const raw = els.answerInput.value.trim();
+        const unit = els.unitSelect.value;
+
+        if (!raw) {
+          state.parsedSI = null;
+          els.parsedPreview.className = "parsed-preview";
+          els.parsedPreview.textContent = "Awaiting entry (supports 4.22e7, 4.22*10^7, 4.22 x 10^7)...";
+          return;
+        }
+
+        const num = parseSmartNumber(raw);
+        if (num === null) {
+          state.parsedSI = null;
+          els.parsedPreview.className = "parsed-preview invalid";
+          els.parsedPreview.textContent = "Invalid format — enter a positive number (e.g. 2.5e7 or 2.5*10^7)";
+          return;
+        }
+
+        const si = toSI(num, unit);
+        state.parsedSI = si;
+        els.parsedPreview.className = "parsed-preview valid";
+
+        if (state.mission.task === "FIND_R") {
+          els.parsedPreview.textContent = `Parsed: ${formatSciPlain(si, 3)} m = ${formatDistance(si)}`;
+        } else {
+          els.parsedPreview.textContent = `Parsed: ${formatSciPlain(si, 3)} s = ${formatDuration(si)}`;
+        }
+      }
+
+      function updateScoreboardUI() {
+        els.scoreCorrect.textContent = String(state.correct);
+        els.scoreAttempts.textContent = String(state.attempts);
+        const acc = state.attempts > 0 ? Math.round((state.correct / state.attempts) * 100) : null;
+        els.scoreAccuracy.textContent = acc !== null ? `${acc}%` : "--%";
+        els.scoreStreak.textContent = String(state.streak);
+        els.scoreBest.textContent = `BEST: ${state.bestStreak}`;
+      }
+
+      function appendMissionLog(entry) {
+        state.log.unshift(entry);
+        els.logCountTag.textContent = `${state.log.length} LOGGED`;
+        els.missionLog.innerHTML = "";
+        state.log.forEach(item => {
+          const row = document.createElement("div");
+          row.className = "log-entry";
+          const errStr = `${item.pctErr >= 0 ? "+" : ""}${item.pctErr.toFixed(1)}%`;
+          row.innerHTML = `
+            <span class="log-icon ${item.pass ? "pass" : "fail"}">${item.pass ? "✓" : "✕"}</span>
+            <div class="log-meta">
+              <span class="log-main">${item.id} &bull; ${item.planet}</span>
+              <span class="log-sub">${item.task === "FIND_R" ? "Find r" : "Find T"} &bull; ${item.note}</span>
+            </div>
+            <span class="log-err" style="color:${item.pass ? "var(--green)" : "var(--red)"};">${errStr}</span>
+          `;
+          els.missionLog.appendChild(row);
+        });
+      }
+
+      /* ========================================================================
+         LAUNCH EVALUATION & WORKED SOLUTION GENERATOR
+         ======================================================================== */
+      function initiateLaunch() {
+        updateParsedPreview();
+        if (state.parsedSI === null) {
+          playWarningSFX();
+          els.parsedPreview.className = "parsed-preview invalid";
+          els.parsedPreview.textContent = "Enter a valid positive number before launching!";
+          els.answerInput.focus();
+          return;
+        }
+
+        const m = state.mission;
+        const studentSI = state.parsedSI;
+        const exactSI = m.task === "FIND_R" ? m.rExact : m.TExact;
+        const signedPctErr = ((studentSI - exactSI) / exactSI) * 100;
+        const absErr = Math.abs(studentSI - exactSI) / exactSI;
+        const isCorrect = absErr <= TOLERANCE;
+        const ratio = studentSI / exactSI;
+
+        // Classify physical outcome
+        let outcome = "SUCCESS";
+        let statusText = "ORBIT LOCKED — MISSION SUCCESS";
+        let feedbackMsg = `Spot-on flight calculation! Your satellite achieved stable circular orbit around ${m.body.name} within ${Math.abs(signedPctErr).toFixed(2)}% error.`;
+
+        if (!isCorrect) {
+          if (m.task === "FIND_R") {
+            if (studentSI <= m.body.Rp) {
+              outcome = "CRASH";
+              statusText = "SUBORBITAL IMPACT — RADIUS INSIDE PLANET";
+              feedbackMsg = `Your entered radius (${formatDistance(studentSI)}) is smaller than ${m.body.name}'s surface radius (${formatDistance(m.body.Rp)}). The rocket impacted the surface!`;
+            } else if (studentSI < exactSI) {
+              outcome = "LOW_ORBIT";
+              statusText = "ORBIT TOO LOW (TOO FAST)";
+              feedbackMsg = `Your orbital radius is ${Math.abs(signedPctErr).toFixed(1)}% too small. Closer orbits move faster and complete in a shorter period than requested.`;
+            } else {
+              outcome = "HIGH_ORBIT";
+              statusText = "ORBIT TOO HIGH (TOO SLOW)";
+              feedbackMsg = `Your orbital radius is ${Math.abs(signedPctErr).toFixed(1)}% too large. Higher orbits move slower and take longer than the target period.`;
+            }
+          } else {
+            if (studentSI < exactSI) {
+              outcome = "SHORT_PERIOD";
+              statusText = "TIMING DESYNC — PREDICTED PERIOD TOO SHORT";
+              feedbackMsg = `Your predicted period is ${Math.abs(signedPctErr).toFixed(1)}% too short. Watch the amber predicted clock marker race ahead of the real satellite!`;
+            } else {
+              outcome = "LONG_PERIOD";
+              statusText = "TIMING DESYNC — PREDICTED PERIOD TOO LONG";
+              feedbackMsg = `Your predicted period is ${Math.abs(signedPctErr).toFixed(1)}% too long. Watch the amber predicted clock marker lag behind the real satellite!`;
+            }
+          }
+        }
+
+        // Update Scoreboard
+        state.attempts += 1;
+        state.hasLaunched = true;
+
+        if (isCorrect) {
+          if (!state.awardedCorrect && !state.solutionRevealed) {
+            state.correct += 1;
+            state.awardedCorrect = true;
+            state.streak += 1;
+            if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+            els.scoringNoteTag.textContent = "+1 PT AWARDED";
+            els.scoringNoteTag.style.color = "var(--green)";
+          } else if (state.solutionRevealed) {
+            els.scoringNoteTag.textContent = "PRACTICE (SOL SHOWN)";
+            els.scoringNoteTag.style.color = "var(--amber)";
+          }
+        } else {
+          state.streak = 0;
+        }
+        updateScoreboardUI();
+
+        state.lastResult = {
+          correct: isCorrect,
+          studentSI,
+          exactSI,
+          pctErr: signedPctErr,
+          absErr,
+          outcome,
+          statusText,
+          feedbackMsg,
+          ratio
+        };
+
+        // Log mission attempt
+        appendMissionLog({
+          id: m.id,
+          planet: m.body.name,
+          task: m.task,
+          pass: isCorrect,
+          pctErr: signedPctErr,
+          note: isCorrect ? "Orbit Locked" : outcome.replace("_", " ")
+        });
+
+        // Update Post-Flight Telemetry UI
+        els.resultBadge.className = `result-badge ${isCorrect ? "pass" : "fail"}`;
+        els.resultBadge.textContent = isCorrect ? "MISSION SUCCESS" : "CALIBRATION ERROR";
+
+        if (m.task === "FIND_R") {
+          els.telStudent.innerHTML = `${formatSciHTML(studentSI, 3)} m`;
+          els.telExact.innerHTML = isCorrect || state.solutionRevealed
+            ? `${formatSciHTML(exactSI, 3)} m`
+            : `<span style="color:var(--text-dim);">Hidden (Retry or Reveal)</span>`;
+        } else {
+          els.telStudent.innerHTML = `${formatSciHTML(studentSI, 3)} s`;
+          els.telExact.innerHTML = isCorrect || state.solutionRevealed
+            ? `${formatSciHTML(exactSI, 3)} s`
+            : `<span style="color:var(--text-dim);">Hidden (Retry or Reveal)</span>`;
+        }
+
+        els.telError.textContent = `${signedPctErr >= 0 ? "+" : ""}${signedPctErr.toFixed(2)}%`;
+        els.telError.style.color = isCorrect ? "var(--green)" : "var(--red)";
+        els.telSpeed.textContent = `${(m.vExact / 1000).toFixed(2)} km/s`;
+
+        els.feedbackBox.className = `feedback-box ${isCorrect ? "pass" : (outcome === "CRASH" ? "fail" : "warn")}`;
+        els.feedbackBox.textContent = feedbackMsg;
+
+        els.btnRetry.disabled = isCorrect;
+        els.btnReplay.disabled = false;
+        els.hudSpeedChip.textContent = `TRUE SPEED: ${(m.vExact / 1000).toFixed(2)} km/s`;
+
+        startLaunchAnimation();
+      }
+
+      function startLaunchAnimation() {
+        state.isPaused = false;
+        els.btnPause.innerHTML = "&#10074;&#10074; Pause";
+        state.animPhase = "ASCENT";
+        state.ascentT = 0;
+        state.satAngle = 0;
+        state.predAngle = 0;
+        state.trail = [];
+        state.particles = [];
+        state.shockwave = null;
+        state.shakeTime = 0;
+
+        els.viewportModeTag.textContent = "ASCENT BURN";
+        els.flightStatusPill.className = "flight-status-pill";
+        els.flightLed.className = "led-dot amber";
+        els.flightStatusText.textContent = "IGNITION — ASCENDING TO ORBIT";
+        playIgnitionSFX();
+      }
+
+      function revealWorkedSolution() {
+        const m = state.mission;
+        if (!m) return;
+
+        state.solutionRevealed = true;
+        if (!state.awardedCorrect) {
+          els.scoringNoteTag.textContent = "SOLUTION REVEALED (0 PT)";
+          els.scoringNoteTag.style.color = "var(--amber)";
+        }
+
+        // Also reveal exact answer in telemetry card if already launched
+        if (state.hasLaunched) {
+          els.telExact.innerHTML = m.task === "FIND_R"
+            ? `${formatSciHTML(m.rExact, 3)} m`
+            : `${formatSciHTML(m.TExact, 3)} s`;
+        }
+
+        const GM = G * m.body.M;
+        const fourPiSq = 4 * Math.PI * Math.PI;
+        let html = "";
+
+        if (m.task === "FIND_R") {
+          const rCubed = (GM * m.TExact * m.TExact) / fourPiSq;
+          html = `
+            <div class="sol-step">1. Start with Kepler's 3rd Law: <strong>r = (G &middot; M &middot; T&sup2; / 4&pi;&sup2;)<sup>1/3</sup></strong></div>
+            <div class="sol-step">2. G&middot;M = (6.674&times;10<sup>&minus;11</sup>)(${formatSciHTML(m.body.M, 3)}) = ${formatSciHTML(GM, 3)} m&sup3;/s&sup2;</div>
+            <div class="sol-step">3. r&sup3; = (${formatSciHTML(GM, 3)}) &middot; (${formatSciHTML(m.TExact, 3)})&sup2; / 39.48 = ${formatSciHTML(rCubed, 3)} m&sup3;</div>
+            <div class="sol-step">4. Take cube root: <strong>r = ${formatSciHTML(m.rExact, 3)} m (${formatDistance(m.rExact)})</strong></div>
+          `;
+        } else {
+          const rCubed = Math.pow(m.rExact, 3);
+          const inside = rCubed / GM;
+          html = `
+            <div class="sol-step">1. Start with Kepler's 3rd Law: <strong>T = 2&pi; &radic;(r&sup3; / (G &middot; M))</strong></div>
+            <div class="sol-step">2. G&middot;M = (6.674&times;10<sup>&minus;11</sup>)(${formatSciHTML(m.body.M, 3)}) = ${formatSciHTML(GM, 3)} m&sup3;/s&sup2;</div>
+            <div class="sol-step">3. r&sup3; / (G&middot;M) = (${formatSciHTML(m.rExact, 3)})&sup3; / (${formatSciHTML(GM, 3)}) = ${formatSciHTML(inside, 3)} s&sup2;</div>
+            <div class="sol-step">4. T = 2&pi; &radic;(${formatSciHTML(inside, 3)}) = <strong>${formatSciHTML(m.TExact, 3)} s (${formatDuration(m.TExact)})</strong></div>
+          `;
+        }
+
+        els.solutionSteps.innerHTML = html;
+        els.solutionBox.classList.add("visible");
+        playBeep(440, 0.08, "sine", 0.04);
+      }
+
+      /* ========================================================================
+         EVENT LISTENERS
+         ======================================================================== */
+      // Mission Type & Sector Mode Switches
+      els.taskBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          playBeep(660, 0.05, "sine", 0.04);
+          state.taskMode = btn.dataset.task;
+          els.taskBtns.forEach(b => b.classList.toggle("active", b === btn));
+          generateMission();
+        });
+      });
+
+      els.sectorBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          playBeep(660, 0.05, "sine", 0.04);
+          state.sectorMode = btn.dataset.sector;
+          els.sectorBtns.forEach(b => b.classList.toggle("active", b === btn));
+          generateMission();
+        });
+      });
+
+      // Flight Computer Input & Launch
+      els.answerInput.addEventListener("input", updateParsedPreview);
+      els.unitSelect.addEventListener("change", updateParsedPreview);
+      els.answerInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          initiateLaunch();
+        }
+      });
+
+      els.btnLaunch.addEventListener("click", initiateLaunch);
+      els.btnNext.addEventListener("click", () => {
+        playBeep(580, 0.06, "sine", 0.04);
+        generateMission();
+      });
+
+      // Retry & Worked Solution
+      els.btnRetry.addEventListener("click", () => {
+        playBeep(500, 0.06, "sine", 0.04);
+        state.animPhase = "STANDBY";
+        state.trail = [];
+        state.particles = [];
+        els.viewportModeTag.textContent = "RECALIBRATING";
+        els.flightStatusPill.className = "flight-status-pill";
+        els.flightLed.className = "led-dot cyan";
+        els.flightStatusText.textContent = "READY FOR RETRY LAUNCH";
+        els.answerInput.select();
+        els.answerInput.focus();
+      });
+
+      els.btnSolution.addEventListener("click", revealWorkedSolution);
+
+      // Collapsible Formula Reference
+      els.btnFormulaToggle.addEventListener("click", () => {
+        const isHidden = els.formulaBody.classList.toggle("hidden");
+        els.btnFormulaToggle.setAttribute("aria-expanded", String(!isHidden));
+        els.formulaCaret.innerHTML = isHidden ? "&#9656;" : "&#9662;";
+      });
+
+      // Viewport Controls
+      els.btnPause.addEventListener("click", () => {
+        state.isPaused = !state.isPaused;
+        els.btnPause.innerHTML = state.isPaused ? "&#9654; Resume" : "&#10074;&#10074; Pause";
+      });
+
+      els.warpBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.timeWarp = parseFloat(btn.dataset.warp);
+          els.warpBtns.forEach(b => b.classList.toggle("active", b === btn));
+        });
+      });
+
+      els.btnReplay.addEventListener("click", () => {
+        if (state.lastResult) startLaunchAnimation();
+      });
+
+      // Audio SFX & Reset Score
+      els.btnSfx.addEventListener("click", () => {
+        state.sfxEnabled = !state.sfxEnabled;
+        els.btnSfx.classList.toggle("active", state.sfxEnabled);
+        els.btnSfx.setAttribute("aria-pressed", String(state.sfxEnabled));
+        els.btnSfx.innerHTML = state.sfxEnabled ? `<span>&#128266;</span> SFX ON` : `<span>&#128263;</span> SFX OFF`;
+        if (state.sfxEnabled) playBeep(740, 0.06, "sine", 0.04);
+      });
+
+      els.btnResetScore.addEventListener("click", () => {
+        state.correct = 0;
+        state.attempts = 0;
+        state.streak = 0;
+        state.bestStreak = 0;
+        state.log = [];
+        updateScoreboardUI();
+        els.logCountTag.textContent = "0 LOGGED";
+        els.missionLog.innerHTML = `<div class="log-empty">Scoreboard cleared. Ready for next launch!</div>`;
+        playBeep(420, 0.08, "sine", 0.04);
+      });
+
+      /* ========================================================================
+         RESPONSIVE HiDPI CANVAS SIZING
+         ======================================================================== */
+      function resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = els.radarStage.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          radarSize.w = Math.max(280, Math.floor(rect.width));
+          radarSize.h = Math.max(360, Math.floor(rect.height));
+          els.radarCanvas.width = Math.floor(radarSize.w * dpr);
+          els.radarCanvas.height = Math.floor(radarSize.h * dpr);
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        drawRadar();
+      }
+
+      window.addEventListener("resize", resizeCanvas);
+      if (typeof ResizeObserver !== "undefined") {
+        const ro = new ResizeObserver(resizeCanvas);
+        ro.observe(els.radarStage);
+      }
+
+      /* ========================================================================
+         PROCEDURAL PLANET, ROCKET & SATELLITE RENDERERS
+         ======================================================================== */
+      function drawPlanetGraphic(cx, cy, rPx, theme) {
+        ctx.save();
+
+        // Back half of Saturn rings
+        if (theme === "saturn") {
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(-0.32);
+          ctx.strokeStyle = "rgba(234, 179, 8, 0.45)";
+          ctx.lineWidth = Math.max(5, rPx * 0.24);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, rPx * 1.9, rPx * 0.52, 0, Math.PI, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Subtle atmospheric halo
+        const haloColors = {
+          earth: "rgba(34, 211, 238, 0.34)",
+          mars: "rgba(251, 146, 60, 0.28)",
+          moon: "rgba(148, 163, 184, 0.16)",
+          venus: "rgba(251, 191, 36, 0.3)",
+          mercury: "rgba(148, 163, 184, 0.15)",
+          jupiter: "rgba(245, 158, 11, 0.26)",
+          saturn: "rgba(234, 179, 8, 0.24)",
+          "exo-ocean": "rgba(34, 211, 238, 0.32)",
+          "exo-ember": "rgba(248, 113, 113, 0.32)",
+          "exo-ice": "rgba(167, 139, 250, 0.3)",
+          "exo-gas": "rgba(56, 189, 248, 0.28)",
+          "exo-emerald": "rgba(52, 211, 153, 0.3)"
+        };
+
+        const halo = ctx.createRadialGradient(cx, cy, rPx * 0.85, cx, cy, rPx * 1.35);
+        halo.addColorStop(0, haloColors[theme] || "rgba(34, 211, 238, 0.28)");
+        halo.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rPx * 1.35, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Clip planet disc
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
+        ctx.clip();
+
+        const palettes = {
+          earth: ["#38bdf8", "#0284c7", "#082f49"],
+          mars: ["#fdba74", "#c2410c", "#431407"],
+          moon: ["#e2e8f0", "#64748b", "#1e293b"],
+          venus: ["#fef08a", "#d97706", "#78350f"],
+          mercury: ["#cbd5e1", "#78716c", "#292524"],
+          jupiter: ["#fed7aa", "#b45309", "#451a03"],
+          saturn: ["#fef3c7", "#ca8a04", "#713f12"],
+          "exo-ocean": ["#22d3ee", "#0369a1", "#0c1e35"],
+          "exo-ember": ["#fca5a5", "#dc2626", "#450a0a"],
+          "exo-ice": ["#ddd6fe", "#7c3aed", "#2e1065"],
+          "exo-gas": ["#93c5fd", "#2563eb", "#172554"],
+          "exo-emerald": ["#6ee7b7", "#059669", "#064e3b"]
+        };
+        const pal = palettes[theme] || palettes.earth;
+
+        const grad = ctx.createRadialGradient(cx - rPx * 0.34, cy - rPx * 0.34, rPx * 0.1, cx, cy, rPx);
+        grad.addColorStop(0, pal[0]);
+        grad.addColorStop(0.55, pal[1]);
+        grad.addColorStop(1, pal[2]);
+        ctx.fillStyle = grad;
+        ctx.fillRect(cx - rPx, cy - rPx, rPx * 2, rPx * 2);
+
+        // Surface Details by Planet Type
+        if (theme === "earth" || theme === "exo-emerald") {
+          ctx.fillStyle = theme === "earth" ? "rgba(52, 211, 153, 0.72)" : "rgba(251, 191, 36, 0.38)";
+          ctx.beginPath();
+          ctx.ellipse(cx - rPx * 0.25, cy - rPx * 0.18, rPx * 0.34, rPx * 0.22, -0.35, 0, Math.PI * 2);
+          ctx.ellipse(cx + rPx * 0.28, cy + rPx * 0.16, rPx * 0.28, rPx * 0.34, 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (theme === "jupiter" || theme === "saturn" || theme === "exo-gas") {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+          [-0.52, -0.15, 0.22, 0.56].forEach(by => {
+            ctx.fillRect(cx - rPx, cy + by * rPx, rPx * 2, rPx * 0.15);
+          });
+          if (theme === "jupiter") {
+            ctx.fillStyle = "rgba(220, 38, 38, 0.65)";
+            ctx.beginPath();
+            ctx.ellipse(cx + rPx * 0.22, cy + rPx * 0.24, rPx * 0.22, rPx * 0.12, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (theme === "moon" || theme === "mercury" || theme === "mars") {
+          ctx.fillStyle = "rgba(15, 23, 42, 0.28)";
+          [[-0.32, -0.22, 0.18], [0.26, 0.14, 0.21], [-0.08, 0.42, 0.15], [0.18, -0.35, 0.11]].forEach(([fx, fy, fr]) => {
+            ctx.beginPath();
+            ctx.arc(cx + fx * rPx, cy + fy * rPx, fr * rPx, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        } else {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.14)";
+          ctx.beginPath();
+          ctx.ellipse(cx, cy - rPx * 0.25, rPx * 0.65, rPx * 0.15, 0.18, 0, Math.PI * 2);
+          ctx.ellipse(cx - rPx * 0.1, cy + rPx * 0.25, rPx * 0.55, rPx * 0.14, -0.12, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Day/night terminator shadow
+        const term = ctx.createLinearGradient(cx - rPx * 0.6, cy - rPx * 0.6, cx + rPx * 0.85, cy + rPx * 0.85);
+        term.addColorStop(0, "rgba(255,255,255,0.08)");
+        term.addColorStop(0.58, "rgba(0,0,0,0)");
+        term.addColorStop(1, "rgba(2,6,23,0.72)");
+        ctx.fillStyle = term;
+        ctx.fillRect(cx - rPx, cy - rPx, rPx * 2, rPx * 2);
+        ctx.restore();
+
+        // Front half of Saturn rings
+        if (theme === "saturn") {
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(-0.32);
+          ctx.strokeStyle = "rgba(253, 224, 71, 0.72)";
+          ctx.lineWidth = Math.max(5, rPx * 0.24);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, rPx * 1.9, rPx * 0.52, 0, 0, Math.PI);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        ctx.restore();
+      }
+
+      function drawRocket(x, y, headingRad, flameScale) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(headingRad);
+
+        // Glowing exhaust plume
+        if (flameScale > 0) {
+          const fl = (10 + Math.random() * 7) * flameScale;
+          const fg = ctx.createLinearGradient(0, 5, 0, 5 + fl);
+          fg.addColorStop(0, "#fef08a");
+          fg.addColorStop(0.5, "#f97316");
+          fg.addColorStop(1, "rgba(239, 68, 68, 0)");
+          ctx.fillStyle = fg;
+          ctx.beginPath();
+          ctx.moveTo(-3.2, 5);
+          ctx.lineTo(0, 5 + fl);
+          ctx.lineTo(3.2, 5);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // Fins
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.moveTo(-3, 2); ctx.lineTo(-6.5, 6); ctx.lineTo(-3, 5.5); ctx.closePath();
+        ctx.moveTo(3, 2); ctx.lineTo(6.5, 6); ctx.lineTo(3, 5.5); ctx.closePath();
+        ctx.fill();
+
+        // Rocket fuselage
+        ctx.fillStyle = "#f1f5f9";
+        ctx.beginPath();
+        ctx.moveTo(0, -10);
+        ctx.quadraticCurveTo(3.8, -4, 3.4, 5.5);
+        ctx.lineTo(-3.4, 5.5);
+        ctx.quadraticCurveTo(-3.8, -4, 0, -10);
+        ctx.closePath();
+        ctx.fill();
+
+        // Nose cone accent
+        ctx.fillStyle = "#22d3ee";
+        ctx.beginPath();
+        ctx.arc(0, -3.5, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      function drawSatellite(x, y, rotRad, isSuccess) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rotRad);
+
+        // Solar panels
+        ctx.fillStyle = isSuccess ? "#0ea5e9" : "#d97706";
+        ctx.strokeStyle = isSuccess ? "#7dd3fc" : "#fde68a";
+        ctx.lineWidth = 1;
+        ctx.fillRect(-3.5, -15, 7, 9);
+        ctx.strokeRect(-3.5, -15, 7, 9);
+        ctx.fillRect(-3.5, 6, 7, 9);
+        ctx.strokeRect(-3.5, 6, 7, 9);
+
+        // Bus
+        ctx.fillStyle = "#fbbf24";
+        ctx.strokeStyle = "#fef3c7";
+        ctx.beginPath();
+        ctx.roundRect(-4.5, -4.5, 9, 9, 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      function drawPill(text, x, y, color, bg) {
+        ctx.save();
+        ctx.font = "700 10.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+        const pad = 6;
+        const w = ctx.measureText(text).width + pad * 2;
+        const h = 18;
+        ctx.fillStyle = bg || "rgba(8, 13, 22, 0.88)";
+        ctx.strokeStyle = color || "#22d3ee";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(x - w / 2, y - h / 2, w, h, 4);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = color || "#f1f5f9";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, x, y + 0.5);
+        ctx.restore();
+      }
+
+      /* ========================================================================
+         ORBITAL RADAR VIEWPORT RENDERER
+         ======================================================================== */
+      function getRadarGeometry() {
+        const w = radarSize.w;
+        const h = radarSize.h;
+        const cx = w * 0.5;
+        const cy = h * 0.52;
+        const maxR = Math.min(w, h) * 0.41;
+
+        // Planet visual radius ~ 16-24% of maxR, Target Orbit ~ 64% of maxR
+        const m = state.mission;
+        const mult = m ? m.rMult : 3.0;
+        const planetR = Math.max(22, Math.min(44, maxR * (0.28 / Math.pow(mult / 2.2, 0.35))));
+        const targetR = maxR * 0.64;
+
+        // Helper mapping any physical radius (m) smoothly into radar pixel radius
+        function mapRadiusPx(rMeters) {
+          if (!m) return targetR;
+          if (rMeters <= m.body.Rp) {
+            return Math.max(6, (rMeters / m.body.Rp) * planetR);
+          }
+          const ratio = rMeters / m.rExact;
+          if (ratio <= 1.0) {
+            // Interpolate cleanly between planet surface and target orbit
+            const frac = (rMeters - m.body.Rp) / Math.max(1, m.rExact - m.body.Rp);
+            return planetR + frac * (targetR - planetR);
+          } else {
+            // Smooth log-compressed mapping above targetR so huge wrong answers stay visible on radar
+            const extra = Math.min(1, Math.log(ratio) / Math.log(3.5));
+            return targetR + extra * (maxR * 0.94 - targetR);
+          }
+        }
+
+        return { w, h, cx, cy, maxR, planetR, targetR, mapRadiusPx };
+      }
+
+      function drawRadar() {
+        const g = getRadarGeometry();
+        const { w, h, cx, cy, maxR, planetR, targetR, mapRadiusPx } = g;
+        const m = state.mission;
+
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.save();
+        if (state.shakeTime > 0) {
+          const amp = (state.shakeTime / 0.45) * 7;
+          ctx.translate((Math.random() - 0.5) * 2 * amp, (Math.random() - 0.5) * 2 * amp);
+        }
+
+        // 1. Deep-Space Radar Backdrop & Stars
+        const bg = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(w, h) * 0.72);
+        bg.addColorStop(0, "#0b1426");
+        bg.addColorStop(0.65, "#060b15");
+        bg.addColorStop(1, "#03060c");
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, w, h);
+
+        for (let i = 0; i < STARS.length; i++) {
+          const st = STARS[i];
+          ctx.fillStyle = `rgba(226, 232, 240, ${st.a.toFixed(2)})`;
+          ctx.beginPath();
+          ctx.arc(st.fx * w, st.fy * h, st.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 2. Subtle Radar Crosshairs & Range Rings
+        ctx.save();
+        ctx.strokeStyle = "rgba(34, 211, 238, 0.08)";
+        ctx.lineWidth = 1;
+        [0.35, 0.64, 0.94].forEach(frac => {
+          ctx.beginPath();
+          ctx.arc(cx, cy, maxR * frac, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+        ctx.beginPath();
+        ctx.moveTo(cx - maxR * 1.02, cy); ctx.lineTo(cx + maxR * 1.02, cy);
+        ctx.moveTo(cx, cy - maxR * 1.02); ctx.lineTo(cx, cy + maxR * 1.02);
+        ctx.stroke();
+        ctx.restore();
+
+        // 3. Target Orbit Dashed Green Ring
+        ctx.save();
+        ctx.strokeStyle = "rgba(52, 211, 153, 0.78)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([7, 5]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, targetR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // 4. Preview Planned Orbit Ring while Typing in FIND_R Mode (STANDBY)
+        if (m && m.task === "FIND_R" && state.animPhase === "STANDBY" && state.parsedSI !== null) {
+          const prevR = mapRadiusPx(state.parsedSI);
+          const insidePlanet = state.parsedSI <= m.body.Rp;
+          ctx.save();
+          ctx.strokeStyle = insidePlanet ? "rgba(248, 113, 113, 0.75)" : "rgba(34, 211, 238, 0.6)";
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(cx, cy, prevR, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+          drawPill(
+            insidePlanet ? "PLANNED r INSIDE PLANET!" : "PLANNED ORBIT",
+            cx,
+            cy - Math.max(planetR + 14, prevR) - 10,
+            insidePlanet ? "#f87171" : "#22d3ee"
+          );
+        }
+
+        // 5. Wrong-Radius Student Orbit Ring (after launch in FIND_R if wrong & above surface)
+        if (m && m.task === "FIND_R" && state.lastResult && !state.lastResult.correct && state.lastResult.outcome !== "CRASH") {
+          const wrongR = mapRadiusPx(state.lastResult.studentSI);
+          ctx.save();
+          ctx.strokeStyle = "rgba(251, 191, 36, 0.62)";
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.arc(cx, cy, wrongR, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+
+        // 6. Central Planet
+        if (m) {
+          drawPlanetGraphic(cx, cy, planetR, m.body.theme);
+        }
+
+        // 7. Launch Pad Marker at Top of Planet (12 o'clock)
+        const padX = cx;
+        const padY = cy - planetR;
+        ctx.save();
+        ctx.fillStyle = "#fbbf24";
+        ctx.beginPath();
+        ctx.arc(padX, padY, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 8. Orbital Trail
+        if (state.trail.length > 1) {
+          const isOk = state.lastResult && state.lastResult.correct;
+          const rgb = isOk ? "52, 211, 153" : (state.lastResult && state.lastResult.outcome === "CRASH" ? "248, 113, 113" : "34, 211, 238");
+          ctx.save();
+          ctx.lineCap = "round";
+          for (let i = 1; i < state.trail.length; i++) {
+            const p0 = state.trail[i - 1];
+            const p1 = state.trail[i];
+            const t = i / state.trail.length;
+            ctx.strokeStyle = `rgba(${rgb}, ${(t * t * 0.78).toFixed(3)})`;
+            ctx.lineWidth = 1.4 + t * 2.4;
+            ctx.beginPath();
+            ctx.moveTo(cx + p0.x, cy + p0.y);
+            ctx.lineTo(cx + p1.x, cy + p1.y);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        // 9. Particles & Crash Shockwave
+        if (state.shockwave && state.shockwave.alpha > 0) {
+          ctx.save();
+          ctx.strokeStyle = `rgba(248, 113, 113, ${state.shockwave.alpha.toFixed(2)})`;
+          ctx.lineWidth = 2.6;
+          ctx.beginPath();
+          ctx.arc(cx + state.shockwave.x, cy + state.shockwave.y, state.shockwave.r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        for (let i = 0; i < state.particles.length; i++) {
+          const p = state.particles[i];
+          const a = Math.max(0, p.life / p.maxLife);
+          ctx.save();
+          ctx.globalAlpha = a;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(cx + p.x, cy + p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // 10. Rocket / Satellite Rendering by Phase
+        if (state.animPhase === "STANDBY") {
+          drawRocket(padX, padY - 6, 0, 0);
+        } else if (state.animPhase === "ASCENT") {
+          const res = state.lastResult;
+          const t = state.ascentT;
+          if (res && res.outcome === "CRASH") {
+            // Suborbital arc: lifts off from top pad, curves right, crashes back onto planet surface
+            const arcAng = -Math.PI / 2 + t * 1.15;
+            const apexBoost = Math.sin(t * Math.PI) * (targetR - planetR) * 0.42;
+            const curR = planetR + apexBoost;
+            const rx = cx + curR * Math.cos(arcAng);
+            const ry = cy + curR * Math.sin(arcAng);
+            const nextT = Math.min(1, t + 0.02);
+            const nAng = -Math.PI / 2 + nextT * 1.15;
+            const nR = planetR + Math.sin(nextT * Math.PI) * (targetR - planetR) * 0.42;
+            const heading = Math.atan2(nR * Math.sin(nAng) - curR * Math.sin(arcAng), nR * Math.cos(nAng) - curR * Math.cos(arcAng)) + Math.PI / 2;
+            drawRocket(rx, ry, heading, t < 0.45 ? 1.1 : 0);
+          } else {
+            // Smooth curved gravity-turn ascent from pad (-pi/2) to orbital insertion at angle 0 (3 o'clock)
+            const destR = (m.task === "FIND_R" && !res.correct) ? mapRadiusPx(res.studentSI) : targetR;
+            const ease = 1 - Math.pow(1 - t, 2.2);
+            const curR = planetR + ease * (destR - planetR);
+            const ang = -Math.PI / 2 + t * (Math.PI / 2); // sweeps from top to 3 o'clock
+            const rx = cx + curR * Math.cos(ang);
+            const ry = cy + curR * Math.sin(ang);
+
+            const nT = Math.min(1, t + 0.02);
+            const nEase = 1 - Math.pow(1 - nT, 2.2);
+            const nR = planetR + nEase * (destR - planetR);
+            const nAng = -Math.PI / 2 + nT * (Math.PI / 2);
+            const heading = Math.atan2(nR * Math.sin(nAng) - curR * Math.sin(ang), nR * Math.cos(nAng) - curR * Math.cos(ang)) + Math.PI / 2;
+            drawRocket(rx, ry, heading, 1.0);
+          }
+        } else if (state.animPhase === "ORBIT") {
+          const res = state.lastResult;
+          const orbR = (m.task === "FIND_R" && !res.correct) ? mapRadiusPx(res.studentSI) : targetR;
+          const sx = cx + orbR * Math.cos(state.satAngle);
+          const sy = cy + orbR * Math.sin(state.satAngle);
+
+          // Draw real satellite
+          drawSatellite(sx, sy, state.satAngle, res.correct);
+
+          // If FIND_T and incorrect, draw PREDICTED CLOCK MARKER orbiting at student's period T
+          if (m.task === "FIND_T" && !res.correct) {
+            const px = cx + targetR * Math.cos(state.predAngle);
+            const py = cy + targetR * Math.sin(state.predAngle);
+            ctx.save();
+            const pulse = 0.5 + 0.5 * Math.sin(state.pulseClock * 8);
+            ctx.strokeStyle = "#fbbf24";
+            ctx.fillStyle = "rgba(251, 191, 36, 0.25)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(px, py, 9 + pulse * 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#fbbf24";
+            ctx.beginPath();
+            ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            drawPill("PREDICTED CLOCK", px, py - 18, "#fbbf24");
+            drawPill("REAL SATELLITE", sx, sy + 22, "#22d3ee");
+          } else if (m.task === "FIND_R" && !res.correct) {
+            drawPill(
+              res.outcome === "LOW_ORBIT" ? "ORBIT TOO LOW" : "ORBIT TOO HIGH",
+              sx,
+              sy - 20,
+              "#fbbf24"
+            );
+          }
+        }
+
+        // Planet label beneath central body
+        if (m) {
+          drawPill(m.body.name.toUpperCase(), cx, cy + planetR + 14, "#94a3b8");
+        }
+
+        ctx.restore();
+      }
+
+      /* ========================================================================
+         MAIN 60FPS ANIMATION LOOP
+         ======================================================================== */
+      let lastTs = null;
+
+      function spawnCrashFX(relX, relY) {
+        state.shakeTime = 0.45;
+        state.shockwave = { x: relX, y: relY, r: 2, maxR: 46, alpha: 1 };
+        for (let i = 0; i < 32; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const spd = 25 + Math.random() * 115;
+          state.particles.push({
+            x: relX,
+            y: relY,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            life: 0.4 + Math.random() * 0.45,
+            maxLife: 0.85,
+            size: 1.8 + Math.random() * 2.5,
+            color: Math.random() > 0.4 ? "#fbbf24" : "#f87171"
+          });
+        }
+      }
+
+      function finishAscent() {
+        const res = state.lastResult;
+        const g = getRadarGeometry();
+
+        if (res.outcome === "CRASH") {
+          state.animPhase = "CRASH";
+          const impactAng = -Math.PI / 2 + 1.15;
+          spawnCrashFX(g.planetR * Math.cos(impactAng), g.planetR * Math.sin(impactAng));
+          els.viewportModeTag.textContent = "SURFACE IMPACT";
+          els.flightStatusPill.className = "flight-status-pill fail";
+          els.flightLed.className = "led-dot red";
+          els.flightStatusText.textContent = res.statusText;
+          playCrashSFX();
+          return;
+        }
+
+        state.animPhase = "ORBIT";
+        state.satAngle = 0;
+        state.predAngle = 0;
+        state.trail = [];
+
+        if (res.correct) {
+          els.viewportModeTag.textContent = "ORBIT LOCKED";
+          els.flightStatusPill.className = "flight-status-pill success";
+          els.flightLed.className = "led-dot";
+          els.flightStatusText.textContent = res.statusText;
+          playSuccessSFX();
+        } else {
+          els.viewportModeTag.textContent = "ORBITAL MISMATCH";
+          els.flightStatusPill.className = "flight-status-pill warn";
+          els.flightLed.className = "led-dot amber";
+          els.flightStatusText.textContent = res.statusText;
+          playWarningSFX();
+        }
+      }
+
+      function update(dt) {
+        state.pulseClock += dt;
+        if (state.shakeTime > 0) state.shakeTime = Math.max(0, state.shakeTime - dt);
+
+        if (state.shockwave) {
+          state.shockwave.r += dt * 78;
+          state.shockwave.alpha = Math.max(0, 1 - state.shockwave.r / state.shockwave.maxR);
+        }
+
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const p = state.particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= 0.94;
+          p.vy *= 0.94;
+          p.life -= dt;
+          if (p.life <= 0) state.particles.splice(i, 1);
+        }
+
+        if (state.isPaused) return;
+        const simDt = dt * state.timeWarp;
+        const g = getRadarGeometry();
+        const m = state.mission;
+
+        if (state.animPhase === "ASCENT") {
+          const res = state.lastResult;
+          const ascentDur = res.outcome === "CRASH" ? 1.15 : 1.35;
+          state.ascentT += simDt / ascentDur;
+
+          // Record ascent trail
+          const t = Math.min(1, state.ascentT);
+          if (res.outcome === "CRASH") {
+            const arcAng = -Math.PI / 2 + t * 1.15;
+            const curR = g.planetR + Math.sin(t * Math.PI) * (g.targetR - g.planetR) * 0.42;
+            state.trail.push({ x: curR * Math.cos(arcAng), y: curR * Math.sin(arcAng) });
+          } else {
+            const destR = (m.task === "FIND_R" && !res.correct) ? g.mapRadiusPx(res.studentSI) : g.targetR;
+            const ease = 1 - Math.pow(1 - t, 2.2);
+            const curR = g.planetR + ease * (destR - g.planetR);
+            const ang = -Math.PI / 2 + t * (Math.PI / 2);
+            state.trail.push({ x: curR * Math.cos(ang), y: curR * Math.sin(ang) });
+          }
+          if (state.trail.length > 140) state.trail.shift();
+
+          if (state.ascentT >= 1) {
+            finishAscent();
+          }
+        } else if (state.animPhase === "ORBIT") {
+          const res = state.lastResult;
+          // Base visual angular velocity ~ 0.95 rad/s at 1x warp
+          const baseOmega = 0.95;
+
+          let satOmega = baseOmega;
+          if (m.task === "FIND_R" && !res.correct) {
+            // Physically, omega ∝ r^(-3/2); clamp ratio for clear visual readability
+            const omegaFactor = Math.max(0.22, Math.min(3.2, Math.pow(res.ratio, -1.5)));
+            satOmega = baseOmega * omegaFactor;
+          }
+
+          state.satAngle = (state.satAngle + satOmega * simDt) % (Math.PI * 2);
+
+          if (m.task === "FIND_T" && !res.correct) {
+            // Predicted clock marker orbits at omega_pred = (T_exact / T_student) * baseOmega
+            const predFactor = Math.max(0.18, Math.min(4.8, 1 / res.ratio));
+            state.predAngle = (state.predAngle + baseOmega * predFactor * simDt) % (Math.PI * 2);
+          }
+
+          const orbR = (m.task === "FIND_R" && !res.correct) ? g.mapRadiusPx(res.studentSI) : g.targetR;
+          state.trail.push({ x: orbR * Math.cos(state.satAngle), y: orbR * Math.sin(state.satAngle) });
+          if (state.trail.length > 120) state.trail.shift();
+        }
+      }
+
+      function animate(ts) {
+        if (lastTs === null) lastTs = ts;
+        const dt = Math.min(0.05, (ts - lastTs) / 1000);
+        lastTs = ts;
+
+        try {
+          update(dt);
+          drawRadar();
+        } catch (err) {
+          console.error("Radar loop error:", err);
+        }
+        requestAnimationFrame(animate);
+      }
+
+      /* ========================================================================
+         INITIALIZATION
+         ======================================================================== */
+      window.addEventListener("load", () => {
+        try {
+          updateScoreboardUI();
+          generateMission();
+          resizeCanvas();
+          requestAnimationFrame(animate);
+        } catch (err) {
+          console.error("Init error:", err);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

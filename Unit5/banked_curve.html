@@ -1,0 +1,3015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frictionless Banked Curve — Circular Motion Lab</title>
+  <style>
+    /* ==========================================================================
+       DESIGN TOKENS & BASE STYLES (Zero External Dependencies)
+       ========================================================================== */
+    :root {
+      --bg-app: #0b1120;
+      --bg-panel: #131c2e;
+      --bg-card: #1b273d;
+      --bg-input: #0a101d;
+      --border-subtle: #2b3b55;
+      --border-bright: #435a7e;
+
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      /* Physics Vector & Status Colors */
+      --vec-fn: #38bdf8;       /* Normal Force (Cyan/Blue) */
+      --vec-fg: #f87171;       /* Weight / Gravity (Coral/Red) */
+      --vec-fny: #34d399;      /* Vertical Component F_Ny (Emerald) */
+      --vec-fnx: #fbbf24;      /* Horizontal Centripetal F_Nx / F_c (Amber) */
+      --vec-v: #a78bfa;        /* Velocity Vector (Violet) */
+
+      --status-ideal: #10b981;
+      --status-high: #f59e0b;
+      --status-low: #38bdf8;
+      --status-crash: #ef4444;
+
+      --radius-lg: 14px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ==========================================================================
+       APP SHELL & RESPONSIVE 3-PANEL DASHBOARD
+       ========================================================================== */
+    .app-wrapper {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      max-width: 1740px;
+      margin: 0 auto;
+      padding: 14px;
+      gap: 14px;
+    }
+
+    /* Header */
+    .app-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 12px 18px;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(251, 191, 36, 0.2));
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .header-brand h1 {
+      font-size: 1.12rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+    }
+
+    .header-brand p {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+
+    .header-badges {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--status-ideal);
+      box-shadow: 0 0 8px var(--status-ideal);
+    }
+
+    .pill-dot.paused {
+      background: var(--status-high);
+      box-shadow: 0 0 8px var(--status-high);
+    }
+
+    .pill-dot.crash {
+      background: var(--status-crash);
+      box-shadow: 0 0 8px var(--status-crash);
+    }
+
+    /* 3-Column Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 335px minmax(430px, 1fr) 390px;
+      gap: 14px;
+      flex: 1;
+      align-items: stretch;
+    }
+
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 9px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .panel-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================================================
+       LEFT PANEL: CONTROLS, PRESETS & BANK POSITION METER
+       ========================================================================== */
+    .control-group {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+    }
+
+    .control-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 7px;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .control-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .symbol-tag {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--vec-fn);
+      font-weight: 700;
+    }
+
+    .ideal-btn {
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      font-size: 0.69rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .ideal-btn:hover {
+      background: rgba(16, 185, 129, 0.28);
+      color: #6ee7b7;
+    }
+
+    .num-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 2px 6px;
+    }
+
+    .num-wrap:focus-within {
+      border-color: var(--vec-fn);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.22);
+    }
+
+    .num-input {
+      width: 58px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .num-unit {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      user-select: none;
+    }
+
+    /* Range Slider */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: var(--vec-fn);
+      border: 2px solid var(--bg-app);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+      cursor: pointer;
+      transition: transform 0.12s ease, background-color 0.12s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+      background: #7dd3fc;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: var(--vec-fn);
+      border: 2px solid var(--bg-app);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+      cursor: pointer;
+    }
+
+    .slider-bounds {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.69rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      margin-top: 3px;
+    }
+
+    .control-hint {
+      margin-top: 5px;
+      font-size: 0.7rem;
+      color: #93c5fd;
+      line-height: 1.3;
+    }
+
+    /* Presets */
+    .presets-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .sub-heading {
+      font-size: 0.71rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .preset-btn {
+      padding: 6px 7px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-input);
+      color: var(--text-secondary);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--border-bright);
+      color: var(--text-primary);
+    }
+
+    .preset-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: rgba(56, 189, 248, 0.55);
+      color: var(--vec-fn);
+    }
+
+    /* Bank Position & Safe Speed Meter */
+    .meter-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .meter-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .bank-bar-track {
+      position: relative;
+      height: 16px;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        rgba(239, 68, 68, 0.35) 0%,
+        rgba(56, 189, 248, 0.22) 15%,
+        rgba(16, 185, 129, 0.3) 50%,
+        rgba(245, 158, 11, 0.25) 85%,
+        rgba(239, 68, 68, 0.35) 100%
+      );
+      border: 1px solid var(--border-bright);
+    }
+
+    .bank-bar-center {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(248, 250, 252, 0.5);
+      transform: translateX(-50%);
+    }
+
+    .bank-bar-marker {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 2.5px solid #0284c7;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .bank-bar-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      letter-spacing: 0.03em;
+    }
+
+    .safe-window-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: 5px;
+      padding: 5px 6px;
+      text-align: center;
+    }
+
+    .safe-window-grid span {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .safe-window-grid small {
+      font-family: var(--font-sans);
+      font-size: 0.64rem;
+      color: var(--text-muted);
+    }
+
+    /* Buttons & Checkboxes */
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      font-size: 0.81rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--border-bright);
+      background: #273549;
+    }
+
+    .btn-sm {
+      padding: 4px 9px;
+      font-size: 0.72rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: rgba(56, 189, 248, 0.5);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      border-color: rgba(248, 113, 113, 0.55);
+      color: #ffffff;
+    }
+
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+
+    .time-scale-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .time-scale-row span {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .scale-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      flex: 1;
+      max-width: 150px;
+    }
+
+    .scale-btn {
+      padding: 5px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-input);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+
+    .scale-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: rgba(56, 189, 248, 0.55);
+      color: var(--vec-fn);
+    }
+
+    .toggle-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.75rem;
+      color: var(--text-primary);
+      cursor: pointer;
+      user-select: none;
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      background: rgba(10, 16, 29, 0.65);
+      border: 1px solid var(--border-subtle);
+      transition: border-color 0.15s ease;
+    }
+
+    .checkbox-item:hover {
+      border-color: var(--border-bright);
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--vec-fn);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .color-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    /* ==========================================================================
+       CENTER PANEL: 3D PERSPECTIVE BANKED TRACK CANVAS
+       ========================================================================== */
+    .sim-panel {
+      padding: 14px;
+    }
+
+    .sim-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .canvas-stage {
+      position: relative;
+      flex: 1;
+      min-height: 520px;
+      border-radius: var(--radius-md);
+      background: radial-gradient(circle at 50% 24%, #1a253b 0%, #0d1526 68%, #070c17 100%);
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+      cursor: ns-resize;
+      touch-action: none;
+    }
+
+    .canvas-stage canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Top-Left HUD Status Badge */
+    .hud-status-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      border: 1px solid transparent;
+    }
+
+    .hud-status-badge.ideal {
+      background: rgba(16, 185, 129, 0.22);
+      border-color: rgba(16, 185, 129, 0.65);
+      color: #34d399;
+    }
+
+    .hud-status-badge.high {
+      background: rgba(245, 158, 11, 0.22);
+      border-color: rgba(245, 158, 11, 0.65);
+      color: #fbbf24;
+    }
+
+    .hud-status-badge.low {
+      background: rgba(56, 189, 248, 0.22);
+      border-color: rgba(56, 189, 248, 0.65);
+      color: #7dd3fc;
+    }
+
+    .hud-status-badge.crash {
+      background: rgba(239, 68, 68, 0.28);
+      border-color: rgba(239, 68, 68, 0.8);
+      color: #fca5a5;
+    }
+
+    .hud-drag-hint {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(11, 17, 32, 0.82);
+      border: 1px solid rgba(67, 90, 126, 0.55);
+      font-size: 0.71rem;
+      color: var(--text-secondary);
+      pointer-events: none;
+    }
+
+    /* Crash Banner Overlay */
+    .crash-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(11, 17, 32, 0.44);
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      padding: 16px;
+    }
+
+    .crash-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .crash-card {
+      background: rgba(15, 23, 42, 0.96);
+      border: 2px solid var(--status-crash);
+      border-radius: var(--radius-lg);
+      padding: 18px 22px;
+      text-align: center;
+      max-width: 390px;
+      box-shadow: 0 20px 44px rgba(0, 0, 0, 0.6), 0 0 26px rgba(239, 68, 68, 0.35);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .crash-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #fca5a5;
+      letter-spacing: 0.02em;
+    }
+
+    .crash-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      line-height: 1.45;
+    }
+
+    .crash-hint {
+      font-size: 0.74rem;
+      color: #93c5fd;
+    }
+
+    .sim-legend {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .legend-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .legend-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(11, 17, 32, 0.84);
+      border: 1px solid rgba(67, 90, 126, 0.5);
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+
+    .legend-line {
+      width: 11px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    /* ==========================================================================
+       RIGHT PANEL: LIVE DATA READOUT & REAR-VIEW FBD
+       ========================================================================== */
+    .data-textbox {
+      background: var(--bg-input);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      font-family: var(--font-mono);
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .data-cell {
+      background: rgba(27, 39, 61, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 7px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .data-cell.highlight-ideal {
+      border-color: rgba(16, 185, 129, 0.45);
+    }
+
+    .data-cell.highlight-fc {
+      border-color: rgba(251, 191, 36, 0.45);
+    }
+
+    .data-cell-label {
+      font-family: var(--font-sans);
+      font-size: 0.69rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .data-cell-value {
+      font-size: 0.94rem;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    .data-cell-value .unit {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-left: 2px;
+    }
+
+    /* FBD Section */
+    .fbd-section {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      flex: 1;
+    }
+
+    .fbd-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .fbd-canvas-wrap {
+      position: relative;
+      width: 100%;
+      height: 255px;
+      border-radius: var(--radius-md);
+      background: #0a1222;
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+    }
+
+    .fbd-canvas-wrap canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .equations-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+    }
+
+    .eq-title {
+      font-family: var(--font-sans);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .eq-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 5px 8px;
+      border-radius: 5px;
+      background: rgba(10, 16, 29, 0.72);
+      border: 1px solid rgba(43, 59, 85, 0.75);
+    }
+
+    .eq-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .eq-formula {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .eq-live {
+      color: var(--vec-fny);
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .eq-live.mismatch {
+      color: var(--vec-fnx);
+    }
+
+    .eq-note {
+      font-family: var(--font-sans);
+      font-size: 0.69rem;
+      color: #93c5fd;
+    }
+
+    /* ==========================================================================
+       RESPONSIVE BREAKPOINTS
+       ========================================================================== */
+    @media (max-width: 1220px) {
+      .dashboard-grid {
+        grid-template-columns: 315px 1fr;
+      }
+      .right-panel {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr 1.15fr;
+        align-items: start;
+      }
+      .right-panel .panel-header {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 840px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      .right-panel {
+        grid-column: auto;
+        display: flex;
+      }
+      .canvas-stage {
+        min-height: 410px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- ==================== HEADER ==================== -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M3 19 L21 10" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M3 19 H21" stroke="#475569" stroke-width="1.4" stroke-dasharray="2.5 2.5"/>
+            <rect x="9.5" y="10.2" width="6.5" height="3.6" rx="1" transform="rotate(-26.5 12.5 12)" fill="#38bdf8"/>
+            <line x1="12.5" y1="12" x2="9.2" y2="5.4" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="12.5" y1="12" x2="12.5" y2="18.2" stroke="#f87171" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Frictionless Banked Curve — Circular Motion Lab</h1>
+          <p>Explore Banked Turns with Zero Friction (&mu; = 0), Normal Force Components &amp; Equilibrium Speed</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <div class="pill">&mu; = 0 (Frictionless)</div>
+        <div class="pill">g = 9.81 m/s²</div>
+        <div class="pill">
+          <span class="pill-dot" id="headerDot"></span>
+          <span id="headerStatusText">Running</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==================== 3-PANEL DASHBOARD ==================== -->
+    <main class="dashboard-grid">
+      <!-- ==================== LEFT PANEL: CONTROLS & PRESETS ==================== -->
+      <section class="panel left-panel" aria-label="Controls and Presets">
+        <div class="panel-header">
+          <h2 class="panel-title">Controls &amp; Presets</h2>
+        </div>
+
+        <!-- Car Speed (v) -->
+        <div class="control-group">
+          <div class="control-top">
+            <label class="control-label" for="slider-v">
+              Car Speed <span class="symbol-tag">v</span>
+              <button type="button" class="ideal-btn" id="btn-set-ideal" title="Set speed to exact center-lane equilibrium">Set to Ideal Speed</button>
+            </label>
+            <div class="num-wrap">
+              <input type="number" class="num-input" id="num-v" min="0.0" max="65.0" step="0.1" value="16.6" aria-label="Car speed in m/s" />
+              <span class="num-unit">m/s</span>
+            </div>
+          </div>
+          <input type="range" id="slider-v" min="0.0" max="65.0" step="0.1" value="16.6" />
+          <div class="slider-bounds">
+            <span>0.0 m/s</span>
+            <span id="vIdealHint">v_ideal = 16.6 m/s</span>
+            <span>65.0 m/s</span>
+          </div>
+        </div>
+
+        <!-- Bank Angle (theta) -->
+        <div class="control-group">
+          <div class="control-top">
+            <label class="control-label" for="slider-theta">
+              Bank Angle <span class="symbol-tag">&theta;</span>
+            </label>
+            <div class="num-wrap">
+              <input type="number" class="num-input" id="num-theta" min="0" max="45" step="0.5" value="25.0" aria-label="Bank angle in degrees" />
+              <span class="num-unit">&deg;</span>
+            </div>
+          </div>
+          <input type="range" id="slider-theta" min="0" max="45" step="0.5" value="25.0" />
+          <div class="slider-bounds">
+            <span>0&deg; (Flat)</span>
+            <span>45&deg; (Steep)</span>
+          </div>
+        </div>
+
+        <!-- Car Mass (m) -->
+        <div class="control-group">
+          <div class="control-top">
+            <label class="control-label" for="slider-m">
+              Car Mass <span class="symbol-tag">m</span>
+            </label>
+            <div class="num-wrap">
+              <input type="number" class="num-input" id="num-m" min="500" max="3000" step="50" value="1200" aria-label="Car mass in kg" />
+              <span class="num-unit">kg</span>
+            </div>
+          </div>
+          <input type="range" id="slider-m" min="500" max="3000" step="50" value="1200" />
+          <div class="slider-bounds">
+            <span>500 kg</span>
+            <span>3000 kg</span>
+          </div>
+          <div class="control-hint">Mass scales F<sub>N</sub>, F<sub>g</sub>, and F<sub>c</sub> proportionally, but does <strong>not</strong> change ideal speed!</div>
+        </div>
+
+        <!-- Center Radius (R0) -->
+        <div class="control-group">
+          <div class="control-top">
+            <label class="control-label" for="slider-R0">
+              Center Radius <span class="symbol-tag">R<sub>0</sub></span>
+            </label>
+            <div class="num-wrap">
+              <input type="number" class="num-input" id="num-R0" min="25" max="120" step="1" value="60" aria-label="Center track radius in meters" />
+              <span class="num-unit">m</span>
+            </div>
+          </div>
+          <input type="range" id="slider-R0" min="25" max="120" step="1" value="60" />
+          <div class="slider-bounds">
+            <span>25 m</span>
+            <span>120 m</span>
+          </div>
+        </div>
+
+        <!-- Quick Track Presets -->
+        <div class="presets-box">
+          <span class="sub-heading">Quick Track Presets</span>
+          <div class="preset-grid" role="group" aria-label="Banked track angle presets">
+            <button type="button" class="preset-btn" data-angle="0" data-r0="60">Flat Frictionless (0&deg;)</button>
+            <button type="button" class="preset-btn" data-angle="15" data-r0="70">Highway Ramp (15&deg;)</button>
+            <button type="button" class="preset-btn" data-angle="31" data-r0="60">Daytona Bank (31&deg;)</button>
+            <button type="button" class="preset-btn" data-angle="42" data-r0="42">Velodrome (42&deg;)</button>
+          </div>
+        </div>
+
+        <!-- Live Bank Position & Safe Speed Window Meter -->
+        <div class="meter-box">
+          <div class="meter-header">
+            <span>Bank Position (<span id="meterSVal" style="font-family: var(--font-mono); color: var(--vec-fn);">s = 0.0 m</span>)</span>
+            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-secondary);">W = 24 m</span>
+          </div>
+          <div class="bank-bar-track" aria-label="Car position between bottom wall and top wall">
+            <div class="bank-bar-center"></div>
+            <div class="bank-bar-marker" id="bankBarMarker"></div>
+          </div>
+          <div class="bank-bar-labels">
+            <span>BOTTOM WALL (-12m)</span>
+            <span>CENTER</span>
+            <span>TOP WALL (+12m)</span>
+          </div>
+          <div class="safe-window-grid">
+            <span><small>v<sub>min</sub></small><strong id="meterVmin" style="color: #7dd3fc;">15.0</strong></span>
+            <span><small>v<sub>ideal</sub></small><strong id="meterVideal" style="color: #34d399;">16.6</strong></span>
+            <span><small>v<sub>max</sub></small><strong id="meterVmax" style="color: #fbbf24;">18.0</strong></span>
+          </div>
+        </div>
+
+        <!-- Play / Pause & Reset Car -->
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" id="btn-play-pause">
+            <span id="playPauseIcon">&#10074;&#10074;</span>
+            <span id="playPauseLabel">Pause</span>
+          </button>
+          <button type="button" class="btn" id="btn-reset">
+            &#8634; Reset Car
+          </button>
+        </div>
+
+        <!-- Time Scale -->
+        <div class="time-scale-row">
+          <span>Time Scale (Space / R)</span>
+          <div class="scale-group" role="group" aria-label="Simulation time scale">
+            <button type="button" class="scale-btn" data-scale="0.5">0.5&times;</button>
+            <button type="button" class="scale-btn active" data-scale="1">1&times;</button>
+          </div>
+        </div>
+
+        <!-- Vector & Trail Visibility Toggles -->
+        <div class="toggle-grid">
+          <label class="checkbox-item">
+            <input type="checkbox" id="chk-vec-v" checked />
+            <span>Velocity (v)</span>
+            <span class="color-dot" style="background: var(--vec-v);"></span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="chk-vec-fc" checked />
+            <span>Centripetal (F<sub>c</sub>)</span>
+            <span class="color-dot" style="background: var(--vec-fnx);"></span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="chk-vec-fn" />
+            <span>Normal (F<sub>N</sub>)</span>
+            <span class="color-dot" style="background: var(--vec-fn);"></span>
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="chk-trail" checked />
+            <span>Motion Trail</span>
+            <span class="color-dot" style="background: #60a5fa;"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- ==================== CENTER PANEL: 3D SIMULATION CANVAS ==================== -->
+      <section class="panel sim-panel" aria-label="3D Perspective Banked Circular Track">
+        <div class="panel-header">
+          <h2 class="panel-title">3D Banked Circular Track Simulation</h2>
+          <div class="sim-header-actions">
+            <span class="pill" id="pitchBadge">Pitch: 44&deg;</span>
+            <button type="button" class="btn btn-sm" id="btn-reset-view" title="Reset camera tilt to default 44°">Reset View</button>
+          </div>
+        </div>
+
+        <div class="canvas-stage" id="simStage">
+          <canvas id="simCanvas" aria-label="3D perspective animation of a car on a frictionless banked circular track"></canvas>
+
+          <!-- Top-Left HUD Status Pill -->
+          <div class="hud-status-badge ideal" id="hudStatusBadge">EQUILIBRIUM</div>
+          <div class="hud-drag-hint">&#8597; Drag vertically to tilt camera (26&deg;–75&deg;)</div>
+
+          <!-- Interactive Crash Banner -->
+          <div class="crash-overlay" id="crashOverlay" role="alert">
+            <div class="crash-card">
+              <div class="crash-title" id="crashTitle">CRASHED TOP — Speed Too High!</div>
+              <div class="crash-desc" id="crashDesc">
+                Car speed exceeded the maximum safe speed for this bank angle and track width.
+              </div>
+              <div class="crash-hint" id="crashHint">Adjust speed into the safe window or click Reset Crash to try again.</div>
+              <button type="button" class="btn btn-danger" id="btn-overlay-reset" style="width: 100%; padding: 10px 16px;">
+                &#8634; Reset Crash
+              </button>
+            </div>
+          </div>
+
+          <div class="sim-legend">
+            <div class="legend-chips">
+              <span class="legend-chip"><span class="legend-line" style="background: var(--vec-v);"></span>Velocity (v)</span>
+              <span class="legend-chip"><span class="legend-line" style="background: var(--vec-fnx);"></span>Centripetal (F<sub>Nx</sub>)</span>
+              <span class="legend-chip"><span class="legend-line" style="background: var(--vec-fn);"></span>Normal (F<sub>N</sub>)</span>
+              <span class="legend-chip"><span class="legend-line" style="background: #facc15;"></span>Ideal Center (s=0)</span>
+            </div>
+            <span class="legend-chip" id="trackDimChip">R0 = 60 m &bull; &theta; = 25.0&deg;</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== RIGHT PANEL: LIVE DATA & REAR-VIEW FBD ==================== -->
+      <section class="panel right-panel" aria-label="Live Physics Data and Free Body Diagram">
+        <div class="panel-header">
+          <h2 class="panel-title">Live Physics Data &amp; Free Body Diagram</h2>
+        </div>
+
+        <!-- Monospace Lab Data Readout -->
+        <div class="data-textbox" role="region" aria-label="Calculated Physics Values">
+          <div class="data-grid">
+            <div class="data-cell highlight-ideal">
+              <span class="data-cell-label">Ideal Speed <span style="color: #34d399;">v<sub>ideal</sub></span></span>
+              <span class="data-cell-value"><span id="out-vIdeal">16.57</span><span class="unit">m/s</span></span>
+            </div>
+            <div class="data-cell">
+              <span class="data-cell-label">Safe Window <span style="color: var(--text-muted);">v<sub>min</sub>–v<sub>max</sub></span></span>
+              <span class="data-cell-value" style="font-size: 0.84rem;"><span id="out-vRange">15.00 – 18.00</span><span class="unit">m/s</span></span>
+            </div>
+            <div class="data-cell">
+              <span class="data-cell-label">Current Radius <span style="color: var(--vec-fn);">r</span></span>
+              <span class="data-cell-value"><span id="out-r">60.00</span><span class="unit">m</span></span>
+            </div>
+            <div class="data-cell">
+              <span class="data-cell-label">Bank Position <span style="color: var(--vec-fnx);">s</span></span>
+              <span class="data-cell-value"><span id="out-s">0.00</span><span class="unit">m</span></span>
+            </div>
+            <div class="data-cell">
+              <span class="data-cell-label">Normal Force <span style="color: var(--vec-fn);">F<sub>N</sub></span></span>
+              <span class="data-cell-value"><span id="out-FN">12,989</span><span class="unit">N</span></span>
+            </div>
+            <div class="data-cell highlight-fc">
+              <span class="data-cell-label">Centripetal <span style="color: var(--vec-fnx);">F<sub>c</sub>=F<sub>N</sub>sin&theta;</span></span>
+              <span class="data-cell-value"><span id="out-Fc">5,489</span><span class="unit">N</span></span>
+            </div>
+            <div class="data-cell">
+              <span class="data-cell-label">Weight <span style="color: var(--vec-fg);">F<sub>g</sub>=mg</span></span>
+              <span class="data-cell-value"><span id="out-Fg">11,772</span><span class="unit">N</span></span>
+            </div>
+            <div class="data-cell">
+              <span class="data-cell-label">Period <span style="color: var(--vec-v);">T</span> / Accel <span style="color: var(--vec-fnx);">a<sub>c</sub></span></span>
+              <span class="data-cell-value" style="font-size: 0.83rem;"><span id="out-T">22.75</span><span class="unit">s</span> &bull; <span id="out-ac">4.57</span><span class="unit">m/s²</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Synchronized Rear-View Free Body Diagram -->
+        <div class="fbd-section">
+          <div class="fbd-top-bar">
+            <span class="panel-title" style="font-size: 0.76rem;">Rear-View Free Body Diagram</span>
+            <label class="checkbox-item" style="padding: 3px 8px; font-size: 0.72rem;">
+              <input type="checkbox" id="chk-fbd-comp" checked />
+              <span>Show F<sub>Nx</sub>, F<sub>Ny</sub> Components</span>
+            </label>
+          </div>
+
+          <div class="fbd-canvas-wrap" id="fbdWrap">
+            <canvas id="fbdCanvas" aria-label="Rear-view free body diagram of the car on a frictionless banked curve"></canvas>
+          </div>
+
+          <!-- Live Governing Equations -->
+          <div class="equations-card" aria-label="Live Governing Equations">
+            <div class="eq-title">Governing Equations (Zero Friction)</div>
+            <div class="eq-row">
+              <div class="eq-top">
+                <span class="eq-formula">F<sub>N</sub> cos(&theta;) = mg</span>
+                <span class="eq-live" id="eq-vert">11,772 = 11,772 N</span>
+              </div>
+            </div>
+            <div class="eq-row">
+              <div class="eq-top">
+                <span class="eq-formula">F<sub>N</sub> sin(&theta;) = mv² / r</span>
+                <span class="eq-live" id="eq-horiz">5,489 = 5,489 N</span>
+              </div>
+            </div>
+            <div class="eq-row">
+              <div class="eq-top">
+                <span class="eq-formula">v<sub>ideal</sub> = &radic;(r g tan &theta;)</span>
+                <span class="eq-live" id="eq-videal" style="color: var(--vec-fn);">16.57 m/s</span>
+              </div>
+              <span class="eq-note">Mass <strong>m</strong> cancels out — the ideal cornering speed depends only on r, g, and &theta;.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      /* ========================================================================
+         CONSTANTS & APPLICATION STATE
+         ======================================================================== */
+      const G = 9.81;             // Gravitational acceleration (m/s^2)
+      const TRACK_W = 24.0;       // Total track width along slope (m)
+      const S_MAX = TRACK_W / 2;  // Half-width along slope: s in [-12, +12] m
+      const CAR_HALF_W = 1.65;    // Car half-width for accurate barrier contact (m)
+      const S_LIMIT = S_MAX - CAR_HALF_W;
+      const DEG_TO_RAD = Math.PI / 180;
+
+      const CAM_PITCH_MIN = 26;   // Clamped camera pitch bounds (degrees)
+      const CAM_PITCH_MAX = 75;
+      const CAM_PITCH_DEFAULT = 44;
+
+      const LIMITS = {
+        v: { min: 0.0, max: 65.0 },
+        thetaDeg: { min: 0.0, max: 45.0 },
+        m: { min: 500, max: 3000 },
+        R0: { min: 25, max: 120 }
+      };
+
+      const state = {
+        // User-controlled parameters
+        R0: 60,
+        thetaDeg: 25.0,
+        m: 1200,
+        v: 16.6, // Computed to exact ideal speed on load
+
+        // State machine: "DRIVING" | "CRASHED_TOP" | "CRASHED_BOTTOM"
+        mode: "DRIVING",
+        isPlaying: true,
+        timeScale: 1.0,
+        phi: 0.55, // Orbital angle around circle (radians, CCW when viewed from above)
+        s: 0.0,    // Position along slope (-12m bottom wall .. +12m top wall)
+        vs: 0.0,   // Velocity along slope (m/s)
+        as: 0.0,   // Acceleration along slope (m/s^2)
+
+        // 3D Camera Pitch (degrees)
+        camPitchDeg: CAM_PITCH_DEFAULT,
+
+        // Visual FX
+        trail: [],     // Array of { phi, s }
+        particles: [], // 3D sparks, debris, smoke
+        shakeTime: 0,
+        hazardClock: 0,
+
+        // Overlay Toggles
+        showVecV: true,
+        showVecFc: true,
+        showVecFn: false,
+        showTrail: true,
+        showFbdComp: true
+      };
+
+      // Derived physics quantities cache
+      let phys = {};
+
+      // Responsive canvas dimensions
+      let simSize = { w: 640, h: 520 };
+      let fbdSize = { w: 350, h: 255 };
+
+      /* ========================================================================
+         DOM REFERENCES
+         ======================================================================== */
+      const els = {
+        sliderV: document.getElementById("slider-v"),
+        numV: document.getElementById("num-v"),
+        btnSetIdeal: document.getElementById("btn-set-ideal"),
+        vIdealHint: document.getElementById("vIdealHint"),
+
+        sliderTheta: document.getElementById("slider-theta"),
+        numTheta: document.getElementById("num-theta"),
+        sliderM: document.getElementById("slider-m"),
+        numM: document.getElementById("num-m"),
+        sliderR0: document.getElementById("slider-R0"),
+        numR0: document.getElementById("num-R0"),
+
+        presetBtns: Array.from(document.querySelectorAll(".preset-btn")),
+
+        meterSVal: document.getElementById("meterSVal"),
+        bankBarMarker: document.getElementById("bankBarMarker"),
+        meterVmin: document.getElementById("meterVmin"),
+        meterVideal: document.getElementById("meterVideal"),
+        meterVmax: document.getElementById("meterVmax"),
+
+        btnPlayPause: document.getElementById("btn-play-pause"),
+        playPauseIcon: document.getElementById("playPauseIcon"),
+        playPauseLabel: document.getElementById("playPauseLabel"),
+        btnReset: document.getElementById("btn-reset"),
+        btnOverlayReset: document.getElementById("btn-overlay-reset"),
+        btnResetView: document.getElementById("btn-reset-view"),
+        scaleBtns: Array.from(document.querySelectorAll(".scale-btn")),
+
+        chkVecV: document.getElementById("chk-vec-v"),
+        chkVecFc: document.getElementById("chk-vec-fc"),
+        chkVecFn: document.getElementById("chk-vec-fn"),
+        chkTrail: document.getElementById("chk-trail"),
+        chkFbdComp: document.getElementById("chk-fbd-comp"),
+
+        headerDot: document.getElementById("headerDot"),
+        headerStatusText: document.getElementById("headerStatusText"),
+        pitchBadge: document.getElementById("pitchBadge"),
+        hudStatusBadge: document.getElementById("hudStatusBadge"),
+        trackDimChip: document.getElementById("trackDimChip"),
+
+        crashOverlay: document.getElementById("crashOverlay"),
+        crashTitle: document.getElementById("crashTitle"),
+        crashDesc: document.getElementById("crashDesc"),
+        crashHint: document.getElementById("crashHint"),
+
+        outVIdeal: document.getElementById("out-vIdeal"),
+        outVRange: document.getElementById("out-vRange"),
+        outR: document.getElementById("out-r"),
+        outS: document.getElementById("out-s"),
+        outFN: document.getElementById("out-FN"),
+        outFc: document.getElementById("out-Fc"),
+        outFg: document.getElementById("out-Fg"),
+        outT: document.getElementById("out-T"),
+        outAc: document.getElementById("out-ac"),
+
+        eqVert: document.getElementById("eq-vert"),
+        eqHoriz: document.getElementById("eq-horiz"),
+        eqVIdeal: document.getElementById("eq-videal"),
+
+        simStage: document.getElementById("simStage"),
+        simCanvas: document.getElementById("simCanvas"),
+        fbdWrap: document.getElementById("fbdWrap"),
+        fbdCanvas: document.getElementById("fbdCanvas")
+      };
+
+      const simCtx = els.simCanvas.getContext("2d");
+      const fbdCtx = els.fbdCanvas.getContext("2d");
+
+      /* ========================================================================
+         EXACT FRICTIONLESS BANKED CURVE PHYSICS ENGINE
+         ======================================================================== */
+      function computePhysics() {
+        const R0 = state.R0;
+        const thetaRad = state.thetaDeg * DEG_TO_RAD;
+        const sinT = Math.sin(thetaRad);
+        const cosT = Math.cos(thetaRad);
+        const tanT = Math.tan(thetaRad);
+        const m = state.m;
+        const v = state.v;
+        const s = state.s;
+
+        // Horizontal turning radius r(s) and limits
+        const r = R0 + s * cosT;
+        const rMin = R0 - S_MAX * cosT;
+        const rMax = R0 + S_MAX * cosT;
+
+        // Ideal speed at center lane & safe window [vMin, vMax]
+        const vIdeal = Math.sqrt(Math.max(0, R0 * G * tanT));
+        const vMin = Math.sqrt(Math.max(0, rMin * G * tanT));
+        const vMax = Math.sqrt(Math.max(0, rMax * G * tanT));
+        const vIdealLocal = Math.sqrt(Math.max(0, r * G * tanT));
+
+        // Force magnitudes
+        const Fg = m * G;
+        const ac = (v * v) / r;
+        const FcReq = m * ac;
+        const FN = m * G * cosT + m * ac * sinT;
+        const FNx = FN * sinT;
+        const FNy = FN * cosT;
+
+        // Orbital period T = 2*pi*r / v
+        const T = v > 0.001 ? (2 * Math.PI * r) / v : Infinity;
+
+        phys = {
+          R0, thetaDeg: state.thetaDeg, thetaRad, sinT, cosT, tanT,
+          m, v, s, r, rMin, rMax,
+          vIdeal, vMin, vMax, vIdealLocal,
+          Fg, ac, FcReq, FN, FNx, FNy, T
+        };
+      }
+
+      function fmtInt(n) {
+        return Math.round(n).toLocaleString("en-US");
+      }
+
+      /* ========================================================================
+         UI SYNCHRONIZATION
+         ======================================================================== */
+      function syncControlInputs() {
+        els.sliderV.value = state.v.toFixed(1);
+        els.numV.value = state.v.toFixed(1);
+        els.sliderTheta.value = state.thetaDeg.toFixed(1);
+        els.numTheta.value = state.thetaDeg.toFixed(1);
+        els.sliderM.value = state.m;
+        els.numM.value = state.m;
+        els.sliderR0.value = state.R0;
+        els.numR0.value = state.R0;
+
+        els.presetBtns.forEach(btn => {
+          const pAng = parseFloat(btn.dataset.angle);
+          btn.classList.toggle("active", Math.abs(pAng - state.thetaDeg) < 0.1);
+        });
+      }
+
+      function syncReadouts() {
+        els.vIdealHint.textContent = `v_ideal = ${phys.vIdeal.toFixed(1)} m/s`;
+        els.trackDimChip.textContent = `R0 = ${state.R0} m • θ = ${state.thetaDeg.toFixed(1)}°`;
+        els.pitchBadge.textContent = `Pitch: ${Math.round(state.camPitchDeg)}°`;
+
+        // Bank Position & Safe Speed Window Meter
+        const pct = ((state.s + S_MAX) / (2 * S_MAX)) * 100;
+        els.bankBarMarker.style.left = `${Math.max(0, Math.min(100, pct)).toFixed(1)}%`;
+        const sSign = state.s > 0.04 ? "+" : "";
+        els.meterSVal.textContent = `s = ${sSign}${state.s.toFixed(1)} m`;
+        els.meterVmin.textContent = `${phys.vMin.toFixed(1)} m/s`;
+        els.meterVideal.textContent = `${phys.vIdeal.toFixed(1)} m/s`;
+        els.meterVmax.textContent = `${phys.vMax.toFixed(1)} m/s`;
+
+        if (state.mode !== "DRIVING") {
+          els.bankBarMarker.style.borderColor = "#ef4444";
+          els.bankBarMarker.style.backgroundColor = "#fca5a5";
+        } else if (Math.abs(state.vs) < 0.25 && Math.abs(state.v - phys.vIdealLocal) < 0.35) {
+          els.bankBarMarker.style.borderColor = "#10b981";
+          els.bankBarMarker.style.backgroundColor = "#ecfdf5";
+        } else if (state.s > 0) {
+          els.bankBarMarker.style.borderColor = "#f59e0b";
+          els.bankBarMarker.style.backgroundColor = "#fef3c7";
+        } else {
+          els.bankBarMarker.style.borderColor = "#38bdf8";
+          els.bankBarMarker.style.backgroundColor = "#e0f2fe";
+        }
+
+        // Right Panel Monospace Readout Grid
+        els.outVIdeal.textContent = phys.vIdeal.toFixed(2);
+        els.outVRange.textContent = `${phys.vMin.toFixed(2)} – ${phys.vMax.toFixed(2)}`;
+        els.outR.textContent = phys.r.toFixed(2);
+        els.outS.textContent = `${sSign}${state.s.toFixed(2)}`;
+        els.outFN.textContent = fmtInt(phys.FN);
+        els.outFc.textContent = fmtInt(phys.FNx);
+        els.outFg.textContent = fmtInt(phys.Fg);
+        els.outT.textContent = Number.isFinite(phys.T) ? phys.T.toFixed(2) : "∞";
+        els.outAc.textContent = phys.ac.toFixed(2);
+
+        // Live Governing Equations
+        const vertDiff = Math.abs(phys.FNy - phys.Fg);
+        const horizDiff = Math.abs(phys.FNx - phys.FcReq);
+        els.eqVert.textContent = `${fmtInt(phys.FNy)} ${vertDiff < 25 ? "=" : "≠"} ${fmtInt(phys.Fg)} N`;
+        els.eqVert.classList.toggle("mismatch", vertDiff >= 25);
+
+        els.eqHoriz.textContent = `${fmtInt(phys.FNx)} ${horizDiff < 25 ? "=" : "≠"} ${fmtInt(phys.FcReq)} N`;
+        els.eqHoriz.classList.toggle("mismatch", horizDiff >= 25);
+
+        els.eqVIdeal.textContent = `${phys.vIdealLocal.toFixed(2)} m/s`;
+
+        updateStatusHUD();
+      }
+
+      function updateStatusHUD() {
+        els.hudStatusBadge.className = "hud-status-badge";
+        els.headerDot.className = "pill-dot";
+
+        if (state.mode === "CRASHED_TOP") {
+          els.hudStatusBadge.classList.add("crash");
+          els.hudStatusBadge.textContent = "CRASHED TOP";
+          els.headerDot.classList.add("crash");
+          els.headerStatusText.textContent = "Crashed Top";
+        } else if (state.mode === "CRASHED_BOTTOM") {
+          els.hudStatusBadge.classList.add("crash");
+          els.hudStatusBadge.textContent = "CRASHED BOTTOM";
+          els.headerDot.classList.add("crash");
+          els.headerStatusText.textContent = "Crashed Bottom";
+        } else {
+          if (!state.isPlaying) {
+            els.headerDot.classList.add("paused");
+            els.headerStatusText.textContent = "Paused";
+          } else {
+            els.headerStatusText.textContent = "Running";
+          }
+
+          if (state.vs > 0.35 || state.v > phys.vMax + 0.05) {
+            els.hudStatusBadge.classList.add("high");
+            els.hudStatusBadge.textContent = "CLIMBING";
+          } else if (state.vs < -0.35 || (state.thetaDeg > 0 && state.v < phys.vMin - 0.05)) {
+            els.hudStatusBadge.classList.add("low");
+            els.hudStatusBadge.textContent = "SLIDING DOWN";
+          } else {
+            els.hudStatusBadge.classList.add("ideal");
+            els.hudStatusBadge.textContent = "EQUILIBRIUM";
+          }
+        }
+
+        if (state.isPlaying) {
+          els.playPauseIcon.innerHTML = "&#10074;&#10074;";
+          els.playPauseLabel.textContent = "Pause";
+        } else {
+          els.playPauseIcon.innerHTML = "&#9654;";
+          els.playPauseLabel.textContent = "Play";
+        }
+      }
+
+      /* ========================================================================
+         RESET & CRASH STATE TRANSITIONS
+         ======================================================================== */
+      function resetCar(keepPlaying) {
+        state.mode = "DRIVING";
+        state.s = 0.0;
+        state.vs = 0.0;
+        state.as = 0.0;
+        state.trail = [];
+        state.particles = [];
+        state.shakeTime = 0;
+        state.hazardClock = 0;
+        els.crashOverlay.classList.remove("visible");
+
+        if (typeof keepPlaying === "boolean") {
+          state.isPlaying = keepPlaying;
+        }
+        computePhysics();
+        syncReadouts();
+        drawFBD();
+      }
+
+      function triggerCrash(which) {
+        state.mode = which;
+        state.s = which === "CRASHED_TOP" ? S_LIMIT : -S_LIMIT;
+        state.vs = 0;
+        state.as = 0;
+        state.shakeTime = 0.48;
+        state.hazardClock = 0;
+
+        // Spawn 3D impact sparks, debris, and smoke
+        const pos = trackToWorld(state.phi, state.s, 1.5);
+        for (let i = 0; i < 40; i++) {
+          const isSpark = i < 24;
+          const isDebris = i >= 24 && i < 33;
+          const ang = Math.random() * Math.PI * 2;
+          const spd = isSpark ? (12 + Math.random() * 28) : (6 + Math.random() * 14);
+          state.particles.push({
+            x: pos.x,
+            y: pos.y,
+            z: pos.z,
+            vx: Math.cos(ang) * spd,
+            vy: isSpark ? (8 + Math.random() * 18) : (5 + Math.random() * 12),
+            vz: Math.sin(ang) * spd,
+            life: isSpark ? (0.4 + Math.random() * 0.45) : (0.75 + Math.random() * 0.55),
+            maxLife: 1.15,
+            size: isSpark ? (2.2 + Math.random() * 2.5) : (isDebris ? 3.8 : 6.5),
+            type: isSpark ? "spark" : (isDebris ? "debris" : "smoke"),
+            color: isSpark
+              ? (Math.random() > 0.45 ? "#fbbf24" : "#f97316")
+              : (isDebris ? "#64748b" : "#475569")
+          });
+        }
+
+        if (which === "CRASHED_TOP") {
+          els.crashTitle.textContent = "CRASHED TOP — Speed Too High!";
+          els.crashDesc.textContent =
+            state.thetaDeg === 0
+              ? `On a flat frictionless curve (θ = 0°), there is zero inward horizontal force. Any speed (v = ${state.v.toFixed(1)} m/s) slides straight into the outer top barrier.`
+              : `Car speed (${state.v.toFixed(1)} m/s) exceeded the top-wall safe limit (v_max = ${phys.vMax.toFixed(1)} m/s). Required centripetal force overpowered gravity down the bank.`;
+        } else {
+          els.crashTitle.textContent = "CRASHED BOTTOM — Speed Too Low!";
+          els.crashDesc.textContent =
+            `Car speed (${state.v.toFixed(1)} m/s) fell below the bottom-wall safe limit (v_min = ${phys.vMin.toFixed(1)} m/s). Gravity pulled the car down the frictionless bank into the inner barrier.`;
+        }
+
+        els.crashHint.textContent = "Adjust speed into the safe window or click 'Set to Ideal Speed', then Reset Crash.";
+        els.crashOverlay.classList.add("visible");
+        computePhysics();
+        syncReadouts();
+      }
+
+      /* ========================================================================
+         CONTROL EVENT BINDINGS
+         ======================================================================== */
+      function bindParam(sliderEl, numEl, key, decimals) {
+        const lim = LIMITS[key];
+
+        function apply(raw) {
+          let val = parseFloat(raw);
+          if (isNaN(val)) return;
+          val = Math.max(lim.min, Math.min(lim.max, val));
+          state[key] = val;
+          computePhysics();
+          syncControlInputs();
+          syncReadouts();
+          drawSimulation3D();
+          drawFBD();
+
+          if (state.mode !== "DRIVING") {
+            const inSafe = state.v >= phys.vMin && state.v <= phys.vMax && state.thetaDeg > 0;
+            els.crashHint.textContent = inSafe
+              ? "Speed is now inside the safe window! Click 'Reset Crash' to resume driving."
+              : "Adjust speed into the safe window or click 'Reset Crash' to test again.";
+          }
+        }
+
+        sliderEl.addEventListener("input", () => apply(sliderEl.value));
+        sliderEl.addEventListener("change", () => apply(sliderEl.value));
+        numEl.addEventListener("input", () => {
+          const val = parseFloat(numEl.value);
+          if (!isNaN(val) && val >= lim.min && val <= lim.max) {
+            state[key] = val;
+            computePhysics();
+            syncControlInputs();
+            syncReadouts();
+            drawSimulation3D();
+            drawFBD();
+          }
+        });
+        numEl.addEventListener("change", () => {
+          apply(numEl.value);
+          numEl.value = decimals > 0 ? state[key].toFixed(decimals) : Math.round(state[key]);
+        });
+      }
+
+      bindParam(els.sliderV, els.numV, "v", 1);
+      bindParam(els.sliderTheta, els.numTheta, "thetaDeg", 1);
+      bindParam(els.sliderM, els.numM, "m", 0);
+      bindParam(els.sliderR0, els.numR0, "R0", 0);
+
+      // Set to Ideal Speed
+      els.btnSetIdeal.addEventListener("click", () => {
+        computePhysics();
+        const ideal = state.thetaDeg <= 0 ? 0 : Math.max(LIMITS.v.min, Math.min(LIMITS.v.max, phys.vIdeal));
+        state.v = parseFloat(ideal.toFixed(1));
+        if (state.mode !== "DRIVING") {
+          resetCar(true);
+        } else {
+          state.vs = 0;
+          computePhysics();
+          syncControlInputs();
+          syncReadouts();
+          drawSimulation3D();
+          drawFBD();
+        }
+      });
+
+      // Quick Track Presets (sets angle, radius, suitable speed, and resets any crash)
+      els.presetBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const ang = parseFloat(btn.dataset.angle);
+          const r0 = parseFloat(btn.dataset.r0);
+          state.thetaDeg = Math.max(LIMITS.thetaDeg.min, Math.min(LIMITS.thetaDeg.max, ang));
+          if (!isNaN(r0)) {
+            state.R0 = Math.max(LIMITS.R0.min, Math.min(LIMITS.R0.max, r0));
+          }
+          computePhysics();
+          // Set ideal center-lane speed for banked presets, or 12 m/s on flat frictionless so students see outward slide
+          state.v = state.thetaDeg > 0
+            ? parseFloat(Math.min(LIMITS.v.max, phys.vIdeal).toFixed(1))
+            : 12.0;
+
+          resetCar(true);
+          syncControlInputs();
+          drawSimulation3D();
+          drawFBD();
+        });
+      });
+
+      // Play/Pause, Reset Car, Reset View & Time Scale
+      els.btnPlayPause.addEventListener("click", () => {
+        if (state.mode !== "DRIVING") {
+          resetCar(true);
+          return;
+        }
+        state.isPlaying = !state.isPlaying;
+        updateStatusHUD();
+      });
+
+      els.btnReset.addEventListener("click", () => resetCar(true));
+      els.btnOverlayReset.addEventListener("click", () => resetCar(true));
+
+      els.btnResetView.addEventListener("click", () => {
+        state.camPitchDeg = CAM_PITCH_DEFAULT;
+        els.pitchBadge.textContent = `Pitch: ${Math.round(state.camPitchDeg)}°`;
+        drawSimulation3D();
+      });
+
+      els.scaleBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.timeScale = parseFloat(btn.dataset.scale);
+          els.scaleBtns.forEach(b => b.classList.toggle("active", b === btn));
+        });
+      });
+
+      // Keyboard Shortcuts: Space (Play/Pause), R (Reset)
+      window.addEventListener("keydown", e => {
+        const tag = (document.activeElement && document.activeElement.tagName) || "";
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        if (e.code === "Space") {
+          e.preventDefault();
+          if (state.mode !== "DRIVING") resetCar(true);
+          else {
+            state.isPlaying = !state.isPlaying;
+            updateStatusHUD();
+          }
+        } else if (e.key === "r" || e.key === "R") {
+          e.preventDefault();
+          resetCar(true);
+        }
+      });
+
+      // Quick Track Presets
+      els.presetBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.thetaDeg = parseFloat(btn.dataset.angle);
+          computePhysics();
+          syncControlInputs();
+          syncReadouts();
+          drawFBD();
+        });
+      });
+
+      // Play/Pause, Reset Car, Reset View
+      els.btnPlayPause.addEventListener("click", () => {
+        if (state.mode !== "DRIVING") {
+          resetCar(true);
+          return;
+        }
+        state.isPlaying = !state.isPlaying;
+        updateStatusHUD();
+      });
+
+      els.btnReset.addEventListener("click", () => resetCar(true));
+      els.btnOverlayReset.addEventListener("click", () => resetCar(true));
+
+      els.btnResetView.addEventListener("click", () => {
+        state.camPitchDeg = CAM_PITCH_DEFAULT;
+        els.pitchBadge.textContent = `Pitch: ${Math.round(state.camPitchDeg)}°`;
+      });
+
+      // Visibility Toggles
+      els.chkVecV.addEventListener("change", () => { state.showVecV = els.chkVecV.checked; });
+      els.chkVecFc.addEventListener("change", () => { state.showVecFc = els.chkVecFc.checked; });
+      els.chkVecFn.addEventListener("change", () => { state.showVecFn = els.chkVecFn.checked; });
+      els.chkTrail.addEventListener("change", () => {
+        state.showTrail = els.chkTrail.checked;
+        if (!state.showTrail) state.trail = [];
+      });
+      els.chkFbdComp.addEventListener("change", () => {
+        state.showFbdComp = els.chkFbdComp.checked;
+        drawFBD();
+      });
+
+      /* ========================================================================
+         INTERACTIVE VERTICAL CAMERA TILT (CLAMPED 26° – 75°)
+         ======================================================================== */
+      let isDraggingCam = false;
+      let dragStartY = 0;
+      let dragStartPitch = CAM_PITCH_DEFAULT;
+
+      function startCamDrag(clientY) {
+        isDraggingCam = true;
+        dragStartY = clientY;
+        dragStartPitch = state.camPitchDeg;
+      }
+
+      function moveCamDrag(clientY) {
+        if (!isDraggingCam) return;
+        const dy = clientY - dragStartY;
+        state.camPitchDeg = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, dragStartPitch + dy * 0.28));
+        els.pitchBadge.textContent = `Pitch: ${Math.round(state.camPitchDeg)}°`;
+      }
+
+      function endCamDrag() {
+        isDraggingCam = false;
+      }
+
+      els.simCanvas.addEventListener("mousedown", e => startCamDrag(e.clientY));
+      window.addEventListener("mousemove", e => moveCamDrag(e.clientY));
+      window.addEventListener("mouseup", endCamDrag);
+
+      els.simCanvas.addEventListener("touchstart", e => {
+        if (e.touches.length === 1) startCamDrag(e.touches[0].clientY);
+      }, { passive: true });
+      els.simCanvas.addEventListener("touchmove", e => {
+        if (isDraggingCam && e.touches.length === 1) {
+          e.preventDefault();
+          moveCamDrag(e.touches[0].clientY);
+        }
+      }, { passive: false });
+      window.addEventListener("touchend", endCamDrag);
+
+      /* ========================================================================
+         RESPONSIVE HiDPI CANVAS SIZING
+         ======================================================================== */
+      function resizeCanvases() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        const sRect = els.simStage.getBoundingClientRect();
+        simSize.w = Math.max(280, Math.floor(sRect.width));
+        simSize.h = Math.max(320, Math.floor(sRect.height));
+        els.simCanvas.width = Math.floor(simSize.w * dpr);
+        els.simCanvas.height = Math.floor(simSize.h * dpr);
+        simCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const fRect = els.fbdWrap.getBoundingClientRect();
+        fbdSize.w = Math.max(220, Math.floor(fRect.width));
+        fbdSize.h = Math.max(200, Math.floor(fRect.height));
+        els.fbdCanvas.width = Math.floor(fbdSize.w * dpr);
+        els.fbdCanvas.height = Math.floor(fbdSize.h * dpr);
+        fbdCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        drawSimulation3D();
+        drawFBD();
+      }
+
+      window.addEventListener("resize", resizeCanvases);
+
+      /* ========================================================================
+         SHARED DRAWING HELPERS
+         ======================================================================== */
+      function drawArrow(ctx, x1, y1, x2, y2, opts) {
+        const {
+          color = "#38bdf8",
+          lineWidth = 2.6,
+          headLen = 10,
+          dashed = false
+        } = opts || {};
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.hypot(dx, dy);
+        if (len < 2) return;
+
+        const ang = Math.atan2(dy, dx);
+        const effHead = Math.min(headLen, len * 0.45);
+        const sx = x2 - Math.cos(ang) * (effHead * 0.68);
+        const sy = y2 - Math.sin(ang) * (effHead * 0.68);
+
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = "round";
+        if (dashed) ctx.setLineDash([5, 4]);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(
+          x2 - effHead * Math.cos(ang - Math.PI / 6),
+          y2 - effHead * Math.sin(ang - Math.PI / 6)
+        );
+        ctx.lineTo(
+          x2 - effHead * Math.cos(ang + Math.PI / 6),
+          y2 - effHead * Math.sin(ang + Math.PI / 6)
+        );
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawPillLabel(ctx, text, x, y, color, align) {
+        ctx.save();
+        ctx.font = "700 11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+        const padX = 6;
+        const w = ctx.measureText(text).width + padX * 2;
+        const h = 19;
+
+        let bx = x - w / 2;
+        if (align === "left") bx = x;
+        else if (align === "right") bx = x - w;
+        const by = y - h / 2;
+
+        ctx.fillStyle = "rgba(11, 17, 32, 0.88)";
+        ctx.strokeStyle = "rgba(67, 90, 126, 0.65)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, w, h, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = color || "#f8fafc";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, bx + padX, y + 0.5);
+        ctx.restore();
+      }
+
+      function drawQuad(ctx, pts, fill, stroke, lineWidth) {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].sx, pts[0].sy);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].sx, pts[i].sy);
+        }
+        ctx.closePath();
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = lineWidth || 1;
+          ctx.stroke();
+        }
+      }
+
+      /* ========================================================================
+         3D WORLD GEOMETRY & PROJECTION HELPERS
+         ======================================================================== */
+      /**
+       * Converts track coordinates (phi, s) into 3D world meters (x, y, z).
+       * +y is UP, +z is TOWARD camera, center of circle is (0, 0, 0).
+       * Bottom inner edge (s = -S_MAX) sits at y = 0; outer top edge rises to W * sin(theta).
+       * Optional normalOffset elevates a point perpendicularly off the asphalt surface.
+       */
+      function trackToWorld(phi, s, normalOffset) {
+        const r = state.R0 + s * phys.cosT;
+        const y = (s + S_MAX) * phys.sinT;
+        const cosPhi = Math.cos(phi);
+        const sinPhi = Math.sin(phi);
+        const nOff = normalOffset || 0;
+
+        // Unit surface normal pointing inward-and-upward perpendicular to the banked road
+        const nx = -cosPhi * phys.sinT;
+        const ny = phys.cosT;
+        const nz = -sinPhi * phys.sinT;
+
+        return {
+          x: r * cosPhi + nx * nOff,
+          y: y + ny * nOff,
+          z: r * sinPhi + nz * nOff
+        };
+      }
+
+      function createProjector() {
+        const w = simSize.w;
+        const h = simSize.h;
+        const pitch = state.camPitchDeg * DEG_TO_RAD;
+        const cosP = Math.cos(pitch);
+        const sinP = Math.sin(pitch);
+
+        const outerR = state.R0 + S_MAX * phys.cosT;
+        const peakY = TRACK_W * phys.sinT;
+        const centerY = peakY * 0.42;
+
+        const camDist = outerR * 3.85;
+        const fov = Math.min(w, h) * 1.48;
+        const cx = w * 0.5;
+        const cy = h * 0.53;
+
+        return function project(pt) {
+          const py = pt.y - centerY;
+          const camY = py * cosP - pt.z * sinP;
+          const camZ = py * sinP + pt.z * cosP;
+          const depth = camDist - camZ; // Larger depth = further away
+          const scale = fov / Math.max(10, depth);
+          return {
+            sx: cx + pt.x * scale,
+            sy: cy - camY * scale,
+            depth: depth,
+            scale: scale
+          };
+        };
+      }
+
+      /* ========================================================================
+         CENTER CANVAS: STRICT 7-LAYER 3D PERSPECTIVE RENDERER
+         (Car is NEVER mixed into road quad sorting and NEVER obscured by road!)
+         ======================================================================== */
+      function drawSimulation3D() {
+        const w = simSize.w;
+        const h = simSize.h;
+        const ctx = simCtx;
+
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.save();
+        if (state.shakeTime > 0) {
+          const amp = (state.shakeTime / 0.48) * 7.5;
+          ctx.translate((Math.random() - 0.5) * 2 * amp, (Math.random() - 0.5) * 2 * amp);
+        }
+
+        const project = createProjector();
+        const segs = 72; // 72 smooth azimuthal segments
+        const dPhi = (Math.PI * 2) / segs;
+
+        // Directional sunlight for realistic banked slope shading
+        const lx = -0.45, ly = 0.78, lz = 0.43;
+
+        /* --------------------------------------------------------------------
+           LAYER 1: Background Grid & Inner Circular Infield Grass / Apron
+           -------------------------------------------------------------------- */
+        ctx.save();
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.045)";
+        ctx.lineWidth = 1;
+        const gridStep = 36;
+        for (let gx = (w / 2) % gridStep; gx < w; gx += gridStep) {
+          ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke();
+        }
+        for (let gy = (h / 2) % gridStep; gy < h; gy += gridStep) {
+          ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke();
+        }
+        ctx.restore();
+
+        const innerWallR = state.R0 - S_MAX * phys.cosT;
+        const infieldPts = [];
+        for (let i = 0; i < segs; i++) {
+          const a = i * dPhi;
+          infieldPts.push(project({ x: innerWallR * Math.cos(a), y: 0, z: innerWallR * Math.sin(a) }));
+        }
+        drawQuad(ctx, infieldPts, "rgba(18, 44, 34, 0.85)", "rgba(51, 65, 85, 0.55)", 1.2);
+
+        // Subtle infield apron ring & center crosshair
+        const apronR = Math.max(4, innerWallR * 0.86);
+        const apronPts = [];
+        for (let i = 0; i < segs; i++) {
+          const a = i * dPhi;
+          apronPts.push(project({ x: apronR * Math.cos(a), y: 0, z: apronR * Math.sin(a) }));
+        }
+        drawQuad(ctx, apronPts, "rgba(22, 54, 41, 0.55)", "rgba(52, 211, 153, 0.14)", 1);
+
+        const pOrigin = project({ x: 0, y: 0, z: 0 });
+        const pX1 = project({ x: -3.5, y: 0, z: 0 });
+        const pX2 = project({ x: 3.5, y: 0, z: 0 });
+        const pZ1 = project({ x: 0, y: 0, z: -3.5 });
+        const pZ2 = project({ x: 0, y: 0, z: 3.5 });
+        ctx.save();
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.6)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(pX1.sx, pX1.sy); ctx.lineTo(pX2.sx, pX2.sy);
+        ctx.moveTo(pZ1.sx, pZ1.sy); ctx.lineTo(pZ2.sx, pZ2.sy);
+        ctx.stroke();
+
+        // Structural Support Pillars / Struts underneath the elevated outer rim (makes 0°–45° bank height unmistakable)
+        if (state.thetaDeg > 1.0) {
+          const strutCount = 18;
+          const outerTopY = TRACK_W * phys.sinT;
+          const outerR = state.R0 + S_MAX * phys.cosT;
+          const strutList = [];
+          for (let i = 0; i < strutCount; i++) {
+            const ang = (i / strutCount) * Math.PI * 2;
+            const wx = outerR * Math.cos(ang);
+            const wz = outerR * Math.sin(ang);
+            const pBase = project({ x: wx, y: 0, z: wz });
+            const pTop = project({ x: wx, y: outerTopY, z: wz });
+            const pMidIn = project({ x: (state.R0 + 2 * phys.cosT) * Math.cos(ang), y: (S_MAX + 2) * phys.sinT, z: (state.R0 + 2 * phys.cosT) * Math.sin(ang) });
+            strutList.push({ depth: (pBase.depth + pTop.depth) * 0.5, pBase, pTop, pMidIn });
+          }
+          strutList.sort((a, b) => b.depth - a.depth);
+          ctx.save();
+          ctx.lineCap = "round";
+          strutList.forEach(st => {
+            // Diagonal structural brace
+            ctx.strokeStyle = "rgba(71, 85, 105, 0.55)";
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(st.pBase.sx, st.pBase.sy);
+            ctx.lineTo(st.pMidIn.sx, st.pMidIn.sy);
+            ctx.stroke();
+
+            // Primary vertical support pillar
+            ctx.strokeStyle = "rgba(148, 163, 184, 0.72)";
+            ctx.lineWidth = 3.0;
+            ctx.beginPath();
+            ctx.moveTo(st.pBase.sx, st.pBase.sy);
+            ctx.lineTo(st.pTop.sx, st.pTop.sy);
+            ctx.stroke();
+
+            // Concrete footing pad at ground level y = 0
+            ctx.fillStyle = "rgba(100, 116, 139, 0.75)";
+            ctx.beginPath();
+            ctx.arc(st.pBase.sx, st.pBase.sy, 2.8, 0, Math.PI * 2);
+            ctx.fill();
+          });
+          ctx.restore();
+        }
+
+        // Subtle vertical axis & horizontal orbital radius r(s) line
+        const carSurfW = trackToWorld(state.phi, state.s, 0);
+        const pCenterAtY = project({ x: 0, y: carSurfW.y, z: 0 });
+        const pCarSurf = project(carSurfW);
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(pOrigin.sx, pOrigin.sy);
+        ctx.lineTo(pCenterAtY.sx, pCenterAtY.sy);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+        ctx.beginPath();
+        ctx.moveTo(pCenterAtY.sx, pCenterAtY.sy);
+        ctx.lineTo(pCarSurf.sx, pCarSurf.sy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        /* --------------------------------------------------------------------
+           LAYER 2: ALL Banked Road Surface Quads, Curbs, Center Line & Inner Low Wall
+           (Sorted back-to-front ONLY among themselves)
+           -------------------------------------------------------------------- */
+        const roadItems = [];
+        const farOuterWallItems = [];
+        const nearOuterWallItems = [];
+
+        for (let i = 0; i < segs; i++) {
+          const a0 = i * dPhi;
+          const a1 = (i + 1) * dPhi;
+          const aMid = (a0 + a1) * 0.5;
+          const sinMid = Math.sin(aMid); // <= 0 is far half (away from camera), > 0 is near half
+
+          const wIn0 = trackToWorld(a0, -S_MAX, 0);
+          const wIn1 = trackToWorld(a1, -S_MAX, 0);
+          const wOut1 = trackToWorld(a1, S_MAX, 0);
+          const wOut0 = trackToWorld(a0, S_MAX, 0);
+
+          const pIn0 = project(wIn0);
+          const pIn1 = project(wIn1);
+          const pOut1 = project(wOut1);
+          const pOut0 = project(wOut0);
+
+          // Lambertian shading on banked road surface
+          const nx = -Math.cos(aMid) * phys.sinT;
+          const ny = phys.cosT;
+          const nz = -sinMid * phys.sinT;
+          const ndotl = Math.max(0.18, Math.min(1, nx * lx + ny * ly + nz * lz));
+          const shade = Math.round(32 + ndotl * 34);
+          const roadColor = `rgb(${shade}, ${shade + 9}, ${shade + 22})`;
+
+          const roadDepth = (pIn0.depth + pIn1.depth + pOut1.depth + pOut0.depth) * 0.25;
+
+          roadItems.push({
+            depth: roadDepth,
+            render: () => {
+              drawQuad(ctx, [pIn0, pIn1, pOut1, pOut0], roadColor, "rgba(15, 23, 42, 0.22)", 0.5);
+
+              // Red-and-white inner & outer curbs
+              const curbColor = i % 2 === 0 ? "#dc2626" : "#e2e8f0";
+              ctx.strokeStyle = curbColor;
+              ctx.lineWidth = 2.6;
+              ctx.beginPath();
+              ctx.moveTo(pOut0.sx, pOut0.sy);
+              ctx.lineTo(pOut1.sx, pOut1.sy);
+              ctx.stroke();
+
+              ctx.lineWidth = 2.0;
+              ctx.beginPath();
+              ctx.moveTo(pIn0.sx, pIn0.sy);
+              ctx.lineTo(pIn1.sx, pIn1.sy);
+              ctx.stroke();
+
+              // Dashed ideal center line (s = 0)
+              if (i % 2 === 0) {
+                const pC0 = project(trackToWorld(a0, 0, 0.05));
+                const pC1 = project(trackToWorld(a1, 0, 0.05));
+                ctx.strokeStyle = "rgba(250, 204, 21, 0.78)";
+                ctx.lineWidth = 2.1;
+                ctx.beginPath();
+                ctx.moveTo(pC0.sx, pC0.sy);
+                ctx.lineTo(pC1.sx, pC1.sy);
+                ctx.stroke();
+              }
+
+              // Subtle +/- 6m lane guides
+              [-6, 6].forEach(laneS => {
+                const pL0 = project(trackToWorld(a0, laneS, 0.04));
+                const pL1 = project(trackToWorld(a1, laneS, 0.04));
+                ctx.strokeStyle = "rgba(148, 163, 184, 0.18)";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(pL0.sx, pL0.sy);
+                ctx.lineTo(pL1.sx, pL1.sy);
+                ctx.stroke();
+              });
+            }
+          });
+
+          // Inner low concrete barrier wall (at s = -S_MAX, height 1.5m vertically)
+          const pInTop0 = project({ x: wIn0.x, y: wIn0.y + 1.5, z: wIn0.z });
+          const pInTop1 = project({ x: wIn1.x, y: wIn1.y + 1.5, z: wIn1.z });
+          const inWallDepth = (pIn0.depth + pIn1.depth + pInTop0.depth + pInTop1.depth) * 0.25 - 0.15;
+          roadItems.push({
+            depth: inWallDepth,
+            render: () => {
+              drawQuad(
+                ctx,
+                [pIn0, pIn1, pInTop1, pInTop0],
+                "rgba(100, 116, 139, 0.82)",
+                "rgba(203, 213, 225, 0.42)",
+                0.8
+              );
+            }
+          });
+
+          // Outer barrier wall geometry (vertical height 2.5m along top edge s = +S_MAX)
+          const wallH = 2.5;
+          const pOutTop0 = project({ x: wOut0.x, y: wOut0.y + wallH, z: wOut0.z });
+          const pOutTop1 = project({ x: wOut1.x, y: wOut1.y + wallH, z: wOut1.z });
+          const outWallDepth = (pOut0.depth + pOut1.depth + pOutTop0.depth + pOutTop1.depth) * 0.25;
+          const railShade = Math.round(56 + ndotl * 44);
+
+          if (sinMid <= 0) {
+            // LAYER 3: Far-side solid outer barrier wall
+            farOuterWallItems.push({
+              depth: outWallDepth,
+              render: () => {
+                drawQuad(
+                  ctx,
+                  [pOut0, pOut1, pOutTop1, pOutTop0],
+                  `rgba(${railShade}, ${railShade + 14}, ${railShade + 30}, 0.92)`,
+                  "rgba(148, 163, 184, 0.55)",
+                  0.9
+                );
+              }
+            });
+          } else {
+            // LAYER 6: Near-side low-profile semi-transparent cutaway guardrail
+            const pCutTop0 = project({ x: wOut0.x, y: wOut0.y + 1.75, z: wOut0.z });
+            const pCutTop1 = project({ x: wOut1.x, y: wOut1.y + 1.75, z: wOut1.z });
+            nearOuterWallItems.push({
+              depth: outWallDepth,
+              idx: i,
+              render: () => {
+                // Translucent glass/steel panel so the car is NEVER obscured
+                drawQuad(
+                  ctx,
+                  [pOut0, pOut1, pCutTop1, pCutTop0],
+                  "rgba(148, 163, 184, 0.14)",
+                  null
+                );
+                // Crisp top steel guardrail line
+                ctx.strokeStyle = "rgba(226, 232, 240, 0.55)";
+                ctx.lineWidth = 1.8;
+                ctx.beginPath();
+                ctx.moveTo(pCutTop0.sx, pCutTop0.sy);
+                ctx.lineTo(pCutTop1.sx, pCutTop1.sy);
+                ctx.stroke();
+                // Vertical guardrail posts every 3 segments
+                if (i % 3 === 0) {
+                  ctx.strokeStyle = "rgba(148, 163, 184, 0.45)";
+                  ctx.lineWidth = 1.5;
+                  ctx.beginPath();
+                  ctx.moveTo(pOut0.sx, pOut0.sy);
+                  ctx.lineTo(pCutTop0.sx, pCutTop0.sy);
+                  ctx.stroke();
+                }
+              }
+            });
+          }
+        }
+
+        // Render Layer 2 (sorted among road quads & inner wall only)
+        roadItems.sort((a, b) => b.depth - a.depth);
+        for (let i = 0; i < roadItems.length; i++) {
+          roadItems[i].render();
+        }
+
+        /* --------------------------------------------------------------------
+           LAYER 3: Far-Side Outer Barrier Wall (back half away from camera)
+           -------------------------------------------------------------------- */
+        farOuterWallItems.sort((a, b) => b.depth - a.depth);
+        for (let i = 0; i < farOuterWallItems.length; i++) {
+          farOuterWallItems[i].render();
+        }
+
+        /* --------------------------------------------------------------------
+           LAYER 4: Fading Motion Trail (+0.15m along normal) & Car Contact Shadow
+           -------------------------------------------------------------------- */
+        if (state.showTrail && state.trail.length > 1) {
+          ctx.save();
+          ctx.lineCap = "round";
+          for (let i = 1; i < state.trail.length; i++) {
+            const t0 = state.trail[i - 1];
+            const t1 = state.trail[i];
+            const p0 = project(trackToWorld(t0.phi, t0.s, 0.15));
+            const p1 = project(trackToWorld(t1.phi, t1.s, 0.15));
+            const frac = i / state.trail.length;
+            ctx.strokeStyle = `rgba(56, 189, 248, ${(frac * frac * 0.78).toFixed(3)})`;
+            ctx.lineWidth = 1.5 + frac * 3.6;
+            ctx.beginPath();
+            ctx.moveTo(p0.sx, p0.sy);
+            ctx.lineTo(p1.sx, p1.sy);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        // Local 3D orthonormal frame for the car sitting on the banked incline
+        const cosPhi = Math.cos(state.phi);
+        const sinPhi = Math.sin(state.phi);
+        // Forward tangent T (CCW orbit)
+        const Tx = -sinPhi, Ty = 0, Tz = cosPhi;
+        // Up-the-bank vector S (radial outward & upward)
+        const Sx = cosPhi * phys.cosT, Sy = phys.sinT, Sz = sinPhi * phys.cosT;
+        // Outward road surface normal N (perpendicular to asphalt, inward & upward)
+        const Nx = -cosPhi * phys.sinT, Ny = phys.cosT, Nz = -sinPhi * phys.sinT;
+
+        const carScale = Math.max(0.9, state.R0 / 55);
+        const hL = 3.2 * carScale;
+        const hW = 1.65 * carScale;
+        const wheelR = 0.42 * carScale;
+        const chassisBase = wheelR; // Chassis sits cleanly on top of wheels
+        const bodyH = chassisBase + 0.95 * carScale;
+        const roofH = chassisBase + 1.85 * carScale;
+
+        function carPoint(fwd, bankSide, upNormal) {
+          return project({
+            x: carSurfW.x + Tx * fwd + Sx * bankSide + Nx * upNormal,
+            y: carSurfW.y + Ty * fwd + Sy * bankSide + Ny * upNormal,
+            z: carSurfW.z + Tz * fwd + Sz * bankSide + Nz * upNormal
+          });
+        }
+
+        // Soft dark contact shadow directly on the asphalt surface (+0.04m along normal)
+        const sh0 = carPoint(-hL * 1.12, -hW * 1.18, 0.04);
+        const sh1 = carPoint(hL * 1.12, -hW * 1.18, 0.04);
+        const sh2 = carPoint(hL * 1.12, hW * 1.18, 0.04);
+        const sh3 = carPoint(-hL * 1.12, hW * 1.18, 0.04);
+        drawQuad(ctx, [sh0, sh1, sh2, sh3], "rgba(0, 0, 0, 0.55)");
+
+        /* --------------------------------------------------------------------
+           LAYER 5: 3D Tilted Car Model (internally depth-sorted) & Crash FX
+           -------------------------------------------------------------------- */
+        const carFaces = [];
+
+        // 4 Wheels sitting flush on the asphalt (from normal offset 0 to 2*wheelR)
+        const wheelOffsets = [
+          [hL * 0.62, -hW * 0.96],
+          [hL * 0.62, hW * 0.96],
+          [-hL * 0.62, -hW * 0.96],
+          [-hL * 0.62, hW * 0.96]
+        ];
+        const wHalfL = 0.62 * carScale;
+        const wHalfW = 0.24 * carScale;
+
+        wheelOffsets.forEach(([wf, ws]) => {
+          const wb0 = carPoint(wf - wHalfL, ws - wHalfW, 0.02);
+          const wb1 = carPoint(wf + wHalfL, ws - wHalfW, 0.02);
+          const wb2 = carPoint(wf + wHalfL, ws + wHalfW, 0.02);
+          const wb3 = carPoint(wf - wHalfL, ws + wHalfW, 0.02);
+          const wt0 = carPoint(wf - wHalfL, ws - wHalfW, wheelR * 1.9);
+          const wt1 = carPoint(wf + wHalfL, ws - wHalfW, wheelR * 1.9);
+          const wt2 = carPoint(wf + wHalfL, ws + wHalfW, wheelR * 1.9);
+          const wt3 = carPoint(wf - wHalfL, ws + wHalfW, wheelR * 1.9);
+
+          [
+            [wb0, wb1, wt1, wt0],
+            [wb2, wb3, wt3, wt2],
+            [wb1, wb2, wt2, wt1],
+            [wb3, wb0, wt0, wt3]
+          ].forEach(pts => {
+            carFaces.push({
+              pts,
+              fill: "#0f172a",
+              stroke: "#475569",
+              d: (pts[0].depth + pts[1].depth + pts[2].depth + pts[3].depth) * 0.25 + 0.05
+            });
+          });
+        });
+
+        // Lower car body & cabin vertices
+        const b0 = carPoint(-hL, -hW, chassisBase);
+        const b1 = carPoint(hL, -hW, chassisBase);
+        const b2 = carPoint(hL, hW, chassisBase);
+        const b3 = carPoint(-hL, hW, chassisBase);
+
+        const t0 = carPoint(-hL, -hW, bodyH);
+        const t1 = carPoint(hL, -hW, bodyH);
+        const t2 = carPoint(hL, hW, bodyH);
+        const t3 = carPoint(-hL, hW, bodyH);
+
+        const r0 = carPoint(-hL * 0.56, -hW * 0.78, roofH);
+        const r1 = carPoint(hL * 0.30, -hW * 0.78, roofH);
+        const r2 = carPoint(hL * 0.30, hW * 0.78, roofH);
+        const r3 = carPoint(-hL * 0.56, hW * 0.78, roofH);
+
+        [
+          { pts: [b0, b1, t1, t0], fill: "#1d4ed8", stroke: "#93c5fd" }, // inner side
+          { pts: [b2, b3, t3, t2], fill: "#1e40af", stroke: "#93c5fd" }, // outer side
+          { pts: [b1, b2, t2, t1], fill: "#3b82f6", stroke: "#bfdbfe" }, // front bumper
+          { pts: [b3, b0, t0, t3], fill: "#1e3a8a", stroke: "#93c5fd" }, // rear bumper
+          { pts: [t0, t1, t2, t3], fill: "#2563eb", stroke: "#bfdbfe" }, // hood & trunk
+          { pts: [t1, t2, r2, r1], fill: "#0f172a", stroke: "#60a5fa" }, // windshield
+          { pts: [t3, t0, r0, r3], fill: "#0f172a", stroke: "#60a5fa" }, // rear window
+          { pts: [t0, t1, r1, r0], fill: "#1e293b", stroke: "#60a5fa" }, // left window
+          { pts: [t2, t3, r3, r2], fill: "#1e293b", stroke: "#60a5fa" }, // right window
+          { pts: [r0, r1, r2, r3], fill: "#38bdf8", stroke: "#e0f2fe" }  // roof top
+        ].forEach(f => {
+          f.d = (f.pts[0].depth + f.pts[1].depth + f.pts[2].depth + f.pts[3].depth) * 0.25;
+          carFaces.push(f);
+        });
+
+        carFaces.sort((a, b) => b.d - a.d);
+        for (let i = 0; i < carFaces.length; i++) {
+          const f = carFaces[i];
+          drawQuad(ctx, f.pts, f.fill, f.stroke, 0.9);
+        }
+
+        // Headlights, Taillights & Flashing Crash Hazard Lights
+        const hlL = carPoint(hL + 0.08, -hW * 0.62, (chassisBase + bodyH) * 0.55);
+        const hlR = carPoint(hL + 0.08, hW * 0.62, (chassisBase + bodyH) * 0.55);
+        const tlL = carPoint(-hL - 0.08, -hW * 0.62, (chassisBase + bodyH) * 0.55);
+        const tlR = carPoint(-hL - 0.08, hW * 0.62, (chassisBase + bodyH) * 0.55);
+
+        ctx.fillStyle = "#fef08a";
+        [hlL, hlR].forEach(p => { ctx.beginPath(); ctx.arc(p.sx, p.sy, 2.3, 0, Math.PI * 2); ctx.fill(); });
+        ctx.fillStyle = "#ef4444";
+        [tlL, tlR].forEach(p => { ctx.beginPath(); ctx.arc(p.sx, p.sy, 2.3, 0, Math.PI * 2); ctx.fill(); });
+
+        if (state.mode !== "DRIVING" && Math.floor(state.hazardClock * 3.5) % 2 === 0) {
+          ctx.save();
+          ctx.fillStyle = "#fbbf24";
+          ctx.shadowColor = "#fbbf24";
+          ctx.shadowBlur = 11;
+          [hlL, hlR, tlL, tlR].forEach(p => {
+            ctx.beginPath(); ctx.arc(p.sx, p.sy, 3.4, 0, Math.PI * 2); ctx.fill();
+          });
+          ctx.restore();
+        }
+
+        // Crash Particles (Sparks, Debris, Smoke)
+        for (let i = 0; i < state.particles.length; i++) {
+          const pt = state.particles[i];
+          const pScr = project(pt);
+          const alpha = Math.max(0, pt.life / pt.maxLife);
+          ctx.save();
+          ctx.globalAlpha = alpha * (pt.type === "smoke" ? 0.55 : 0.95);
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pScr.sx, pScr.sy, pt.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        /* --------------------------------------------------------------------
+           LAYER 6: Near-Side Semi-Transparent Cutaway Outer Guardrail
+           -------------------------------------------------------------------- */
+        nearOuterWallItems.sort((a, b) => b.depth - a.depth);
+        for (let i = 0; i < nearOuterWallItems.length; i++) {
+          nearOuterWallItems[i].render();
+        }
+
+        /* --------------------------------------------------------------------
+           LAYER 7: Crisp 3D Vector Arrows (v, F_Nx, optional F_N)
+           -------------------------------------------------------------------- */
+        if (state.mode === "DRIVING") {
+          const cmOff = roofH * 0.65;
+          const pCM = carPoint(0, 0, cmOff);
+
+          // Tangential Velocity Vector (v, violet)
+          if (state.showVecV && state.v > 0.2) {
+            const vLen = Math.min(24, 5 + state.v * 0.36) * carScale;
+            const pVTip = project({
+              x: carSurfW.x + Tx * vLen + Nx * cmOff,
+              y: carSurfW.y + Ty * vLen + Ny * cmOff,
+              z: carSurfW.z + Tz * vLen + Nz * cmOff
+            });
+            drawArrow(ctx, pCM.sx, pCM.sy, pVTip.sx, pVTip.sy, {
+              color: "#a78bfa",
+              lineWidth: 2.8,
+              headLen: 10
+            });
+            drawPillLabel(ctx, "v", pVTip.sx + 8, pVTip.sy - 8, "#c4b5fd", "left");
+          }
+
+          // Horizontal Centripetal Force Vector (F_Nx = F_c, amber)
+          if (state.showVecFc && phys.FNx > 10) {
+            const fcLen = Math.min(state.R0 * 0.62, Math.max(6, Math.log1p(phys.FNx / 1000) * 8.5)) * carScale;
+            const inX = -cosPhi;
+            const inZ = -sinPhi;
+            const pFcTip = project({
+              x: carSurfW.x + inX * fcLen + Nx * cmOff,
+              y: carSurfW.y + Ny * cmOff,
+              z: carSurfW.z + inZ * fcLen + Nz * cmOff
+            });
+            drawArrow(ctx, pCM.sx, pCM.sy, pFcTip.sx, pFcTip.sy, {
+              color: "#fbbf24",
+              lineWidth: 2.8,
+              headLen: 10
+            });
+            drawPillLabel(ctx, "FNx (Fc)", pFcTip.sx, pFcTip.sy - 13, "#fbbf24", "center");
+          }
+
+          // Optional Normal Force Vector (F_N, cyan, perpendicular to banked road)
+          if (state.showVecFn && phys.FN > 10) {
+            const fnLen = Math.min(22, Math.max(7, Math.log1p(phys.FN / 1200) * 8.0)) * carScale;
+            const pFnTip = project({
+              x: carSurfW.x + Nx * (cmOff + fnLen),
+              y: carSurfW.y + Ny * (cmOff + fnLen),
+              z: carSurfW.z + Nz * (cmOff + fnLen)
+            });
+            drawArrow(ctx, pCM.sx, pCM.sy, pFnTip.sx, pFnTip.sy, {
+              color: "#38bdf8",
+              lineWidth: 2.8,
+              headLen: 10
+            });
+            drawPillLabel(ctx, "FN", pFnTip.sx - 8, pFnTip.sy - 8, "#38bdf8", "right");
+          }
+        }
+
+        ctx.restore();
+      }
+
+      /* ========================================================================
+         RIGHT PANEL CANVAS: SYNCHRONIZED 2D REAR-VIEW FREE BODY DIAGRAM (FBD)
+         ======================================================================== */
+      function drawFBD() {
+        const w = fbdSize.w;
+        const h = fbdSize.h;
+        const ctx = fbdCtx;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Subtle engineering grid
+        ctx.save();
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.06)";
+        ctx.lineWidth = 1;
+        for (let x = 20; x < w; x += 24) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for (let y = 20; y < h; y += 24) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+        ctx.restore();
+
+        // Corner Badge & Direction Arrow
+        drawPillLabel(ctx, "No Friction (μ = 0)", w - 10, 18, "#93c5fd", "right");
+        drawArrow(ctx, 114, 18, 14, 18, { color: "#fbbf24", lineWidth: 2, headLen: 7 });
+        ctx.save();
+        ctx.font = "700 10.5px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.fillStyle = "#fde68a";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Center of Circle", 16, 31);
+        ctx.restore();
+
+        // Inclined Ramp Geometry (sloping UP to the right at exact angle theta)
+        const theta = phys.thetaRad;
+        const cosT = phys.cosT;
+        const sinT = phys.sinT;
+
+        const rampMidX = w * 0.52;
+        const rampMidY = h * 0.66;
+        const rampHalfLen = Math.min(w * 0.34, 118);
+
+        const botX = rampMidX - rampHalfLen * cosT;
+        const botY = rampMidY + rampHalfLen * sinT;
+        const topX = rampMidX + rampHalfLen * cosT;
+        const topY = rampMidY - rampHalfLen * sinT;
+
+        // Shaded Banked Wedge & Horizontal Reference Line
+        ctx.save();
+        ctx.fillStyle = "rgba(27, 39, 61, 0.85)";
+        ctx.beginPath();
+        ctx.moveTo(botX, botY);
+        ctx.lineTo(topX, topY);
+        ctx.lineTo(topX, botY);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.45)";
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(botX - 18, botY);
+        ctx.lineTo(topX + 18, botY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Asphalt incline line
+        ctx.strokeStyle = "#94a3b8";
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(botX, botY);
+        ctx.lineTo(topX, topY);
+        ctx.stroke();
+
+        // Incline Angle Arc θ
+        if (state.thetaDeg >= 3) {
+          const arcR = 34;
+          ctx.strokeStyle = "#fbbf24";
+          ctx.fillStyle = "rgba(251, 191, 36, 0.16)";
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(botX, botY);
+          ctx.arc(botX, botY, arcR, 0, -theta, true);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(botX, botY, arcR, 0, -theta, true);
+          ctx.stroke();
+
+          const midA = -theta * 0.5;
+          ctx.font = "700 11px ui-monospace, monospace";
+          ctx.fillStyle = "#fbbf24";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText(`θ=${state.thetaDeg.toFixed(0)}°`, botX + Math.cos(midA) * (arcR + 6), botY + Math.sin(midA) * (arcR + 6));
+        }
+
+        // Bottom & Top Barriers
+        function drawBarrier(bx, by, isTop) {
+          ctx.save();
+          ctx.translate(bx, by);
+          ctx.rotate(-theta);
+          ctx.fillStyle = isTop ? "#dc2626" : "#64748b";
+          ctx.strokeStyle = "#e2e8f0";
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.roundRect(isTop ? 0 : -7, -18, 7, 18, 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+        drawBarrier(botX, botY, false);
+        drawBarrier(topX, topY, true);
+        ctx.restore();
+
+        // Synchronized Car Position along the ramp (matches s in [-S_MAX, +S_MAX])
+        const sFrac = Math.max(-1, Math.min(1, state.s / S_MAX));
+        const carSlopeOffset = sFrac * (rampHalfLen - 22);
+        const roadContactX = rampMidX + carSlopeOffset * cosT;
+        const roadContactY = rampMidY - carSlopeOffset * sinT;
+
+        const nScreenX = -sinT;
+        const nScreenY = -cosT;
+        const cmX = roadContactX + nScreenX * 15;
+        const cmY = roadContactY + nScreenY * 15;
+
+        // Rear-view Car Silhouette
+        ctx.save();
+        ctx.translate(roadContactX, roadContactY);
+        ctx.rotate(-theta);
+
+        ctx.fillStyle = "#090d16";
+        ctx.strokeStyle = "#475569";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(-17, -7, 6.5, 7, 1.5);
+        ctx.roundRect(10.5, -7, 6.5, 7, 1.5);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(56, 189, 248, 0.22)";
+        ctx.strokeStyle = "#60a5fa";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(-19, -19, 38, 13, [4, 4, 2, 2]);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(27, 39, 61, 0.88)";
+        ctx.beginPath();
+        ctx.moveTo(-13, -19);
+        ctx.lineTo(-9, -28);
+        ctx.lineTo(9, -28);
+        ctx.lineTo(13, -19);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = state.mode !== "DRIVING" && Math.floor(state.hazardClock * 3.5) % 2 === 0 ? "#fbbf24" : "#ef4444";
+        ctx.fillRect(-17.5, -16, 5.5, 3);
+        ctx.fillRect(12, -16, 5.5, 3);
+        ctx.restore();
+
+        // Proportional Force Vectors from Car Center of Mass
+        const availUp = Math.max(36, cmY - 34);
+        const availDown = Math.max(36, h - cmY - 22);
+        const availLeft = Math.max(42, cmX - 24);
+
+        const maxVertN = Math.max(phys.Fg, phys.FNy, 1);
+        const maxLeftN = Math.max(phys.FNx, 1);
+        const pxPerN = Math.min(availUp / maxVertN, availDown / phys.Fg, availLeft / maxLeftN, 0.0085);
+
+        const lenFg = phys.Fg * pxPerN;
+        const lenFN = phys.FN * pxPerN;
+        const lenFNy = phys.FNy * pxPerN;
+        const lenFNx = phys.FNx * pxPerN;
+
+        const tipFg = { x: cmX, y: cmY + lenFg };
+        const tipFN = { x: cmX + nScreenX * lenFN, y: cmY + nScreenY * lenFN };
+        const tipFNy = { x: cmX, y: cmY - lenFNy };
+        const tipFNx = { x: cmX - lenFNx, y: cmY };
+
+        // Vertical dashed reference axis through CM
+        ctx.save();
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.28)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(cmX, Math.max(22, cmY - lenFNy - 16));
+        ctx.lineTo(cmX, Math.min(h - 10, cmY + lenFg + 12));
+        ctx.stroke();
+        ctx.restore();
+
+        // Optional Dashed Components (FNy, FNx)
+        if (state.showFbdComp && state.thetaDeg > 0.5) {
+          ctx.save();
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.25)";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([2.5, 2.5]);
+          ctx.beginPath();
+          ctx.moveTo(tipFN.x, tipFN.y); ctx.lineTo(tipFNy.x, tipFNy.y);
+          ctx.moveTo(tipFN.x, tipFN.y); ctx.lineTo(tipFNx.x, tipFNx.y);
+          ctx.stroke();
+          ctx.restore();
+
+          drawArrow(ctx, cmX, cmY, tipFNy.x, tipFNy.y, {
+            color: "#34d399",
+            lineWidth: 2.2,
+            headLen: 8,
+            dashed: true
+          });
+          drawArrow(ctx, cmX, cmY, tipFNx.x, tipFNx.y, {
+            color: "#fbbf24",
+            lineWidth: 2.4,
+            headLen: 8,
+            dashed: true
+          });
+        }
+
+        // Angle arc θ between vertical axis and FN
+        if (state.thetaDeg >= 4 && lenFN > 24) {
+          const arcR = Math.min(28, lenFN * 0.42);
+          const upAng = -Math.PI / 2;
+          const fnAng = Math.atan2(tipFN.y - cmY, tipFN.x - cmX);
+          ctx.save();
+          ctx.fillStyle = "rgba(251, 191, 36, 0.16)";
+          ctx.strokeStyle = "#fbbf24";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(cmX, cmY);
+          ctx.arc(cmX, cmY, arcR, upAng, fnAng, true);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(cmX, cmY, arcR, upAng, fnAng, true);
+          ctx.stroke();
+
+          const midA = (upAng + fnAng) * 0.5;
+          ctx.font = "700 10.5px ui-monospace, monospace";
+          ctx.fillStyle = "#fbbf24";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("θ", cmX + Math.cos(midA) * (arcR + 9), cmY + Math.sin(midA) * (arcR + 9));
+          ctx.restore();
+        }
+
+        // Real Forces: Normal Force FN (cyan) & Weight Fg (red/coral)
+        drawArrow(ctx, cmX, cmY, tipFN.x, tipFN.y, {
+          color: "#38bdf8",
+          lineWidth: 3.1,
+          headLen: 10
+        });
+        drawArrow(ctx, cmX, cmY, tipFg.x, tipFg.y, {
+          color: "#f87171",
+          lineWidth: 3.1,
+          headLen: 10
+        });
+
+        // Center of Mass Dot
+        ctx.save();
+        ctx.fillStyle = "#f8fafc";
+        ctx.strokeStyle = "#0f172a";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(cmX, cmY, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Clamped Vector Labels
+        function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+        drawPillLabel(ctx, "Fg", clamp(cmX + 10, 20, w - 34), clamp(tipFg.y - 6, 32, h - 14), "#f87171", "left");
+        drawPillLabel(ctx, "FN", clamp(tipFN.x - 10, 32, w - 26), clamp(tipFN.y - 4, 24, h - 24), "#38bdf8", "right");
+
+        if (state.showFbdComp && state.thetaDeg > 0.5) {
+          drawPillLabel(ctx, "FNy", clamp(cmX + 10, 20, w - 42), clamp(tipFNy.y + 4, 34, h - 24), "#34d399", "left");
+          if (lenFNx > 16) {
+            drawPillLabel(ctx, "FNx = Fc", clamp(tipFNx.x, 38, w - 44), clamp(cmY + 18, 34, h - 14), "#fbbf24", "center");
+          }
+        }
+      }
+
+      /* ========================================================================
+         MAIN 60FPS PHYSICS & ANIMATION LOOP
+         ======================================================================== */
+      let lastTimestamp = null;
+
+      function updateSimulation(dt) {
+        if (state.shakeTime > 0) {
+          state.shakeTime = Math.max(0, state.shakeTime - dt);
+        }
+
+        // Update 3D particles
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const p = state.particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.z += p.vz * dt;
+          if (p.type === "smoke") {
+            p.vy += 2.2 * dt;
+            p.size += dt * 4.5;
+            p.vx *= 0.96;
+            p.vz *= 0.96;
+          } else {
+            p.vy -= 26 * dt;
+            if (p.y < 0) {
+              p.y = 0;
+              p.vy *= -0.35;
+              p.vx *= 0.7;
+              p.vz *= 0.7;
+            }
+          }
+          p.life -= dt;
+          if (p.life <= 0) state.particles.splice(i, 1);
+        }
+
+        // Continuous smoke & hazard flash while crashed
+        if (state.mode !== "DRIVING") {
+          state.hazardClock += dt;
+          if (Math.random() < 0.28) {
+            const pos = trackToWorld(state.phi, state.s, 1.8);
+            state.particles.push({
+              x: pos.x + (Math.random() - 0.5) * 2.5,
+              y: pos.y,
+              z: pos.z + (Math.random() - 0.5) * 2.5,
+              vx: (Math.random() - 0.5) * 3,
+              vy: 4 + Math.random() * 4,
+              vz: (Math.random() - 0.5) * 3,
+              life: 1.0 + Math.random() * 0.6,
+              maxLife: 1.6,
+              size: 4 + Math.random() * 3,
+              type: "smoke",
+              color: "#475569"
+            });
+          }
+          return;
+        }
+
+        if (!state.isPlaying) return;
+
+        // Sub-stepped integration of slope dynamics & circular motion
+        const subSteps = 4;
+        const hDt = (dt * state.timeScale) / subSteps;
+        const thetaRad = state.thetaDeg * DEG_TO_RAD;
+        const sinT = Math.sin(thetaRad);
+        const cosT = Math.cos(thetaRad);
+
+        for (let k = 0; k < subSteps; k++) {
+          const rCur = state.R0 + state.s * cosT;
+          // Exact frictionless net acceleration along the banked slope (+s is up, -s is down)
+          const as = ((state.v * state.v) / rCur) * cosT - G * sinT;
+          state.as = as;
+          state.vs += as * hDt;
+          state.s += state.vs * hDt;
+
+          // Circular motion around the track
+          const dPhi = (state.v / rCur) * hDt;
+          state.phi = (state.phi + dPhi) % (Math.PI * 2);
+
+          // Top & Bottom Barrier Collisions (accounting for car half-width)
+          if (state.s >= S_LIMIT) {
+            triggerCrash("CRASHED_TOP");
+            return;
+          }
+          if (state.s <= -S_LIMIT) {
+            triggerCrash("CRASHED_BOTTOM");
+            return;
+          }
+        }
+
+        if (state.showTrail && (state.v > 0.1 || Math.abs(state.vs) > 0.1)) {
+          state.trail.push({ phi: state.phi, s: state.s });
+          if (state.trail.length > 72) {
+            state.trail.shift();
+          }
+        }
+
+        computePhysics();
+        syncReadouts();
+      }
+
+      function animate(timestamp) {
+        if (lastTimestamp === null) lastTimestamp = timestamp;
+        const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+        lastTimestamp = timestamp;
+
+        try {
+          updateSimulation(dt);
+          drawSimulation3D();
+          drawFBD();
+        } catch (err) {
+          console.error("Simulation loop error:", err);
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      /* ========================================================================
+         INITIALIZATION
+         ======================================================================== */
+      window.addEventListener("load", () => {
+        try {
+          computePhysics();
+          state.v = parseFloat(phys.vIdeal.toFixed(1));
+          computePhysics();
+          syncControlInputs();
+          syncReadouts();
+          resizeCanvases();
+          requestAnimationFrame(animate);
+        } catch (err) {
+          console.error("Initialization error:", err);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
